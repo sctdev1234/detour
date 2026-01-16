@@ -1,0 +1,115 @@
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
+import 'react-native-reanimated';
+
+import LocationTracker from '../components/LocationTracker';
+import { Colors } from '../constants/theme';
+import { useAuthStore } from '../store/useAuthStore';
+
+import * as Notifications from 'expo-notifications';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebaseConfig';
+import { registerForPushNotificationsAsync } from '../services/notificationService';
+
+export const unstable_settings = {
+  anchor: '(auth)/login',
+};
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme() ?? 'light';
+  const { role, user, isLoading, setUser, setLoading } = useAuthStore();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
+    });
+
+    // Register for push notifications
+    registerForPushNotificationsAsync();
+
+    // Listen for notification interactions
+    const notificationListener = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.tripId) {
+        // Navigate based on data if needed
+        console.log('Notification data:', data);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      notificationListener.remove();
+    };
+  }, [setUser, setLoading]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const segmentsArray = segments as string[];
+    const inAuthGroup = segmentsArray[0] === '(auth)';
+    const isLoginScreen = segmentsArray.length > 1 && segmentsArray[1] === 'login';
+    const isSignupScreen = segmentsArray.length > 1 && segmentsArray[1] === 'signup';
+
+    if (!user) {
+      if (!inAuthGroup || (!isLoginScreen && !isSignupScreen)) {
+        router.replace('/(auth)/login');
+      }
+    } else if (!role) {
+      if (segmentsArray.length > 1 && segmentsArray[1] !== 'role-selection') {
+        router.replace('/(auth)/role-selection');
+      }
+    } else if (role === 'driver') {
+      if (segmentsArray[0] !== '(driver)') {
+        router.replace('/(driver)');
+      }
+    } else if (role === 'client') {
+      if (segmentsArray[0] !== '(client)') {
+        router.replace('/(client)');
+      }
+    }
+  }, [user, role, segments, isLoading, router]);
+
+  const theme = colorScheme === 'dark' ? {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      primary: Colors.dark.primary,
+      background: Colors.dark.background,
+      card: Colors.dark.surface,
+      text: Colors.dark.text,
+      border: Colors.dark.border,
+      notification: Colors.dark.accent,
+    },
+  } : {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      primary: Colors.light.primary,
+      background: Colors.light.background,
+      card: Colors.light.surface,
+      text: Colors.light.text,
+      border: Colors.light.border,
+      notification: Colors.light.accent,
+    },
+  };
+
+  return (
+    <ThemeProvider value={theme}>
+      <Stack>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(driver)" options={{ headerShown: false }} />
+        <Stack.Screen name="(client)" options={{ headerShown: false }} />
+        <Stack.Screen name="chat" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+      <LocationTracker />
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
