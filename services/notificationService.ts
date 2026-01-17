@@ -88,6 +88,7 @@ export const scheduleTripReminder = async (tripId: string, preferredTime: string
 
     // Only schedule if the reminder time is in the future
     if (reminderTime > now) {
+        const secondsUntilReminder = Math.floor((reminderTime.getTime() - now.getTime()) / 1000);
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: 'Trip Starting Soon!',
@@ -95,8 +96,10 @@ export const scheduleTripReminder = async (tripId: string, preferredTime: string
                 data: { tripId },
             },
             trigger: {
-                date: reminderTime,
-            } as Notifications.NotificationTriggerInput,
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: secondsUntilReminder,
+                repeats: false,
+            },
         });
         console.log(`Reminder scheduled for: ${reminderTime.toLocaleString()}`);
     } else {

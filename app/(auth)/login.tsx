@@ -1,7 +1,8 @@
+import * as Google from 'expo-auth-session/providers/google'; // Added import
 import { useRouter } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword } from 'firebase/auth'; // Added imports
 import { Lock, LogIn, Mail } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { auth } from '../../services/firebaseConfig';
@@ -14,6 +15,24 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+        clientId: '781420905294-h39kinu139iunjtrpn7ah434u3on7fbg.apps.googleusercontent.com', // Placeholder for user
+    });
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { id_token } = response.params;
+            const credential = GoogleAuthProvider.credential(id_token);
+            signInWithCredential(auth, credential)
+                .then(() => {
+                    // Success handled by auto-routing
+                })
+                .catch((error) => {
+                    Alert.alert('Google Sign-In Error', error.message);
+                });
+        }
+    }, [response]);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -82,6 +101,14 @@ export default function LoginScreen() {
                             <Text style={styles.loginButtonText}>Sign In</Text>
                         </>
                     )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.loginButton, { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginTop: 10 }]}
+                    onPress={() => promptAsync()}
+                    disabled={!request}
+                >
+                    <Text style={[styles.loginButtonText, { color: theme.text }]}>Sign in with Google</Text>
                 </TouchableOpacity>
             </View>
 
