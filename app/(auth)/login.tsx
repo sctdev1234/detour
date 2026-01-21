@@ -17,7 +17,9 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
 
     const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-        clientId: '781420905294-h39kinu139iunjtrpn7ah434u3on7fbg.apps.googleusercontent.com', // Placeholder for user
+        clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     });
 
     useEffect(() => {

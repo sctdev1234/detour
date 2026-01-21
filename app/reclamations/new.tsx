@@ -1,0 +1,268 @@
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { Camera, ChevronLeft, X } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Colors } from '../../constants/theme';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useReclamationStore } from '../../store/useReclamationStore';
+
+export default function NewReclamationScreen() {
+    const router = useRouter();
+    const colorScheme = useColorScheme() ?? 'light';
+    const theme = Colors[colorScheme];
+    const { user } = useAuthStore();
+    const { addReclamation } = useReclamationStore();
+
+    const [type, setType] = useState<'accident' | 'behaving' | 'lost_item' | 'other'>('other');
+    const [subject, setSubject] = useState('');
+    const [description, setDescription] = useState('');
+    const [image, setImage] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setImage(result.assets[0].uri);
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!subject || !description) {
+            Alert.alert('Error', 'Please fill in subject and description');
+            return;
+        }
+
+        if (!user) return;
+
+        setUploading(true);
+        try {
+            let evidenceUrl = undefined;
+            if (image) {
+                const id = Math.random().toString(36).substring(7);
+                evidenceUrl = await import('../../services/storageService').then(m =>
+                    m.uploadImage(image, `reclamations/${user.uid}/${id}.jpg`)
+                );
+            }
+
+            addReclamation({
+                reporterId: user.uid,
+                type,
+                subject,
+                description,
+                evidenceUrl,
+            });
+
+            Alert.alert('Success', 'Reclamation submitted successfully', [
+                { text: 'OK', onPress: () => router.back() }
+            ]);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to submit reclamation');
+            console.error(error);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <ChevronLeft size={24} color={theme.text} />
+                </TouchableOpacity>
+                <Text style={[styles.title, { color: theme.text }]}>New Reclamation</Text>
+                <View style={{ width: 40 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.form}>
+                <View style={styles.group}>
+                    <Text style={[styles.label, { color: theme.text }]}>Issue Type</Text>
+                    <View style={styles.typeRow}>
+                        {(['accident', 'behaving', 'lost_item', 'other'] as const).map((t) => (
+                            <TouchableOpacity
+                                key={t}
+                                style={[
+                                    styles.typeChip,
+                                    { backgroundColor: type === t ? theme.primary : theme.surface, borderColor: theme.border }
+                                ]}
+                                onPress={() => setType(t)}
+                            >
+                                <Text style={[
+                                    styles.typeText,
+                                    { color: type === t ? '#fff' : theme.text }
+                                ]}>
+                                    {t.toUpperCase().replace('_', ' ')}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+                <View style={styles.group}>
+                    <Text style={[styles.label, { color: theme.text }]}>Subject</Text>
+                    <TextInput
+                        style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+                        placeholder="Brief summary of the issue"
+                        placeholderTextColor={theme.icon}
+                        value={subject}
+                        onChangeText={setSubject}
+                    />
+                </View>
+
+                <View style={styles.group}>
+                    <Text style={[styles.label, { color: theme.text }]}>Description</Text>
+                    <TextInput
+                        style={[styles.textArea, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+                        placeholder="Provide detailed information..."
+                        placeholderTextColor={theme.icon}
+                        multiline
+                        numberOfLines={4}
+                        value={description}
+                        onChangeText={setDescription}
+                    />
+                </View>
+
+                <View style={styles.group}>
+                    <Text style={[styles.label, { color: theme.text }]}>Evidence (Optional)</Text>
+                    {image ? (
+                        <View style={styles.imagePreview}>
+                            <Image source={{ uri: image }} style={styles.thumb} />
+                            <TouchableOpacity style={styles.removeBtn} onPress={() => setImage(null)}>
+                                <X size={16} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={[styles.uploadBox, { borderColor: theme.border, backgroundColor: theme.surface }]}
+                            onPress={pickImage}
+                        >
+                            <Camera size={24} color={theme.icon} />
+                            <Text style={[styles.uploadText, { color: theme.icon }]}>Add Photo</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                <TouchableOpacity
+                    style={[styles.submitButton, { backgroundColor: theme.primary, opacity: uploading ? 0.7 : 1 }]}
+                    onPress={handleSubmit}
+                    disabled={uploading}
+                >
+                    <Text style={styles.submitText}>{uploading ? 'Submitting...' : 'Submit Reclamation'}</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        padding: 24,
+        paddingTop: 60,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: '700',
+    },
+    form: {
+        padding: 24,
+        gap: 24,
+    },
+    group: {
+        gap: 8,
+    },
+    label: {
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    typeRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    typeChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    typeText: {
+        fontWeight: '600',
+        fontSize: 12,
+    },
+    input: {
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1,
+        paddingHorizontal: 16,
+    },
+    textArea: {
+        height: 120,
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: 16,
+        textAlignVertical: 'top',
+    },
+    uploadBox: {
+        height: 120,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    uploadText: {
+        fontWeight: '500',
+    },
+    imagePreview: {
+        width: 120,
+        height: 120,
+        borderRadius: 12,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    thumb: {
+        width: '100%',
+        height: '100%',
+    },
+    removeBtn: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    submitButton: {
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 24,
+    },
+    submitText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 16,
+    }
+});

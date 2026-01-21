@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import RatingModal from '../../components/RatingModal';
 import { Colors } from '../../constants/theme';
+import { calculateDetour } from '../../services/optimizationService';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ClientRequest, useClientRequestStore } from '../../store/useClientRequestStore';
 import { useRatingStore } from '../../store/useRatingStore';
@@ -24,7 +25,25 @@ export default function DriverRequestsScreen() {
     const [ratingModalVisible, setRatingModalVisible] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<ClientRequest | null>(null);
 
-    const filteredRequests = requests.filter(r => r.status === activeTab);
+    const filteredRequests = requests.filter(r => {
+        if (activeTab === 'accepted') {
+            return r.status === 'accepted' || r.status === 'started';
+        }
+        return r.status === activeTab;
+    }).sort((a, b) => {
+        if (activeTab === 'pending') {
+            // Sort by detour if possible
+            const tripA = driverTrips.find(t => t.id === a.driverTripId);
+            const tripB = driverTrips.find(t => t.id === b.driverTripId);
+
+            if (tripA && tripB && a.startPoint && a.endPoint && b.startPoint && b.endPoint) {
+                const detourA = calculateDetour(tripA.startPoint, tripA.endPoint, a.startPoint, a.endPoint);
+                const detourB = calculateDetour(tripB.startPoint, tripB.endPoint, b.startPoint, b.endPoint);
+                return detourA - detourB;
+            }
+        }
+        return b.createdAt - a.createdAt; // Default to newest first
+    });
 
     const handleAccept = (id: string) => {
         const request = requests.find(r => r.id === id);
@@ -52,11 +71,20 @@ export default function DriverRequestsScreen() {
     };
 
     const handleComplete = (request: ClientRequest) => {
-        Alert.alert('Complete Trip', 'Mark this trip as completed?', [
+        Alert.alert('Complete Trip', `Mark this trip as completed?\nAmount: ${request.proposedPrice} DZD`, [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Complete',
                 onPress: () => {
+                    import('../../store/useFinanceStore').then(({ useFinanceStore }) => {
+                        useFinanceStore.getState().processTripPayment(
+                            user?.uid || '',
+                            request.clientId,
+                            request.proposedPrice,
+                            request.id
+                        );
+                    });
+
                     updateRequestStatus(request.id, 'completed');
                     setSelectedRequest(request);
                     setRatingModalVisible(true);
@@ -112,6 +140,15 @@ export default function DriverRequestsScreen() {
                             </Text>
                         </View>
                     )}
+                    {driverTrip && item.startPoint && item.endPoint && (
+                        <View style={[styles.detailItem, { marginTop: 4 }]}>
+                            <View style={[styles.detourBadge, { backgroundColor: theme.accent + '20' }]}>
+                                <Text style={[styles.detourText, { color: theme.accent }]}>
+                                    Detour: +{calculateDetour(driverTrip.startPoint, driverTrip.endPoint, item.startPoint, item.endPoint)} km
+                                </Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
 
                 {item.status === 'pending' && (
@@ -133,7 +170,7 @@ export default function DriverRequestsScreen() {
                     </View>
                 )}
 
-                {item.status === 'accepted' && (
+                {(item.status === 'accepted' || item.status === 'started') && (
                     <View style={styles.actions}>
                         <TouchableOpacity
                             style={[styles.actionButton, { backgroundColor: theme.secondary }]}
@@ -145,13 +182,29 @@ export default function DriverRequestsScreen() {
                             <MessageCircle size={20} color="#fff" />
                             <Text style={styles.messageButtonText}>Chat</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: theme.primary }]}
-                            onPress={() => handleComplete(item)}
-                        >
-                            <Check size={20} color="#fff" />
-                            <Text style={styles.messageButtonText}>Finish</Text>
-                        </TouchableOpacity>
+
+                        {item.status === 'accepted' ? (
+                            <TouchableOpacity
+                                style={[styles.actionButton, { backgroundColor: '#4CD964' }]}
+                                onPress={() => {
+                                    Alert.alert('Start Trip', 'Notify client that you are leaving?', [
+                                        { text: 'Cancel', style: 'cancel' },
+                                        { text: 'Start', onPress: () => updateRequestStatus(item.id, 'started') }
+                                    ]);
+                                }}
+                            >
+                                <TrendingUp size={20} color="#fff" />
+                                <Text style={styles.messageButtonText}>Start</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.actionButton, { backgroundColor: theme.primary }]}
+                                onPress={() => handleComplete(item)}
+                            >
+                                <Check size={20} color="#fff" />
+                                <Text style={styles.messageButtonText}>Finish</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 )}
 
@@ -341,5 +394,14 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
+    },
+    detourBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    detourText: {
+        fontSize: 12,
+        fontWeight: '700',
     },
 });

@@ -12,7 +12,7 @@ export interface ClientRequest {
     preferredTime: string;
     days: string[];
     proposedPrice: number;
-    status: 'pending' | 'accepted' | 'declined' | 'completed';
+    status: 'pending' | 'accepted' | 'declined' | 'completed' | 'started';
     createdAt: number;
 }
 
@@ -51,7 +51,12 @@ export const useClientRequestStore = create<ClientRequestState>()(
                                 sendImmediateNotification('Trip Update', `Your trip request is now ${statusUpper}`);
 
                                 if (status === 'accepted') {
-                                    scheduleTripReminder(r.id, r.preferredTime, 'Daily Commute');
+                                    scheduleTripReminder(r.id, r.preferredTime, 'Daily Commute', 30);
+                                    scheduleTripReminder(r.id, r.preferredTime, 'Daily Commute', 5);
+                                }
+
+                                if (status === 'started') {
+                                    sendImmediateNotification('Driver on the way', `${r.driverTripId ? 'Your driver' : 'Driver'} has started the trip and is on the way!`);
                                 }
                             });
                         }

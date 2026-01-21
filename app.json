@@ -55,6 +55,7 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Detour to use your location to track your trip and find nearby drivers.",
+          "locationWhenInUsePermission": "Allow Detour to use your location to track your trip and find nearby drivers.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }

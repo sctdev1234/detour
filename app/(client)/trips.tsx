@@ -105,7 +105,18 @@ export default function ClientTripsScreen() {
                             })}
                         >
                             <MessageCircle size={18} color="#fff" />
-                            <Text style={styles.messageButtonText}>Message Driver</Text>
+                            <Text style={styles.messageButtonText}>Message</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.messageButton, { backgroundColor: theme.primary, flex: 1 }]}
+                            onPress={() => router.push({
+                                pathname: '/(client)/trip-details',
+                                params: { requestId: item.id }
+                            })}
+                        >
+                            <MapPin size={18} color="#fff" />
+                            <Text style={styles.messageButtonText}>Track</Text>
                         </TouchableOpacity>
                     </View>
                 )}

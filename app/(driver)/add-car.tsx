@@ -62,25 +62,57 @@ export default function AddCarScreen() {
         }
     };
 
-    const handleSave = () => {
+    const [uploading, setUploading] = useState(false);
+
+    const handleSave = async () => {
         if (!form.marque || !form.model || !form.year || !form.color) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
         }
 
-        addCar({
-            marque: form.marque,
-            model: form.model,
-            year: form.year,
-            color: form.color,
-            places: parseInt(form.places) || 4,
-            isDefault: form.isDefault,
-            images: form.images,
-            documents: form.documents,
-            verificationStatus: 'pending', // Auto-set to pending if docs are uploaded? Or unverified.
-        });
+        setUploading(true);
+        try {
+            // Upload Images
+            const uploadedImages = await Promise.all(
+                form.images.map(async (uri, index) => {
+                    const id = Math.random().toString(36).substring(7);
+                    return await import('../../services/storageService').then(m =>
+                        m.uploadImage(uri, `cars/${id}/images/${index}.jpg`)
+                    );
+                })
+            );
 
-        router.back();
+            // Upload Documents
+            const uploadedDocs = { ...form.documents };
+            for (const [key, uri] of Object.entries(form.documents)) {
+                if (uri) {
+                    const id = Math.random().toString(36).substring(7);
+                    const url = await import('../../services/storageService').then(m =>
+                        m.uploadImage(uri, `cars/${id}/documents/${key}.jpg`)
+                    );
+                    uploadedDocs[key as keyof typeof uploadedDocs] = url;
+                }
+            }
+
+            addCar({
+                marque: form.marque,
+                model: form.model,
+                year: form.year,
+                color: form.color,
+                places: parseInt(form.places) || 4,
+                isDefault: form.isDefault,
+                images: uploadedImages,
+                documents: uploadedDocs,
+                verificationStatus: 'pending',
+            });
+
+            router.back();
+        } catch (error) {
+            Alert.alert('Error', 'Failed to upload images. Please try again.');
+            console.error(error);
+        } finally {
+            setUploading(false);
+        }
     };
 
     return (
@@ -216,10 +248,11 @@ export default function AddCarScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                    style={[styles.saveButton, { backgroundColor: theme.primary, opacity: uploading ? 0.7 : 1 }]}
                     onPress={handleSave}
+                    disabled={uploading}
                 >
-                    <Text style={styles.saveButtonText}>Save Car</Text>
+                    <Text style={styles.saveButtonText}>{uploading ? 'Uploading...' : 'Save Car'}</Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>

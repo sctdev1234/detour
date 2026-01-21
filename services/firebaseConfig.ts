@@ -43,3 +43,6 @@ export { auth };
 
 import { getDatabase } from 'firebase/database';
 export const database = getDatabase(app);
+
+import { getStorage } from 'firebase/storage';
+export const storage = getStorage(app);

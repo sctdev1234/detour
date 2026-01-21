@@ -9,8 +9,10 @@ import LocationTracker from '../components/LocationTracker';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { onAuthStateChanged } from 'firebase/auth';
+import { Platform } from 'react-native';
 import { auth } from '../services/firebaseConfig';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
 
@@ -34,17 +36,21 @@ export default function RootLayout() {
     registerForPushNotificationsAsync();
 
     // Listen for notification interactions
-    const notificationListener = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data;
-      if (data?.tripId) {
-        // Navigate based on data if needed
-        console.log('Notification data:', data);
-      }
-    });
+    let notificationListener: Notifications.Subscription | undefined;
+
+    if (Constants.appOwnership !== 'expo' || Platform.OS !== 'android') {
+      notificationListener = Notifications.addNotificationResponseReceivedListener(response => {
+        const data = response.notification.request.content.data;
+        if (data?.tripId) {
+          // Navigate based on data if needed
+          console.log('Notification data:', data);
+        }
+      });
+    }
 
     return () => {
       unsubscribe();
-      notificationListener.remove();
+      notificationListener && notificationListener.remove();
     };
   }, [setUser, setLoading]);
 

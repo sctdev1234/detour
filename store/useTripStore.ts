@@ -37,21 +37,42 @@ interface TripState {
 
 export const useTripStore = create<TripState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             trips: [],
-            addTrip: (tripData) => set((state) => {
-                const id = Math.random().toString(36).substring(7);
-                const newTrip = {
-                    ...tripData,
-                    id,
-                    driverId: 'me',
-                    distanceKm: tripData.distanceKm || 0,
-                    estimatedDurationMin: tripData.estimatedDurationMin || 0,
-                    routeGeometry: tripData.routeGeometry || '',
-                    passengers: []
-                }; // Placeholder driverId
-                return { trips: [...state.trips, newTrip] };
-            }),
+            addTrip: (tripData) => {
+                const state = get();
+
+                // Check for conflicts
+                const hasConflict = state.trips.some(existingTrip => {
+                    const daysOverlap = existingTrip.days.some(day => tripData.days.includes(day));
+                    if (!daysOverlap) return false;
+
+                    // Simple time string comparison (HH:mm)
+                    return (
+                        (tripData.timeStart >= existingTrip.timeStart && tripData.timeStart < existingTrip.timeArrival) ||
+                        (tripData.timeArrival > existingTrip.timeStart && tripData.timeArrival <= existingTrip.timeArrival) ||
+                        (tripData.timeStart <= existingTrip.timeStart && tripData.timeArrival >= existingTrip.timeArrival)
+                    );
+                });
+
+                if (hasConflict) {
+                    throw new Error("Schedule Conflict: You already have a trip at this time.");
+                }
+
+                set((state) => {
+                    const id = Math.random().toString(36).substring(7);
+                    const newTrip: Trip = {
+                        ...tripData,
+                        id,
+                        driverId: 'me',
+                        distanceKm: tripData.distanceKm || 0,
+                        estimatedDurationMin: tripData.estimatedDurationMin || 0,
+                        routeGeometry: tripData.routeGeometry || '',
+                        passengers: []
+                    };
+                    return { trips: [...state.trips, newTrip] };
+                });
+            },
             removeTrip: (id) => set((state) => ({
                 trips: state.trips.filter((t) => t.id !== id),
             })),

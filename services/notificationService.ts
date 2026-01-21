@@ -4,20 +4,28 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 // Handle notifications when the app is in the foreground
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+// Handle notifications when the app is in the foreground
+if (Constants.appOwnership !== 'expo' || Platform.OS !== 'android') {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+            shouldShowBanner: true,
+            shouldShowList: true,
+        }),
+    });
+}
 
 export const registerForPushNotificationsAsync = async () => {
     let token;
 
     if (Platform.OS === 'web') {
+        return null;
+    }
+
+    if (Constants.appOwnership === 'expo' && Platform.OS === 'android') {
+        console.log('Push notifications are not supported in Expo Go on Android');
         return null;
     }
 
@@ -66,7 +74,7 @@ export const sendImmediateNotification = async (title: string, body: string, dat
     });
 };
 
-export const scheduleTripReminder = async (tripId: string, preferredTime: string, tripName: string) => {
+export const scheduleTripReminder = async (tripId: string, preferredTime: string, tripName: string, minutesBefore: number = 30) => {
     // Parse preferredTime (e.g., "08:00 AM")
     const [time, period] = preferredTime.split(' ');
     let [hours, minutes] = time.split(':').map(Number);
@@ -83,16 +91,23 @@ export const scheduleTripReminder = async (tripId: string, preferredTime: string
         tripDate.setDate(tripDate.getDate() + 1);
     }
 
-    // Schedule for 30 minutes before
-    const reminderTime = new Date(tripDate.getTime() - 30 * 60000);
+    // Schedule for X minutes before
+    const reminderTime = new Date(tripDate.getTime() - minutesBefore * 60000);
 
     // Only schedule if the reminder time is in the future
     if (reminderTime > now) {
         const secondsUntilReminder = Math.floor((reminderTime.getTime() - now.getTime()) / 1000);
+
+        // Guard against Expo Go on Android
+        if (Constants.appOwnership === 'expo' && Platform.OS === 'android') {
+            console.log(`Skipping notification schedule (Expo Go Android): ${minutesBefore}m before`);
+            return;
+        }
+
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: 'Trip Starting Soon!',
-                body: `Your trip "${tripName}" starts in 30 minutes.`,
+                body: `Your trip "${tripName}" starts in ${minutesBefore} minutes.`,
                 data: { tripId },
             },
             trigger: {
@@ -103,7 +118,11 @@ export const scheduleTripReminder = async (tripId: string, preferredTime: string
         });
         console.log(`Reminder scheduled for: ${reminderTime.toLocaleString()}`);
     } else {
-        // If less than 30 mins away, notify immediately
+        // If less than X mins away, notify immediately (but check constraints)
+        if (Constants.appOwnership === 'expo' && Platform.OS === 'android') {
+            console.log('Skipping immediate notification (Expo Go Android)');
+            return;
+        }
         await sendImmediateNotification(
             'Trip Starting Soon!',
             `Your trip "${tripName}" is starting very soon!`
