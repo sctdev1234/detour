@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, useColorScheme, Switch, ScrollView, Alert } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import { Camera, ChevronLeft, Plus, Upload, X } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
-import { ChevronLeft, Car as CarIcon } from 'lucide-react-native';
 
 export default function AddCarScreen() {
     const router = useRouter();
@@ -18,7 +19,48 @@ export default function AddCarScreen() {
         color: '',
         places: '4',
         isDefault: false,
+        images: [] as string[],
+        documents: {
+            registration: '',
+            insurance: '',
+            technicalVisit: '',
+        },
     });
+
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setForm(prev => ({ ...prev, images: [...prev.images, result.assets[0].uri] }));
+        }
+    };
+
+    const removeImage = (index: number) => {
+        setForm(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
+        }));
+    };
+
+    const pickDocument = async (type: 'registration' | 'insurance' | 'technicalVisit') => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: false,
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setForm(prev => ({
+                ...prev,
+                documents: { ...prev.documents, [type]: result.assets[0].uri }
+            }));
+        }
+    };
 
     const handleSave = () => {
         if (!form.marque || !form.model || !form.year || !form.color) {
@@ -33,6 +75,9 @@ export default function AddCarScreen() {
             color: form.color,
             places: parseInt(form.places) || 4,
             isDefault: form.isDefault,
+            images: form.images,
+            documents: form.documents,
+            verificationStatus: 'pending', // Auto-set to pending if docs are uploaded? Or unverified.
         });
 
         router.back();
@@ -105,6 +150,57 @@ export default function AddCarScreen() {
                         value={form.color}
                         onChangeText={(text) => setForm({ ...form, color: text })}
                     />
+                </View>
+
+                {/* Car Photos */}
+                <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.text }]}>Car Photos</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
+                        {form.images.map((uri, index) => (
+                            <View key={index} style={styles.photoItem}>
+                                <Image source={{ uri }} style={styles.photoThumb} />
+                                <TouchableOpacity
+                                    style={styles.removePhoto}
+                                    onPress={() => removeImage(index)}
+                                >
+                                    <X size={12} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                        <TouchableOpacity
+                            style={[styles.addPhotoButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
+                            onPress={pickImage}
+                        >
+                            <Camera size={24} color={theme.icon} />
+                            <Text style={[styles.addPhotoText, { color: theme.icon }]}>Add</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+
+                {/* Documents */}
+                <View style={styles.section}>
+                    <Text style={[styles.label, { color: theme.text, marginBottom: 12 }]}>Documents</Text>
+
+                    {[
+                        { key: 'registration', label: 'Car Registration (Carte Grise)' },
+                        { key: 'insurance', label: 'Insurance' },
+                        { key: 'technicalVisit', label: 'Technical Visit' }
+                    ].map((doc) => (
+                        <View key={doc.key} style={styles.docRow}>
+                            <View style={styles.docInfo}>
+                                <Text style={[styles.docLabel, { color: theme.text }]}>{doc.label}</Text>
+                                <Text style={[styles.docStatus, { color: form.documents[doc.key as keyof typeof form.documents] ? '#4CD964' : theme.icon }]}>
+                                    {form.documents[doc.key as keyof typeof form.documents] ? 'Uploaded' : 'Required'}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.uploadButton, { backgroundColor: form.documents[doc.key as keyof typeof form.documents] ? '#4CD96420' : theme.surface }]}
+                                onPress={() => pickDocument(doc.key as any)}
+                            >
+                                {form.documents[doc.key as keyof typeof form.documents] ? <Upload size={18} color="#4CD964" /> : <Plus size={18} color={theme.primary} />}
+                            </TouchableOpacity>
+                        </View>
+                    ))}
                 </View>
 
                 <View style={[styles.switchGroup, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -201,5 +297,74 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: '700',
+    },
+    section: {
+        gap: 8,
+    },
+    photoList: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    photoItem: {
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginRight: 12,
+        position: 'relative',
+    },
+    photoThumb: {
+        width: '100%',
+        height: '100%',
+    },
+    removePhoto: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    addPhotoButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 4,
+    },
+    addPhotoText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    docRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+    },
+    docInfo: {
+        flex: 1,
+    },
+    docLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    docStatus: {
+        fontSize: 12,
+    },
+    uploadButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#eee',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

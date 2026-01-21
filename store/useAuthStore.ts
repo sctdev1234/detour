@@ -8,11 +8,21 @@ export type Role = 'driver' | 'client' | null;
 interface AuthState {
     user: User | null;
     role: Role;
+    verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
+    documents: {
+        cinFront?: string;
+        cinBack?: string;
+        license?: string;
+        carRegistration?: string;
+        facePhoto?: string;
+    };
     isLoading: boolean;
     setUser: (user: User | null) => void;
     setRole: (role: Role) => void;
     setLoading: (loading: boolean) => void;
     logout: () => void;
+    setVerificationStatus: (status: 'pending' | 'verified' | 'rejected' | 'unverified') => void;
+    updateDocuments: (docs: Partial<AuthState['documents']>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -20,11 +30,15 @@ export const useAuthStore = create<AuthState>()(
         (set) => ({
             user: null,
             role: null,
+            verificationStatus: 'unverified',
+            documents: {},
             isLoading: true,
             setUser: (user) => set({ user, isLoading: false }),
             setRole: (role) => set({ role }),
             setLoading: (isLoading) => set({ isLoading }),
-            logout: () => set({ user: null, role: null, isLoading: false }),
+            logout: () => set({ user: null, role: null, isLoading: false, verificationStatus: 'unverified', documents: {} }),
+            setVerificationStatus: (status) => set({ verificationStatus: status }),
+            updateDocuments: (docs) => set((state) => ({ documents: { ...state.documents, ...docs } })),
         }),
         {
             name: 'auth-storage',

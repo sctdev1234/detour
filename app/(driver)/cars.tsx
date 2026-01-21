@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Car as CarIcon, CheckCircle2, Plus, Trash2, UserPlus } from 'lucide-react-native';
+import React from 'react';
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useCarStore, Car } from '../../store/useCarStore';
-import { Car as CarIcon, Plus, CheckCircle2, ChevronRight, Trash2 } from 'lucide-react-native';
+import { Car, useCarStore } from '../../store/useCarStore';
 
 export default function CarsScreen() {
     const router = useRouter();
@@ -14,7 +14,11 @@ export default function CarsScreen() {
     const renderCarItem = ({ item }: { item: Car }) => (
         <View style={[styles.carCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View style={[styles.carIconContainer, { backgroundColor: item.isDefault ? theme.primary + '20' : theme.border + '20' }]}>
-                <CarIcon size={24} color={item.isDefault ? theme.primary : theme.icon} />
+                {item.images && item.images.length > 0 ? (
+                    <Image source={{ uri: item.images[0] }} style={styles.carThumbnail} />
+                ) : (
+                    <CarIcon size={24} color={item.isDefault ? theme.primary : theme.icon} />
+                )}
             </View>
 
             <View style={styles.carInfo}>
@@ -28,10 +32,17 @@ export default function CarsScreen() {
                 </View>
                 <Text style={[styles.carDetails, { color: theme.icon }]}>
                     {item.year} • {item.color} • {item.places} seats
+                    {item.assignment?.status === 'active' && ` • Assigned to ${item.assignment.driverEmail.split('@')[0]}`}
                 </Text>
             </View>
 
             <View style={styles.actions}>
+                <TouchableOpacity
+                    onPress={() => router.push({ pathname: '/(driver)/assign-car', params: { carId: item.id } })}
+                    style={styles.actionIcon}
+                >
+                    <UserPlus size={20} color={item.assignment?.status === 'active' ? theme.primary : theme.icon} />
+                </TouchableOpacity>
                 {!item.isDefault && (
                     <TouchableOpacity onPress={() => setDefaultCar(item.id)} style={styles.actionIcon}>
                         <CheckCircle2 size={20} color={theme.icon} />
@@ -117,6 +128,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
+        overflow: 'hidden',
+    },
+    carThumbnail: {
+        width: '100%',
+        height: '100%',
     },
     carInfo: {
         flex: 1,

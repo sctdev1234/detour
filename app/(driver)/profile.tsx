@@ -24,6 +24,8 @@ export default function ProfileScreen() {
             <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
             <Text style={[styles.subtitle, { color: theme.icon }]}>User settings and logout</Text>
 
+            <VerificationStatus theme={theme} />
+
             <TouchableOpacity
                 style={[styles.roleButton, { borderColor: theme.primary, borderWidth: 1 }]}
                 onPress={() => setRole(null)}

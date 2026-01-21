@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '../../constants/theme';
+import { Car, ChevronLeft, Clock, Route as RouteIcon } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
-import { useTripStore, LatLng } from '../../store/useTripStore';
+import { Colors } from '../../constants/theme';
+import { RouteService } from '../../services/RouteService';
 import { useCarStore } from '../../store/useCarStore';
-import { ChevronLeft, Clock, Calendar, DollarSign, Car } from 'lucide-react-native';
+import { LatLng, useTripStore } from '../../store/useTripStore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -23,11 +24,42 @@ export default function AddTripScreen() {
     const [price, setPrice] = useState('50');
     const [priceType, setPriceType] = useState<'fix' | 'km'>('fix');
     const [selectedCarId, setSelectedCarId] = useState(cars.find(c => c.isDefault)?.id || cars[0]?.id || '');
+    const [routeMetrics, setRouteMetrics] = useState<{ distance: number; duration: number; geometry: string } | null>(null);
+    const [isCalculating, setIsCalculating] = useState(false);
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
             prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
         );
+    };
+
+    const handlePointsChange = async (newPoints: LatLng[]) => {
+        setPoints(newPoints);
+        if (newPoints.length >= 2) {
+            setIsCalculating(true);
+            try {
+                const start = newPoints[0];
+                const end = newPoints[newPoints.length - 1];
+                const result = await RouteService.calculateRoute(start, end);
+
+                setRouteMetrics({
+                    distance: result.distanceKm,
+                    duration: result.durationMinutes,
+                    geometry: result.geometry
+                });
+
+                // Auto-update price if per km
+                if (priceType === 'km' && !price) {
+                    setPrice('2'); // Default
+                }
+            } catch (error) {
+                console.error('Failed to calculate route', error);
+            } finally {
+                setIsCalculating(false);
+            }
+        } else {
+            setRouteMetrics(null);
+        }
     };
 
     const handleSave = () => {
@@ -55,6 +87,9 @@ export default function AddTripScreen() {
             price: parseFloat(price) || 0,
             priceType,
             status: 'active',
+            distanceKm: routeMetrics?.distance,
+            estimatedDurationMin: routeMetrics?.duration,
+            routeGeometry: routeMetrics?.geometry,
         });
 
         router.back();
@@ -73,7 +108,24 @@ export default function AddTripScreen() {
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>1. Define Route</Text>
-                    <MapPicker onPointsChange={setPoints} theme={theme} />
+                    <MapPicker onPointsChange={handlePointsChange} theme={theme} />
+
+                    {isCalculating && (
+                        <Text style={{ color: theme.icon, marginTop: 8 }}>Calculating route...</Text>
+                    )}
+
+                    {routeMetrics && (
+                        <View style={[styles.metricsContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <View style={styles.metricItem}>
+                                <RouteIcon size={16} color={theme.primary} />
+                                <Text style={[styles.metricValue, { color: theme.text }]}>{routeMetrics.distance} km</Text>
+                            </View>
+                            <View style={styles.metricItem}>
+                                <Clock size={16} color={theme.primary} />
+                                <Text style={[styles.metricValue, { color: theme.text }]}>~{routeMetrics.duration} min</Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.section}>
@@ -294,5 +346,22 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: '700',
+    },
+    metricsContainer: {
+        flexDirection: 'row',
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        gap: 16,
+    },
+    metricItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    metricValue: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

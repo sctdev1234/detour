@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface LatLng {
     latitude: number;
@@ -20,6 +20,10 @@ export interface Trip {
     price: number;
     priceType: 'fix' | 'km';
     status: 'active' | 'inactive';
+    distanceKm?: number;
+    estimatedDurationMin?: number;
+    routeGeometry?: string;
+    passengers?: string[]; // Array of client IDs
 }
 
 interface TripState {
@@ -27,6 +31,8 @@ interface TripState {
     addTrip: (trip: Omit<Trip, 'id' | 'driverId'>) => void;
     removeTrip: (id: string) => void;
     updateTrip: (id: string, updates: Partial<Trip>) => void;
+    addPassenger: (tripId: string, clientId: string) => void;
+    removePassenger: (tripId: string, clientId: string) => void;
 }
 
 export const useTripStore = create<TripState>()(
@@ -35,7 +41,15 @@ export const useTripStore = create<TripState>()(
             trips: [],
             addTrip: (tripData) => set((state) => {
                 const id = Math.random().toString(36).substring(7);
-                const newTrip = { ...tripData, id, driverId: 'me' }; // Placeholder driverId
+                const newTrip = {
+                    ...tripData,
+                    id,
+                    driverId: 'me',
+                    distanceKm: tripData.distanceKm || 0,
+                    estimatedDurationMin: tripData.estimatedDurationMin || 0,
+                    routeGeometry: tripData.routeGeometry || '',
+                    passengers: []
+                }; // Placeholder driverId
                 return { trips: [...state.trips, newTrip] };
             }),
             removeTrip: (id) => set((state) => ({
@@ -43,6 +57,20 @@ export const useTripStore = create<TripState>()(
             })),
             updateTrip: (id, updates) => set((state) => ({
                 trips: state.trips.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+            })),
+            addPassenger: (tripId, clientId) => set((state) => ({
+                trips: state.trips.map((t) =>
+                    t.id === tripId
+                        ? { ...t, passengers: [...(t.passengers || []), clientId] }
+                        : t
+                ),
+            })),
+            removePassenger: (tripId, clientId) => set((state) => ({
+                trips: state.trips.map((t) =>
+                    t.id === tripId
+                        ? { ...t, passengers: (t.passengers || []).filter(p => p !== clientId) }
+                        : t
+                ),
             })),
         }),
         {

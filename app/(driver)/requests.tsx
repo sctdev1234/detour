@@ -17,6 +17,7 @@ export default function DriverRequestsScreen() {
     const { user } = useAuthStore();
     const { requests, updateRequestStatus } = useClientRequestStore();
     const driverTrips = useTripStore((state) => state.trips);
+    const addPassenger = useTripStore((state) => state.addPassenger);
     const { addRating } = useRatingStore();
 
     const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'completed'>('pending');
@@ -26,9 +27,20 @@ export default function DriverRequestsScreen() {
     const filteredRequests = requests.filter(r => r.status === activeTab);
 
     const handleAccept = (id: string) => {
+        const request = requests.find(r => r.id === id);
+        if (!request) return;
+
         Alert.alert('Accept Request', 'Are you sure you want to accept this client?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Accept', onPress: () => updateRequestStatus(id, 'accepted') }
+            {
+                text: 'Accept',
+                onPress: () => {
+                    updateRequestStatus(id, 'accepted');
+                    if (request.driverTripId) {
+                        addPassenger(request.driverTripId, request.clientId);
+                    }
+                }
+            }
         ]);
     };
 
