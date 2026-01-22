@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow Detour to use your location to track your trip and find nearby drivers.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Detour to use your location to track your trip and find nearby drivers."
+      }
     },
     "android": {
       "adaptiveIcon": {

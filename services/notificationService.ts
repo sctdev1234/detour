@@ -41,8 +41,13 @@ export const registerForPushNotificationsAsync = async () => {
             return null;
         }
         try {
+            const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+            if (!projectId || projectId === 'your-project-id-here') {
+                console.log('Project ID not configured, skipping push token fetch.');
+                return null;
+            }
             token = (await Notifications.getExpoPushTokenAsync({
-                projectId: Constants.expoConfig?.extra?.eas?.projectId,
+                projectId,
             })).data;
         } catch (error) {
             console.log('Error fetching push token:', error);
