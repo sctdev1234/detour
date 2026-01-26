@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useColorScheme, TextInput, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Check, ChevronLeft, Clock, DollarSign, Info } from 'lucide-react-native';
+import { useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useTripStore } from '../../store/useTripStore';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
-import { ChevronLeft, Info, Calendar, Clock, DollarSign } from 'lucide-react-native';
+import { useTripStore } from '../../store/useTripStore';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -20,7 +20,7 @@ export default function RequestTripScreen() {
 
     const addRequest = useClientRequestStore((state) => state.addRequest);
 
-    const [proposedPrice, setProposedPrice] = useState(driverTrip?.price.toString() || '50');
+    const [proposedPrice, setProposedPrice] = useState(driverTrip?.price.toString() || '0');
     const [preferredTime, setPreferredTime] = useState(driverTrip?.timeStart || '08:00');
     const [selectedDays, setSelectedDays] = useState<string[]>(driverTrip?.days || []);
 
@@ -33,33 +33,47 @@ export default function RequestTripScreen() {
     const handleRequest = () => {
         if (!driverTrip) return;
 
+        const price = parseFloat(proposedPrice);
+        if (isNaN(price) || price <= 0) {
+            Alert.alert("Invalid Price", "Please enter a valid price greater than 0.");
+            return;
+        }
+
+        if (selectedDays.length === 0) {
+            Alert.alert("No Days Selected", "Please select at least one day for the recurring trip.");
+            return;
+        }
+
         addRequest({
             driverTripId,
             startPoint: driverTrip.startPoint,
             endPoint: driverTrip.endPoint,
             preferredTime,
             days: selectedDays,
-            proposedPrice: parseFloat(proposedPrice) || 0,
+            proposedPrice: price,
         });
 
-        Alert.alert('Success', 'Your request has been sent to the driver!', [
-            { text: 'OK', onPress: () => router.push('/(client)/trips') }
+        Alert.alert('Request Sent', 'Your request has been sent to the driver!', [
+            { text: 'Great!', onPress: () => router.push('/(client)/trips') }
         ]);
     };
 
     if (!driverTrip) {
         return (
-            <View style={styles.errorContainer}>
-                <Text>Trip not found</Text>
+            <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ color: theme.text, marginBottom: 16 }}>Trip details unavailable.</Text>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={{ color: theme.primary }}>Go Back</Text>
+                    <Text style={{ color: theme.primary, fontWeight: '600' }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={[styles.container, { backgroundColor: theme.background }]}
+        >
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <ChevronLeft size={24} color={theme.text} />
@@ -68,30 +82,38 @@ export default function RequestTripScreen() {
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
-                <View style={[styles.infoBanner, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
-                    <Info size={20} color={theme.primary} />
-                    <Text style={[styles.infoText, { color: theme.text }]}>
-                        You are requesting to join this driver's recurring route. You can propose your own price and schedule.
+            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+                <View style={[styles.guideCard, { backgroundColor: theme.surface }]}>
+                    <View style={styles.guideIcon}>
+                        <Info size={24} color={theme.primary} />
+                    </View>
+                    <Text style={[styles.guideText, { color: theme.text }]}>
+                        You are requesting to join this driver's recurring route. Propose a price and schedule that works for you.
                     </Text>
                 </View>
 
+                {/* Price Section */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Proposed Price</Text>
-                    <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                        <DollarSign size={20} color={theme.icon} />
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Proposed Price</Text>
+                    <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.primary }]}>
+                        <DollarSign size={20} color={theme.primary} />
                         <TextInput
-                            style={[styles.input, { color: theme.text }]}
+                            style={[styles.input, { color: theme.text, fontSize: 24 }]}
                             value={proposedPrice}
                             onChangeText={setProposedPrice}
                             keyboardType="numeric"
                             placeholder="0.00"
                         />
-                        <Text style={{ color: theme.icon }}>{driverTrip.priceType === 'fix' ? 'Fix' : '/km'}</Text>
+                        <Text style={{ color: theme.icon, fontSize: 16 }}>
+                            {driverTrip.priceType === 'fix' ? 'Flat' : '/km'}
+                        </Text>
                     </View>
-                    <Text style={[styles.hint, { color: theme.icon }]}>Driver suggested: ${driverTrip.price}</Text>
+                    <View style={styles.helperRow}>
+                        <Text style={{ color: theme.icon, fontSize: 12 }}>Driver asks: ${driverTrip.price}</Text>
+                    </View>
                 </View>
 
+                {/* Time Section */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Preferred Time</Text>
                     <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -101,38 +123,50 @@ export default function RequestTripScreen() {
                             value={preferredTime}
                             onChangeText={setPreferredTime}
                             placeholder="08:00"
+                            placeholderTextColor={theme.icon}
                         />
                     </View>
                 </View>
 
+                {/* Days Section */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Recurring Days</Text>
-                    <View style={styles.daysContainer}>
-                        {DAYS.map(day => (
-                            <TouchableOpacity
-                                key={day}
-                                style={[
-                                    styles.dayBadge,
-                                    { backgroundColor: selectedDays.includes(day) ? theme.primary : theme.surface, borderColor: theme.border }
-                                ]}
-                                onPress={() => toggleDay(day)}
-                            >
-                                <Text style={[styles.dayText, { color: selectedDays.includes(day) ? '#fff' : theme.text }]}>
-                                    {day.substring(0, 3)}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                    <View style={styles.daysGrid}>
+                        {DAYS.map(day => {
+                            const isSelected = selectedDays.includes(day);
+                            return (
+                                <TouchableOpacity
+                                    key={day}
+                                    style={[
+                                        styles.dayItem,
+                                        {
+                                            backgroundColor: isSelected ? theme.primary : theme.surface,
+                                            borderColor: isSelected ? theme.primary : theme.border
+                                        }
+                                    ]}
+                                    onPress={() => toggleDay(day)}
+                                >
+                                    <Text style={[styles.dayText, { color: isSelected ? '#fff' : theme.text }]}>
+                                        {day.substring(0, 3)}
+                                    </Text>
+                                </TouchableOpacity>
+                            )
+                        })}
                     </View>
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.requestButton, { backgroundColor: theme.primary }]}
+                    style={[styles.submitButton, { backgroundColor: theme.primary }]}
                     onPress={handleRequest}
+                    activeOpacity={0.8}
                 >
-                    <Text style={styles.requestButtonText}>Send Request to Driver</Text>
+                    <Text style={styles.submitButtonText}>Send Request</Text>
+                    <Check size={20} color="#fff" />
                 </TouchableOpacity>
+
+                <View style={{ height: 40 }} />
             </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -141,34 +175,40 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: 24,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 32,
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 20,
     },
     backButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
+        padding: 4,
     },
     title: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
     },
     content: {
         padding: 24,
         gap: 32,
     },
-    infoBanner: {
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
+    guideCard: {
         flexDirection: 'row',
-        gap: 12,
+        padding: 20,
+        borderRadius: 16,
+        gap: 16,
         alignItems: 'center',
     },
-    infoText: {
+    guideIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    guideText: {
         flex: 1,
         fontSize: 14,
         lineHeight: 20,
@@ -183,29 +223,32 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        height: 56,
+        height: 64,
         borderRadius: 16,
         borderWidth: 1,
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         gap: 12,
     },
     input: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '600',
     },
-    hint: {
-        fontSize: 12,
-        marginLeft: 4,
+    helperRow: { // Added helper row style
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        paddingRight: 4,
     },
-    daysContainer: {
+    daysGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: 10,
     },
-    dayBadge: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+    dayItem: {
+        width: '18%', // Approx 5 items per row with gap
+        aspectRatio: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
         borderRadius: 12,
         borderWidth: 1,
     },
@@ -213,22 +256,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
-    requestButton: {
-        height: 56,
-        borderRadius: 28,
+    submitButton: {
+        flexDirection: 'row',
+        height: 60,
+        borderRadius: 30, // Pill shape
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 16,
+        gap: 12,
+        marginTop: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    requestButtonText: {
+    submitButtonText: {
         color: '#fff',
         fontSize: 18,
         fontWeight: '700',
     },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 16,
-    }
 });

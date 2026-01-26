@@ -1,6 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Clock, MapPin, Plus, Trash2 } from 'lucide-react-native';
-import React from 'react';
+import { Clock, Edit2, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
@@ -18,46 +17,62 @@ export default function RoutesScreen() {
 
         return (
             <View style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                {/* Header: Times & Actions */}
                 <View style={styles.tripHeader}>
-                    <View style={styles.timeTag}>
-                        <Clock size={14} color={theme.primary} />
-                        <Text style={[styles.timeText, { color: theme.primary }]}>{item.timeStart} - {item.timeArrival}</Text>
+                    <View style={styles.timeContainer}>
+                        <View style={[styles.timeBox, { backgroundColor: theme.primary + '15' }]}>
+                            <Clock size={14} color={theme.primary} />
+                            <Text style={[styles.timeText, { color: theme.primary }]}>{item.timeStart}</Text>
+                        </View>
+                        <View style={[styles.lineSpacer, { backgroundColor: theme.border }]} />
+                        <View style={[styles.timeBox, { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }]}>
+                            <Text style={[styles.timeText, { color: theme.text }]}>{item.timeArrival}</Text>
+                        </View>
                     </View>
-                    <TouchableOpacity onPress={() => removeTrip(item.id)}>
-                        <Trash2 size={18} color={theme.accent} />
-                    </TouchableOpacity>
+
+                    <View style={styles.actions}>
+                        <TouchableOpacity style={styles.actionBtn}>
+                            <Edit2 size={18} color={theme.icon} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => removeTrip(item.id)}>
+                            <Trash2 size={18} color={theme.accent} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
+                {/* Route Visual */}
                 <View style={styles.routeContainer}>
-                    <View style={styles.dotContainer}>
-                        <View style={[styles.dot, { backgroundColor: '#4CD964' }]} />
-                        <View style={[styles.line, { backgroundColor: theme.border }]} />
-                        <View style={[styles.dot, { backgroundColor: '#FF3B30' }]} />
+                    <View style={styles.timeline}>
+                        <View style={[styles.dot, { backgroundColor: theme.primary }]} />
+                        <View style={[styles.dashedLine, { borderColor: theme.border }]} />
+                        <View style={[styles.square, { borderColor: theme.text }]} />
                     </View>
-                    <View style={styles.routeNames}>
-                        <Text style={[styles.routeText, { color: theme.text }]} numberOfLines={1}>Start Point</Text>
-                        <Text style={[styles.routeText, { color: theme.text }]} numberOfLines={1}>End Point</Text>
-                    </View>
-                </View>
-
-                <View style={styles.footer}>
-                    <View style={styles.daysList}>
-                        {item.days.map(day => (
-                            <Text key={day} style={[styles.dayShort, { color: theme.icon }]}>{day.substring(0, 1)}</Text>
-                        ))}
-                    </View>
-                    <View style={styles.priceContainer}>
-                        <Text style={[styles.priceText, { color: theme.primary }]}>
-                            {item.priceType === 'fix' ? `$${item.price}` : `$${item.price}/km`}
+                    <View style={styles.locations}>
+                        <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
+                            Start Point
+                        </Text>
+                        <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
+                            End Point
                         </Text>
                     </View>
                 </View>
 
-                {car && (
-                    <View style={styles.carTag}>
-                        <Text style={[styles.carText, { color: theme.icon }]}>{car.marque} {car.model}</Text>
+                {/* Footer: Car & Days */}
+                <View style={[styles.footer, { borderTopColor: theme.border }]}>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                        <View style={[styles.carBadge, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <Text style={[styles.carText, { color: theme.text }]}>{car ? car.model : 'No Car'}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                            {item.days.map(day => (
+                                <View key={day} style={[styles.dayDot, { backgroundColor: theme.icon }]} />
+                            ))}
+                        </View>
                     </View>
-                )}
+                    <Text style={[styles.priceText, { color: theme.primary }]}>
+                        ${item.price}{item.priceType === 'km' ? '/km' : ''}
+                    </Text>
+                </View>
             </View>
         );
     };
@@ -65,13 +80,15 @@ export default function RoutesScreen() {
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>My Trajets</Text>
+                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.surface }]}>
+                    <MapPin size={24} color={theme.text} />
+                </TouchableOpacity>
+                <Text style={[styles.title, { color: theme.text }]}>My Routes</Text>
                 <TouchableOpacity
                     style={[styles.addButton, { backgroundColor: theme.primary }]}
                     onPress={() => router.push('/(driver)/add-trip')}
                 >
-                    <Plus size={20} color="#fff" />
-                    <Text style={styles.addButtonText}>New Trip</Text>
+                    <Plus size={24} color="#fff" />
                 </TouchableOpacity>
             </View>
 
@@ -82,8 +99,11 @@ export default function RoutesScreen() {
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <MapPin size={64} color={theme.border} />
-                        <Text style={[styles.emptyText, { color: theme.icon }]}>No trips configured yet</Text>
+                        <View style={[styles.emptyIcon, { backgroundColor: theme.surface }]}>
+                            <MapPin size={32} color={theme.primary} />
+                        </View>
+                        <Text style={[styles.emptyTitle, { color: theme.text }]}>No Routes Yet</Text>
+                        <Text style={[styles.emptyText, { color: theme.icon }]}>Create a recurring route to start getting requests.</Text>
                     </View>
                 }
             />
@@ -96,117 +116,161 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: 24,
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
+    backButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     title: {
-        fontSize: 28,
+        fontSize: 20,
         fontWeight: '700',
     },
     addButton: {
-        flexDirection: 'row',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        gap: 4,
-    },
-    addButtonText: {
-        color: '#fff',
-        fontWeight: '600',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     listContent: {
-        padding: 24,
-        gap: 16,
+        padding: 20,
+        gap: 20,
     },
     tripCard: {
-        padding: 20,
         borderRadius: 24,
         borderWidth: 1,
-        gap: 16,
+        padding: 20,
+        gap: 20,
     },
     tripHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    timeTag: {
+    timeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    timeBox: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 10,
     },
     timeText: {
-        fontSize: 14,
         fontWeight: '700',
+        fontSize: 13,
+    },
+    lineSpacer: {
+        width: 12,
+        height: 1,
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    actionBtn: {
+        padding: 8,
     },
     routeContainer: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 16,
     },
-    dotContainer: {
+    timeline: {
         alignItems: 'center',
         paddingVertical: 4,
     },
     dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
     },
-    line: {
-        width: 2,
-        flex: 1,
+    dashedLine: {
+        width: 1,
+        height: 24,
         marginVertical: 4,
+        borderWidth: 0.5,
+        borderStyle: 'dashed',
     },
-    routeNames: {
-        flex: 1,
+    square: {
+        width: 10,
+        height: 10,
+        borderWidth: 2,
+    },
+    locations: {
         justifyContent: 'space-between',
+        flex: 1,
+        height: 50, // Match timeline height roughly
     },
-    routeText: {
-        fontSize: 16,
+    locationText: {
+        fontSize: 15,
         fontWeight: '600',
     },
     footer: {
+        borderTopWidth: 1,
+        paddingTop: 16,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-        paddingTop: 12,
     },
-    daysList: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    dayShort: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    priceContainer: {
-        backgroundColor: '#0066FF10',
+    carBadge: {
         paddingVertical: 4,
-        paddingHorizontal: 10,
+        paddingHorizontal: 8,
         borderRadius: 8,
-    },
-    priceText: {
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    carTag: {
-        marginTop: -8,
+        borderWidth: 1,
     },
     carText: {
         fontSize: 12,
+        fontWeight: '600',
+    },
+    dayDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+    },
+    priceText: {
+        fontSize: 16,
+        fontWeight: '800',
     },
     emptyContainer: {
-        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 100,
-        gap: 16,
+        marginTop: 80,
+        gap: 12,
+        padding: 40,
+    },
+    emptyIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: '700',
     },
     emptyText: {
-        fontSize: 16,
+        textAlign: 'center',
+        fontSize: 14,
+        lineHeight: 20,
     },
 });

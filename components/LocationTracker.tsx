@@ -90,8 +90,13 @@ export default function LocationTracker() {
                     }
                 });
 
-            } catch (err) {
-                console.error('Error starting location tracking:', err);
+            } catch (err: any) {
+                // Log warning instead of error to avoid redbox in development for expected errors
+                if (err.message && err.message.includes("Location request failed due to unsatisfied device settings")) {
+                    console.warn("Location tracking: Device settings unsatisfied (is GPS on?)", err.message);
+                } else {
+                    console.warn('Error starting location tracking:', err);
+                }
                 setErrorMsg('Failed to start location tracking');
             }
         }

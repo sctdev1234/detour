@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Calendar, Clock, MapPin, MessageCircle, Star, Trash2 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { Box, Calendar, Clock, MapPin, MessageCircle, Star, Trash2 } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import RatingModal from '../../components/RatingModal';
 import { Colors } from '../../constants/theme';
@@ -19,15 +19,25 @@ export default function ClientTripsScreen() {
     const driverTrips = useTripStore((state) => state.trips);
     const { addRating } = useRatingStore();
 
+    const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
     const [ratingModalVisible, setRatingModalVisible] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<ClientRequest | null>(null);
+
+    const checkStatus = (status: string) => {
+        if (activeTab === 'current') {
+            return ['pending', 'accepted', 'started'].includes(status);
+        } else {
+            return ['completed', 'declined', 'cancelled'].includes(status);
+        }
+    };
+
+    const filteredRequests = requests.filter(r => checkStatus(r.status));
 
     // Watch for completed trips that haven't been rated yet
     useEffect(() => {
         const completedUnrated = requests.find(r => r.status === 'completed');
         if (completedUnrated && !ratingModalVisible) {
             setSelectedRequest(completedUnrated);
-            // In a real app, we'd check if a rating already exists for this tripId
             setRatingModalVisible(true);
         }
     }, [requests, ratingModalVisible]);
@@ -37,7 +47,7 @@ export default function ClientTripsScreen() {
             addRating({
                 tripId: selectedRequest.id,
                 raterId: user.uid,
-                targetId: selectedRequest.driverTripId || 'demo_driver', // Simplified for demo
+                targetId: selectedRequest.driverTripId || 'demo_driver',
                 rating,
                 comment,
             });
@@ -50,94 +60,102 @@ export default function ClientTripsScreen() {
 
         const getStatusColor = (status: string) => {
             switch (status) {
-                case 'accepted': return '#4CD964';
-                case 'completed': return theme.primary;
-                case 'declined': return '#FF3B30';
-                default: return '#FFCC00';
+                case 'accepted': return '#22c55e';
+                case 'started': return theme.primary;
+                case 'completed': return '#22c55e';
+                case 'declined': return '#ef4444';
+                default: return '#eab308';
             }
         };
 
         return (
-            <View style={[styles.requestCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <View style={styles.cardHeader}>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                        <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
                         <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
                             {item.status.toUpperCase()}
                         </Text>
                     </View>
-                    <TouchableOpacity onPress={() => removeRequest(item.id)}>
-                        <Trash2 size={18} color={theme.accent} />
-                    </TouchableOpacity>
+                    {(item.status === 'pending' || item.status === 'declined') && (
+                        <TouchableOpacity onPress={() => removeRequest(item.id)} style={styles.deleteButton}>
+                            <Trash2 size={16} color={theme.accent} />
+                        </TouchableOpacity>
+                    )}
                 </View>
 
-                <View style={styles.routeBox}>
-                    <View style={styles.routeItem}>
-                        <MapPin size={16} color={theme.primary} />
-                        <Text style={[styles.routeText, { color: theme.text }]} numberOfLines={1}>Requested Route</Text>
-                    </View>
-                    <View style={styles.routeDetails}>
-                        <View style={styles.detailItem}>
-                            <Clock size={14} color={theme.icon} />
-                            <Text style={[styles.detailText, { color: theme.icon }]}>{item.preferredTime}</Text>
+                <View style={styles.cardContent}>
+                    <View style={styles.routeRow}>
+                        <View style={styles.routeNode}>
+                            <Text style={[styles.timeText, { color: theme.text }]}>{item.preferredTime}</Text>
                         </View>
-                        <View style={styles.detailItem}>
+                        <View style={styles.connector}>
+                            <View style={[styles.line, { backgroundColor: theme.border }]} />
+                        </View>
+                        <View style={styles.routeNode}>
+                            <Text style={[styles.locationText, { color: theme.text }]}>Driver Route</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.statsRow}>
+                        <View style={styles.stat}>
                             <Calendar size={14} color={theme.icon} />
-                            <Text style={[styles.detailText, { color: theme.icon }]}>{item.days.length} days/week</Text>
+                            <Text style={[styles.statText, { color: theme.icon }]}>{item.days.length} days/week</Text>
                         </View>
                         {item.startPoint && item.endPoint && (
-                            <View style={styles.detailItem}>
-                                <Clock size={14} color={theme.primary} />
-                                <Text style={[styles.detailText, { color: theme.primary, fontWeight: '600' }]}>
-                                    {formatDuration(estimateDuration(calculateDistance(item.startPoint, item.endPoint)))} travel
+                            <View style={styles.stat}>
+                                <Clock size={14} color={theme.icon} />
+                                <Text style={[styles.statText, { color: theme.icon }]}>
+                                    {formatDuration(estimateDuration(calculateDistance(item.startPoint, item.endPoint)))}
                                 </Text>
                             </View>
                         )}
+                        <View style={styles.stat}>
+                            <Text style={[styles.priceText, { color: theme.primary }]}>${item.proposedPrice}</Text>
+                        </View>
                     </View>
                 </View>
 
-                {item.status === 'accepted' && (
-                    <View style={styles.actions}>
+                {(item.status === 'accepted' || item.status === 'started') && (
+                    <View style={[styles.actionsFooter, { borderTopColor: theme.border }]}>
                         <TouchableOpacity
-                            style={[styles.messageButton, { backgroundColor: theme.secondary, flex: 1 }]}
+                            style={styles.actionButton}
                             onPress={() => router.push({
                                 pathname: '/chat',
                                 params: { requestId: item.id, recipientName: 'Driver Name' }
                             })}
                         >
-                            <MessageCircle size={18} color="#fff" />
-                            <Text style={styles.messageButtonText}>Message</Text>
+                            <MessageCircle size={18} color={theme.text} />
+                            <Text style={[styles.actionText, { color: theme.text }]}>Message</Text>
                         </TouchableOpacity>
 
+                        <View style={[styles.verticalDivider, { backgroundColor: theme.border }]} />
+
                         <TouchableOpacity
-                            style={[styles.messageButton, { backgroundColor: theme.primary, flex: 1 }]}
+                            style={styles.actionButton}
                             onPress={() => router.push({
                                 pathname: '/(client)/trip-details',
                                 params: { requestId: item.id }
                             })}
                         >
-                            <MapPin size={18} color="#fff" />
-                            <Text style={styles.messageButtonText}>Track</Text>
+                            <MapPin size={18} color={theme.primary} />
+                            <Text style={[styles.actionText, { color: theme.primary, fontWeight: '700' }]}>Track Ride</Text>
                         </TouchableOpacity>
                     </View>
                 )}
 
                 {item.status === 'completed' && (
                     <TouchableOpacity
-                        style={[styles.messageButton, { borderColor: theme.primary, borderWidth: 1, flex: 1 }]}
+                        style={[styles.rateButton, { backgroundColor: theme.primary }]}
                         onPress={() => {
                             setSelectedRequest(item);
                             setRatingModalVisible(true);
                         }}
                     >
-                        <Star size={18} color={theme.primary} fill={theme.primary} />
-                        <Text style={[styles.messageButtonText, { color: theme.primary }]}>Rate Experience</Text>
+                        <Star size={16} color="#fff" fill="#fff" />
+                        <Text style={styles.rateButtonText}>Rate Trip</Text>
                     </TouchableOpacity>
                 )}
-
-                <View style={styles.cardFooter}>
-                    <Text style={[styles.priceLabel, { color: theme.icon }]}>Proposed Price:</Text>
-                    <Text style={[styles.priceValue, { color: theme.primary }]}>${item.proposedPrice}</Text>
-                </View>
             </View>
         );
     };
@@ -148,21 +166,41 @@ export default function ClientTripsScreen() {
                 <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
             </View>
 
+            {/* Custom Tabs */}
+            <View style={[styles.tabContainer, { backgroundColor: theme.surface }]}>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'current' && { backgroundColor: theme.background, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}
+                    onPress={() => setActiveTab('current')}
+                >
+                    <Text style={[styles.tabText, { color: activeTab === 'current' ? theme.text : theme.icon }]}>Active & Pending</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'history' && { backgroundColor: theme.background, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}
+                    onPress={() => setActiveTab('history')}
+                >
+                    <Text style={[styles.tabText, { color: activeTab === 'history' ? theme.text : theme.icon }]}>History</Text>
+                </TouchableOpacity>
+            </View>
+
             <FlatList
-                data={requests}
+                data={filteredRequests}
                 keyExtractor={(item) => item.id}
                 renderItem={renderRequestItem}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Calendar size={64} color={theme.border} />
-                        <Text style={[styles.emptyText, { color: theme.icon }]}>You haven't requested any trips yet</Text>
-                        <TouchableOpacity
-                            style={[styles.findButton, { backgroundColor: theme.primary }]}
-                            onPress={() => router.push('/(client)/search')}
-                        >
-                            <Text style={styles.findButtonText}>Find a Ride</Text>
-                        </TouchableOpacity>
+                        <Box size={48} color={theme.border} />
+                        <Text style={[styles.emptyText, { color: theme.icon }]}>
+                            No {activeTab === 'current' ? 'active' : 'historical'} trips found
+                        </Text>
+                        {activeTab === 'current' && (
+                            <TouchableOpacity
+                                style={[styles.findButton, { backgroundColor: theme.primary }]}
+                                onPress={() => router.push('/(client)/search')}
+                            >
+                                <Text style={styles.findButtonText}>Find a Ride</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 }
             />
@@ -183,112 +221,166 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: 24,
-        paddingTop: 32,
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 16,
     },
     title: {
         fontSize: 28,
-        fontWeight: '700',
+        fontWeight: '800',
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        marginHorizontal: 20,
+        padding: 4,
+        borderRadius: 12,
+        marginBottom: 20,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 10,
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
     listContent: {
-        padding: 24,
+        paddingHorizontal: 20,
+        paddingBottom: 100,
         gap: 16,
     },
-    requestCard: {
-        padding: 20,
-        borderRadius: 24,
+    card: {
+        borderRadius: 20,
         borderWidth: 1,
-        gap: 16,
+        overflow: 'hidden',
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        padding: 16,
+        paddingBottom: 12,
     },
     statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    statusText: {
-        fontSize: 10,
-        fontWeight: '800',
-    },
-    routeBox: {
-        gap: 12,
-    },
-    routeItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
+        gap: 6,
     },
-    routeText: {
-        fontSize: 18,
-        fontWeight: '600',
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
     },
-    routeDetails: {
+    statusText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    deleteButton: {
+        padding: 4,
+    },
+    cardContent: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+    },
+    routeRow: {
         flexDirection: 'row',
-        gap: 16,
+        alignItems: 'center',
+        marginBottom: 12,
     },
-    detailItem: {
+    routeNode: {
+        flex: 1,
+    },
+    timeText: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    locationText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    connector: {
+        width: 32,
+        alignItems: 'center',
+    },
+    line: {
+        flex: 1,
+        height: 1,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    stat: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
     },
-    detailText: {
-        fontSize: 13,
+    statText: {
+        fontSize: 12,
+        fontWeight: '500',
     },
-    cardFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-    },
-    priceLabel: {
-        fontSize: 14,
-    },
-    priceValue: {
-        fontSize: 20,
+    priceText: {
+        fontSize: 18,
         fontWeight: '700',
     },
-    actions: {
+    actionsFooter: {
         flexDirection: 'row',
-        gap: 12,
+        borderTopWidth: 1,
     },
-    messageButton: {
+    actionButton: {
+        flex: 1,
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
-        borderRadius: 16,
+        alignItems: 'center',
+        paddingVertical: 14,
         gap: 8,
     },
-    messageButtonText: {
+    actionText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    verticalDivider: {
+        width: 1,
+        marginVertical: 8,
+    },
+    rateButton: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 14,
+        gap: 8,
+        margin: 16,
+        marginTop: 0,
+        borderRadius: 16,
+    },
+    rateButtonText: {
         color: '#fff',
+        fontSize: 14,
         fontWeight: '700',
     },
     emptyContainer: {
-        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 100,
-        gap: 20,
-        paddingHorizontal: 40,
+        paddingTop: 60,
+        gap: 16,
     },
     emptyText: {
         fontSize: 16,
-        textAlign: 'center',
     },
     findButton: {
         paddingVertical: 12,
-        paddingHorizontal: 32,
-        borderRadius: 28,
+        paddingHorizontal: 24,
+        borderRadius: 24,
     },
     findButtonText: {
         color: '#fff',
+        fontSize: 14,
         fontWeight: '700',
-        fontSize: 16,
-    }
+    },
 });

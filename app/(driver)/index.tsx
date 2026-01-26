@@ -1,6 +1,6 @@
-import { Bell, Car, ChevronRight, Clock, MapPin, Star, TrendingUp, User } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Bell, Car, ChevronRight, DollarSign, MapPin, Power, Star, User } from 'lucide-react-native';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 
 import { useRouter } from 'expo-router';
@@ -13,6 +13,8 @@ export default function DriverDashboard() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
+    const [isOnline, setIsOnline] = useState(true);
+
     const pendingRequestsCount = useClientRequestStore((state) =>
         state.requests.filter(r => r.status === 'pending').length
     );
@@ -20,43 +22,72 @@ export default function DriverDashboard() {
     const avgRating = getAverageRating(user?.uid || '');
 
     const stats = [
-        { label: 'Weekly Profit', value: '$450.00', icon: TrendingUp, color: '#4CD964' },
+        { label: 'Weekly Profit', value: '$450.00', icon: DollarSign, color: '#4CD964' },
         { label: 'Total KM', value: '1,240', icon: MapPin, color: theme.primary },
         { label: 'Trips Done', value: '24', icon: Car, color: theme.secondary },
     ];
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+        <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
+            {/* Header */}
             <View style={styles.header}>
-                <View>
-                    <Text style={[styles.welcomeText, { color: theme.icon }]}>Welcome back,</Text>
-                    <Text style={[styles.nameText, { color: theme.text }]}>{user?.displayName || 'Driver'}</Text>
-                    {avgRating > 0 && (
-                        <View style={styles.ratingBadge}>
-                            <Star size={14} color="#FFCC00" fill="#FFCC00" />
-                            <Text style={[styles.ratingText, { color: theme.icon }]}>{avgRating} Rating</Text>
-                        </View>
-                    )}
+                <View style={styles.headerContent}>
+                    <View>
+                        <Text style={[styles.welcomeText, { color: theme.icon }]}>Good Morning,</Text>
+                        <Text style={[styles.nameText, { color: theme.text }]}>{user?.displayName || 'Driver'}</Text>
+                        {avgRating > 0 && (
+                            <View style={styles.ratingBadge}>
+                                <Star size={14} color="#FFCC00" fill="#FFCC00" />
+                                <Text style={[styles.ratingText, { color: theme.icon }]}>{avgRating.toFixed(1)} Rating</Text>
+                            </View>
+                        )}
+                    </View>
+                    <TouchableOpacity
+                        style={[styles.profileButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => router.push('/(driver)/profile')}
+                    >
+                        <User color={theme.primary} size={24} />
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                    style={[styles.profileButton, { backgroundColor: theme.surface }]}
-                    onPress={() => router.push('/(driver)/profile')}
-                >
-                    <User color={theme.primary} size={24} />
-                </TouchableOpacity>
+
+                {/* Online Toggle */}
+                <View style={[styles.statusCard, { backgroundColor: isOnline ? '#22c55e15' : theme.surface, borderColor: isOnline ? '#22c55e' : theme.border }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={[styles.statusIcon, { backgroundColor: isOnline ? '#22c55e' : theme.icon }]}>
+                            <Power size={18} color="#fff" />
+                        </View>
+                        <View>
+                            <Text style={[styles.statusTitle, { color: theme.text }]}>{isOnline ? 'You are Online' : 'You are Offline'}</Text>
+                            <Text style={[styles.statusSubtitle, { color: theme.icon }]}>{isOnline ? 'Receiving new requests' : 'Go online to start'}</Text>
+                        </View>
+                    </View>
+                    <Switch
+                        value={isOnline}
+                        onValueChange={setIsOnline}
+                        trackColor={{ false: theme.border, true: '#22c55e' }}
+                        thumbColor="#fff"
+                    />
+                </View>
             </View>
 
+            {/* Notification Banner */}
             {pendingRequestsCount > 0 && (
                 <TouchableOpacity
                     style={[styles.notificationBanner, { backgroundColor: theme.primary }]}
                     onPress={() => router.push('/(driver)/requests')}
                 >
-                    <Bell size={20} color="#fff" />
-                    <Text style={styles.notificationText}>You have {pendingRequestsCount} new trip requests!</Text>
+                    <View style={styles.notifIcon}>
+                        <Bell size={20} color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.notificationTitle}>New Requests!</Text>
+                        <Text style={styles.notificationText}>You have {pendingRequestsCount} pending requests to review.</Text>
+                    </View>
                     <ChevronRight size={20} color="#fff" />
                 </TouchableOpacity>
             )}
 
+            {/* Stats Grid */}
             <View style={styles.statsContainer}>
                 {stats.map((stat, index) => (
                     <View key={index} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -69,27 +100,39 @@ export default function DriverDashboard() {
                 ))}
             </View>
 
+            {/* Upcoming Routes */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Trajets</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Routes</Text>
                     <TouchableOpacity onPress={() => router.push('/(driver)/routes')}>
-                        <Text style={{ color: theme.primary }}>View All</Text>
+                        <Text style={[styles.seeAllText, { color: theme.primary }]}>View All</Text>
                     </TouchableOpacity>
                 </View>
 
+                {/* Example Card */}
                 <TouchableOpacity style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <View style={styles.tripInfo}>
-                        <View style={styles.timeContainer}>
-                            <Clock size={16} color={theme.icon} />
-                            <Text style={[styles.timeText, { color: theme.icon }]}>08:00 AM</Text>
-                        </View>
-                        <Text style={[styles.routeText, { color: theme.text }]}>Casablanca → Rabat</Text>
-                        <Text style={[styles.carText, { color: theme.icon }]}>BMW M4 • Black</Text>
+                    <View style={styles.timelineStrip}>
+                        <View style={[styles.dot, { backgroundColor: theme.primary }]} />
+                        <View style={[styles.line, { backgroundColor: theme.border }]} />
+                        <View style={[styles.dot, { backgroundColor: theme.secondary }]} />
                     </View>
-                    <ChevronRight size={20} color={theme.border} />
+                    <View style={styles.tripInfo}>
+                        <View style={styles.tripHeader}>
+                            <Text style={[styles.tripTime, { color: theme.text }]}>08:00 AM</Text>
+                            <View style={[styles.priceTag, { backgroundColor: '#4CD96420' }]}>
+                                <Text style={{ color: '#4CD964', fontSize: 12, fontWeight: '700' }}>$50</Text>
+                            </View>
+                        </View>
+                        <Text style={[styles.routeLoc, { color: theme.text }]}>Casablanca</Text>
+                        <Text style={[styles.routeLoc, { color: theme.text, marginTop: 12 }]}>Rabat</Text>
+                        <View style={styles.participantsRow}>
+                            <Text style={{ fontSize: 12, color: theme.icon }}>3 Passengers</Text>
+                        </View>
+                    </View>
                 </TouchableOpacity>
             </View>
 
+            {/* Quick Actions */}
             <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
                 <View style={styles.actionsGrid}>
@@ -97,18 +140,23 @@ export default function DriverDashboard() {
                         style={[styles.actionButton, { backgroundColor: theme.primary }]}
                         onPress={() => router.push('/(driver)/add-trip')}
                     >
-                        <MapPin size={24} color="#fff" />
-                        <Text style={styles.actionText}>Add Trajet</Text>
+                        <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                            <MapPin size={24} color="#fff" />
+                        </View>
+                        <Text style={styles.actionText}>Add Route</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: theme.secondary }]}
                         onPress={() => router.push('/(driver)/cars')}
                     >
-                        <Car size={24} color="#fff" />
-                        <Text style={styles.actionText}>Manage Cars</Text>
+                        <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                            <Car size={24} color="#fff" />
+                        </View>
+                        <Text style={styles.actionText}>My Cars</Text>
                     </TouchableOpacity>
                 </View>
             </View>
+            <View style={{ height: 100 }} />
         </ScrollView>
     );
 }
@@ -119,32 +167,67 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: 24,
-        paddingTop: 32,
+        paddingTop: 60,
+        gap: 24,
+    },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     welcomeText: {
-        fontSize: 16,
+        fontSize: 14,
+        fontWeight: '600',
         marginBottom: 4,
     },
     nameText: {
-        fontSize: 24,
-        fontWeight: '700',
+        fontSize: 28,
+        fontWeight: '800',
     },
     ratingBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        marginTop: 4,
+        gap: 6,
+        marginTop: 6,
+        backgroundColor: '#FFCC0015',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
     ratingText: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 12,
+        fontWeight: '700',
     },
     profileButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 54,
+        height: 54,
+        borderRadius: 27,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+    },
+    statusCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    statusIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statusTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    statusSubtitle: {
+        fontSize: 12,
     },
     notificationBanner: {
         marginHorizontal: 24,
@@ -152,17 +235,35 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        marginBottom: 24,
+        gap: 16,
+        marginBottom: 32,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    notifIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    notificationTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '800',
+        marginBottom: 2,
     },
     notificationText: {
-        color: '#fff',
-        fontWeight: '700',
-        flex: 1,
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 12,
     },
     statsContainer: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
+        paddingHorizontal: 24,
         gap: 12,
         marginBottom: 32,
     },
@@ -172,6 +273,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         borderWidth: 1,
         alignItems: 'center',
+        gap: 8,
     },
     iconCircle: {
         width: 40,
@@ -179,15 +281,14 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 8,
     },
     statValue: {
         fontSize: 18,
         fontWeight: '700',
-        marginBottom: 2,
     },
     statLabel: {
         fontSize: 12,
+        textAlign: 'center',
     },
     section: {
         paddingHorizontal: 24,
@@ -203,49 +304,80 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '700',
     },
+    seeAllText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
     tripCard: {
         flexDirection: 'row',
-        alignItems: 'center',
         padding: 20,
-        borderRadius: 20,
+        borderRadius: 24,
         borderWidth: 1,
+        gap: 16,
+    },
+    timelineStrip: {
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    dot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    line: {
+        width: 2,
+        flex: 1,
+        marginVertical: 4,
     },
     tripInfo: {
         flex: 1,
     },
-    timeContainer: {
+    tripHeader: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 6,
         marginBottom: 8,
     },
-    timeText: {
-        fontSize: 14,
-    },
-    routeText: {
+    tripTime: {
         fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 4,
+        fontWeight: '700',
     },
-    carText: {
-        fontSize: 14,
+    priceTag: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    routeLoc: {
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    participantsRow: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     actionsGrid: {
         flexDirection: 'row',
         gap: 16,
-        marginTop: 16,
     },
     actionButton: {
         flex: 1,
-        height: 100,
-        borderRadius: 20,
+        padding: 20,
+        borderRadius: 24,
+        alignItems: 'center',
+        gap: 12,
+    },
+    actionIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
     },
     actionText: {
         color: '#fff',
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
     },
 });

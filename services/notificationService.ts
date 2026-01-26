@@ -24,8 +24,11 @@ export const registerForPushNotificationsAsync = async () => {
         return null;
     }
 
-    if (Constants.appOwnership === 'expo' && Platform.OS === 'android') {
-        console.log('Push notifications are not supported in Expo Go on Android');
+    // Check for Expo Go specifically
+    const isExpoGo = Constants.appOwnership === 'expo';
+
+    if (isExpoGo) {
+        console.log('Push notifications are not fully supported in Expo Go. Skipping token registration.');
         return null;
     }
 

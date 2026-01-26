@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, MapPin, MessageCircle, Phone } from 'lucide-react-native';
-import React, { useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ArrowLeft, Maximize2, MessageCircle, Phone, Share2 } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
 import { Colors } from '../../constants/theme';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
@@ -10,7 +10,7 @@ import { useTripStore } from '../../store/useTripStore';
 import { calculateDistance, estimateDuration, formatDuration } from '../../utils/location';
 
 export default function TripDetailsScreen() {
-    const { requestId } = useLocalSearchParams();
+    const { requestId } = useLocalSearchParams<{ requestId: string }>();
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -19,7 +19,8 @@ export default function TripDetailsScreen() {
     const driverTrip = useTripStore(state => state.trips.find(t => t.id === request?.driverTripId));
 
     const { subscribeToDriver, unsubscribe, driverLocation } = useTrackingStore();
-    const [alerted, setAlerted] = React.useState(false);
+    const [alerted, setAlerted] = useState(false);
+    const [isExpandedMap, setIsExpandedMap] = useState(false);
 
     useEffect(() => {
         if (driverTrip?.driverId) {
@@ -34,122 +35,185 @@ export default function TripDetailsScreen() {
                 { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
                 request.startPoint
             );
-            const eta = estimateDuration(dist, 40); // 40km/h avg
+            const eta = estimateDuration(dist, 40);
 
             if (eta <= 5 && !alerted) {
                 setAlerted(true);
                 import('../../services/notificationService').then(({ sendImmediateNotification }) => {
-                    sendImmediateNotification('Arriving Soon', `Driver is ${eta} minutes away!`);
+                    sendImmediateNotification('Arriving Soon', `Driver is ${Math.ceil(eta)} minutes away!`);
                 });
             }
         }
-    }, [driverLocation, request]);
+    }, [driverLocation, request, alerted]);
+
+    const handleCall = () => {
+        Linking.openURL('tel:1234567890'); // Replace with real driver number
+    };
+
+    const handleMessage = () => {
+        router.push({
+            pathname: '/chat',
+            params: { requestId: request?.id, recipientName: 'Driver Name' } // Replace with real name
+        });
+    };
+
+    const handleShareTrip = async () => {
+        try {
+            await Share.share({
+                message: `Track my trip on Detour! I'm on my way from ${request?.startPoint ? 'Pickup' : 'Start'} to ${request?.endPoint ? 'Dropoff' : 'End'}. \n\nDriver: Driver Name`,
+            });
+        } catch (error: any) {
+            Alert.alert(error.message);
+        }
+    };
 
     if (!request || !driverTrip) {
         return (
             <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: theme.text }}>Trip not found</Text>
-                <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
-                    <Text style={{ color: theme.primary }}>Go Back</Text>
+                <Text style={{ color: theme.text, marginBottom: 16 }}>Trip details unavailable.</Text>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Text style={{ color: theme.primary, fontWeight: '700' }}>Return Home</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
+    const distToPickup = driverLocation ? calculateDistance(
+        { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
+        request.startPoint
+    ) : 0;
+
+    const etaMins = estimateDuration(distToPickup, 40);
+
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            {/* Header */}
+            <View style={[styles.header, { backgroundColor: isExpandedMap ? 'transparent' : theme.background }]}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={[styles.backButton, { backgroundColor: theme.surface }]}
+                >
                     <ArrowLeft size={24} color={theme.text} />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>Trip Details</Text>
-                <View style={{ width: 24 }} />
+                {!isExpandedMap && <Text style={[styles.title, { color: theme.text }]}>Trip Details</Text>}
+                <TouchableOpacity
+                    onPress={() => setIsExpandedMap(!isExpandedMap)}
+                    style={[styles.backButton, { backgroundColor: theme.surface }]}
+                >
+                    <Maximize2 size={24} color={theme.text} />
+                </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
-                {/* Map Section */}
-                <View style={styles.mapContainer}>
-                    <MapPicker
-                        theme={theme}
-                        initialPoints={[request.startPoint, request.endPoint]}
-                        driverLocation={driverLocation || undefined}
-                        readOnly={true}
-                    />
-                </View>
+            {/* Map Background Layer */}
+            <View style={[styles.mapLayer, { height: isExpandedMap ? '100%' : '45%' }]}>
+                <MapPicker
+                    theme={theme}
+                    initialPoints={[request.startPoint, request.endPoint]}
+                    driverLocation={driverLocation || undefined}
+                    readOnly={true}
+                />
+            </View>
 
-                {/* Status Badge */}
-                <View style={[styles.statusContainer, { backgroundColor: theme.surface }]}>
-                    <View style={styles.statusRow}>
-                        <Text style={[styles.statusLabel, { color: theme.icon }]}>Status</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: '#4CD96420' }]}>
-                            <Text style={[styles.statusText, { color: '#4CD964' }]}>{request.status.toUpperCase()}</Text>
-                        </View>
-                    </View>
+            {/* Content Layer */}
+            {!isExpandedMap && (
+                <View style={[styles.contentLayer, { backgroundColor: theme.background }]}>
+                    <View style={styles.dragHandle} />
 
-                    {driverLocation && (
-                        <View style={{ marginTop: 16, flexDirection: 'row', gap: 12 }}>
-                            <View style={{ flex: 1, padding: 12, backgroundColor: theme.background, borderRadius: 12, alignItems: 'center' }}>
-                                <Text style={{ fontSize: 12, color: theme.icon }}>Dist. to Pickup</Text>
-                                <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
-                                    {calculateDistance(
-                                        { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-                                        request.startPoint
-                                    )} km
-                                </Text>
+                    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                        {/* Status Card */}
+                        <View style={[styles.statusCard, { backgroundColor: theme.surface }]}>
+                            <View style={styles.statusHeader}>
+                                <Text style={[styles.statusLabel, { color: theme.icon }]}>Current Status</Text>
+                                <View style={[styles.statusBadge, { backgroundColor: '#22c55e20' }]}>
+                                    <Text style={[styles.statusText, { color: '#22c55e' }]}>{request.status.toUpperCase()}</Text>
+                                </View>
                             </View>
-                            <View style={{ flex: 1, padding: 12, backgroundColor: theme.background, borderRadius: 12, alignItems: 'center' }}>
-                                <Text style={{ fontSize: 12, color: theme.icon }}>Est. Arrival</Text>
-                                <Text style={{ fontSize: 16, fontWeight: '700', color: theme.primary }}>
-                                    {formatDuration(estimateDuration(calculateDistance(
-                                        { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-                                        request.startPoint
-                                    ), 40))}
-                                </Text>
+
+                            {/* Live Stats */}
+                            <View style={styles.liveStats}>
+                                <View style={styles.statItem}>
+                                    <Text style={[styles.statValue, { color: theme.text }]}>
+                                        {driverLocation ? `${distToPickup.toFixed(1)} km` : '--'}
+                                    </Text>
+                                    <Text style={[styles.statLabel, { color: theme.icon }]}>Distance</Text>
+                                </View>
+                                <View style={[styles.verticalDivider, { backgroundColor: theme.border }]} />
+                                <View style={styles.statItem}>
+                                    <Text style={[styles.statValue, { color: theme.primary }]}>
+                                        {driverLocation ? formatDuration(etaMins) : '--'}
+                                    </Text>
+                                    <Text style={[styles.statLabel, { color: theme.icon }]}>ETA</Text>
+                                </View>
                             </View>
                         </View>
-                    )}
-                </View>
 
-                {/* Driver Info */}
-                <View style={[styles.card, { backgroundColor: theme.surface }]}>
-                    <Text style={[styles.cardTitle, { color: theme.text }]}>Driver</Text>
-                    <View style={styles.driverRow}>
-                        <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary }]}>
-                            <Text style={styles.avatarText}>D</Text>
+                        {/* Driver Card */}
+                        <View style={[styles.driverCard, { backgroundColor: theme.surface }]}>
+                            <View style={styles.driverRow}>
+                                <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
+                                    <Text style={styles.avatarText}>D</Text>
+                                </View>
+                                <View style={styles.driverInfo}>
+                                    <Text style={[styles.driverName, { color: theme.text }]}>Driver Name</Text>
+                                    <View style={styles.ratingRow}>
+                                        <Text style={[styles.carText, { color: theme.icon }]}>Toyota Camry • ABC-123</Text>
+                                    </View>
+                                </View>
+                                <View style={styles.actionButtons}>
+                                    <TouchableOpacity
+                                        style={[styles.btn, { backgroundColor: theme.secondary }]}
+                                        onPress={handleMessage}
+                                    >
+                                        <MessageCircle size={20} color="#fff" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.btn, { backgroundColor: theme.primary }]}
+                                        onPress={handleCall}
+                                    >
+                                        <Phone size={20} color="#fff" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         </View>
-                        <View style={styles.driverInfo}>
-                            <Text style={[styles.driverName, { color: theme.text }]}>Driver Name</Text>
-                            <Text style={[styles.driverCar, { color: theme.icon }]}>Toyota Corolla • White</Text>
-                        </View>
-                        <View style={styles.driverActions}>
-                            <TouchableOpacity style={[styles.iconButton, { backgroundColor: theme.secondary }]}>
-                                <MessageCircle size={20} color="#fff" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.iconButton, { backgroundColor: theme.primary }]}>
-                                <Phone size={20} color="#fff" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
 
-                {/* Route Info */}
-                <View style={[styles.card, { backgroundColor: theme.surface }]}>
-                    <Text style={[styles.cardTitle, { color: theme.text }]}>Route</Text>
-                    <View style={styles.timeline}>
-                        <View style={styles.timelineItem}>
-                            <MapPin size={16} color={theme.primary} />
-                            <Text style={[styles.timelineText, { color: theme.text }]}>Pickup Point</Text>
-                            <Text style={[styles.timelineTime, { color: theme.icon }]}>{request.preferredTime}</Text>
+                        {/* Timeline */}
+                        <View style={[styles.tripCard, { backgroundColor: theme.surface }]}>
+                            <View style={styles.timelineItem}>
+                                <View style={styles.timelineIconContainer}>
+                                    <View style={[styles.dot, { backgroundColor: theme.primary }]} />
+                                    <View style={[styles.line, { backgroundColor: theme.border }]} />
+                                </View>
+                                <View style={styles.timelineContent}>
+                                    <Text style={[styles.timelineTitle, { color: theme.text }]}>Pickup</Text>
+                                    <Text style={[styles.timelineTime, { color: theme.icon }]}>{request.preferredTime}</Text>
+                                </View>
+                            </View>
+                            <View style={styles.timelineItem}>
+                                <View style={styles.timelineIconContainer}>
+                                    <View style={[styles.square, { borderColor: theme.text }]} />
+                                </View>
+                                <View style={styles.timelineContent}>
+                                    <Text style={[styles.timelineTitle, { color: theme.text }]}>Dropoff</Text>
+                                    <Text style={[styles.timelineTime, { color: theme.icon }]}>Approx. 45 min trip</Text>
+                                </View>
+                            </View>
                         </View>
-                        <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
-                        <View style={styles.timelineItem}>
-                            <MapPin size={16} color={theme.accent} />
-                            <Text style={[styles.timelineText, { color: theme.text }]}>Dropoff Point</Text>
-                            <Text style={[styles.timelineTime, { color: theme.icon }]}>~ 45 min</Text>
-                        </View>
-                    </View>
+
+                        {/* Safety Section */}
+                        <TouchableOpacity
+                            style={[styles.safetyCard, { backgroundColor: theme.surface, borderColor: theme.primary }]}
+                            onPress={handleShareTrip}
+                        >
+                            <Share2 size={24} color={theme.primary} />
+                            <View>
+                                <Text style={[styles.safetyTitle, { color: theme.text }]}>Share Trip Status</Text>
+                                <Text style={[styles.safetyDesc, { color: theme.icon }]}>Send live location to friends</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                    </ScrollView>
                 </View>
-            </ScrollView>
+            )}
         </View>
     );
 }
@@ -159,37 +223,67 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 20,
         paddingTop: 60,
         paddingBottom: 20,
     },
     backButton: {
-        padding: 8,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     title: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
     },
-    content: {
-        paddingBottom: 40,
+    mapLayer: {
+        width: '100%',
     },
-    mapContainer: {
-        height: 300,
-        marginHorizontal: 20,
+    contentLayer: {
+        flex: 1,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        marginTop: -32,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
+    },
+    dragHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#e5e5e5',
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 8,
+    },
+    scrollContent: {
+        padding: 24,
+        gap: 20,
+    },
+    statusCard: {
+        padding: 20,
         borderRadius: 24,
-        overflow: 'hidden',
-        marginBottom: 20,
+        gap: 20,
     },
-    statusContainer: {
-        marginHorizontal: 20,
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 20,
-    },
-    statusRow: {
+    statusHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -199,34 +293,48 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
         borderRadius: 12,
     },
     statusText: {
         fontSize: 12,
         fontWeight: '700',
     },
-    card: {
-        marginHorizontal: 20,
-        padding: 20,
-        borderRadius: 20,
-        marginBottom: 20,
+    liveStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
     },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: 16,
+    statItem: {
+        alignItems: 'center',
+        gap: 4,
+    },
+    statValue: {
+        fontSize: 24,
+        fontWeight: '800',
+    },
+    statLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    verticalDivider: {
+        width: 1,
+        height: 40,
+    },
+    driverCard: {
+        padding: 16,
+        borderRadius: 24,
     },
     driverRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
+        gap: 12,
     },
-    avatarPlaceholder: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+    avatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -241,42 +349,81 @@ const styles = StyleSheet.create({
     driverName: {
         fontSize: 16,
         fontWeight: '700',
-        marginBottom: 4,
+        marginBottom: 2,
     },
-    driverCar: {
-        fontSize: 14,
+    carText: {
+        fontSize: 13,
     },
-    driverActions: {
+    ratingRow: {
         flexDirection: 'row',
-        gap: 12,
+        alignItems: 'center',
     },
-    iconButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    btn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    timeline: {
-        gap: 4,
+    tripCard: {
+        padding: 20,
+        borderRadius: 24,
     },
     timelineItem: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
+        gap: 16,
+        height: 50,
     },
-    timelineLine: {
+    timelineIconContainer: {
+        alignItems: 'center',
+        width: 20,
+    },
+    dot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    line: {
         width: 2,
-        height: 20,
-        marginLeft: 7,
+        flex: 1,
         marginVertical: 4,
     },
-    timelineText: {
+    square: {
+        width: 12,
+        height: 12,
+        borderWidth: 2,
+    },
+    timelineContent: {
         flex: 1,
-        fontSize: 15,
-        fontWeight: '500',
+        justifyContent: 'flex-start',
+        marginTop: -4,
+    },
+    timelineTitle: {
+        fontSize: 16,
+        fontWeight: '600',
     },
     timelineTime: {
         fontSize: 13,
+        marginTop: 2,
     },
+    safetyCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        borderRadius: 24,
+        borderWidth: 1,
+        gap: 16,
+    },
+    safetyTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    safetyDesc: {
+        fontSize: 13,
+    }
 });
