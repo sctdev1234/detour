@@ -1,15 +1,15 @@
 import { useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { CheckCircle, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { auth } from '../../services/firebaseConfig';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function SignupScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const register = useAuthStore((state) => state.register);
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -30,8 +30,7 @@ export default function SignupScreen() {
 
         setLoading(true);
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            await updateProfile(userCredential.user, { displayName: name });
+            await register(email, password, name, 'client'); // Default to client
             // Success - will redirect to role selection via _layout
         } catch (error: any) {
             Alert.alert('Signup failed', error.message);

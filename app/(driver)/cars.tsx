@@ -1,14 +1,23 @@
 import { useRouter } from 'expo-router';
 import { Car as CarIcon, Plus, ShieldCheck, Trash2 } from 'lucide-react-native';
+import { useEffect } from 'react'; // Added import
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
+import { useAuthStore } from '../../store/useAuthStore'; // Added import
 import { Car, useCarStore } from '../../store/useCarStore';
 
 export default function CarsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { cars, removeCar, setDefaultCar } = useCarStore();
+    const { cars, removeCar, setDefaultCar, fetchCars } = useCarStore(); // Added fetchCars
+    const user = useAuthStore((state) => state.user); // Get user
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchCars(user.id);
+        }
+    }, [user, fetchCars]);
 
     const renderCarItem = ({ item }: { item: Car }) => (
         <View style={[styles.carCard, { backgroundColor: theme.surface, borderColor: item.isDefault ? theme.primary : theme.border }]}>

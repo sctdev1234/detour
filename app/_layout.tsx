@@ -11,9 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
 
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import { onAuthStateChanged } from 'firebase/auth';
 import { Platform } from 'react-native';
-import { auth } from '../services/firebaseConfig';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
 
 export const unstable_settings = {
@@ -22,15 +20,12 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme() ?? 'light';
-  const { role, user, isLoading, setUser, setLoading } = useAuthStore();
+  const { role, user, isLoading, checkAuth } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
-    });
+    checkAuth();
 
     // Register for push notifications
     registerForPushNotificationsAsync();
@@ -49,10 +44,9 @@ export default function RootLayout() {
     }
 
     return () => {
-      unsubscribe();
       notificationListener && notificationListener.remove();
     };
-  }, [setUser, setLoading]);
+  }, [checkAuth]);
 
   useEffect(() => {
     if (isLoading) return;

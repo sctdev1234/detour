@@ -1,40 +1,19 @@
-import * as Google from 'expo-auth-session/providers/google'; // Added import
 import { useRouter } from 'expo-router';
-import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword } from 'firebase/auth'; // Added imports
 import { Lock, LogIn, Mail } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { auth } from '../../services/firebaseConfig';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function LoginScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const login = useAuthStore((state) => state.login);
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-
-    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-        clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    });
-
-    useEffect(() => {
-        if (response?.type === 'success') {
-            const { id_token } = response.params;
-            const credential = GoogleAuthProvider.credential(id_token);
-            signInWithCredential(auth, credential)
-                .then(() => {
-                    // Success handled by auto-routing
-                })
-                .catch((error) => {
-                    Alert.alert('Google Sign-In Error', error.message);
-                });
-        }
-    }, [response]);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -44,8 +23,8 @@ export default function LoginScreen() {
 
         setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            // Success - useAuthStore will be updated by onAuthStateChanged in _layout
+            await login(email, password);
+            // Success - _layout will handle routing based on user state
         } catch (error: any) {
             Alert.alert('Login failed', error.message);
         } finally {
@@ -105,13 +84,15 @@ export default function LoginScreen() {
                     )}
                 </TouchableOpacity>
 
+                {/* Google Sign-In temporarily disabled during migration
                 <TouchableOpacity
                     style={[styles.loginButton, { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginTop: 10 }]}
                     onPress={() => promptAsync()}
                     disabled={!request}
                 >
                     <Text style={[styles.loginButtonText, { color: theme.text }]}>Sign in with Google</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> 
+                */}
             </View>
 
             <View style={styles.footer}>

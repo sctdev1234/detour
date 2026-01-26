@@ -6,11 +6,14 @@ import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TextInput, Touchabl
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
 
+import { useAuthStore } from '../../store/useAuthStore'; // Added import
+
 export default function AddCarScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const addCar = useCarStore((state) => state.addCar);
+    const user = useAuthStore((state) => state.user); // Get user
 
     const [form, setForm] = useState({
         marque: '',
@@ -70,12 +73,18 @@ export default function AddCarScreen() {
             return;
         }
 
+        if (!user?.id) {
+            Alert.alert('Error', 'User not identified');
+            return;
+        }
+
         setUploading(true);
         try {
             // Upload Images
             const uploadedImages = await Promise.all(
                 form.images.map(async (uri, index) => {
                     const id = Math.random().toString(36).substring(7);
+                    // Use a flatter structure or just let storageService handle names
                     return await import('../../services/storageService').then(m =>
                         m.uploadImage(uri, `cars/${id}/images/${index}.jpg`)
                     );
@@ -94,7 +103,7 @@ export default function AddCarScreen() {
                 }
             }
 
-            addCar({
+            await addCar({
                 marque: form.marque,
                 model: form.model,
                 year: form.year,
@@ -103,12 +112,11 @@ export default function AddCarScreen() {
                 isDefault: form.isDefault,
                 images: uploadedImages,
                 documents: uploadedDocs,
-                verificationStatus: 'pending',
-            });
+            }, user.id); // Pass user.id
 
             router.back();
-        } catch (error) {
-            Alert.alert('Error', 'Failed to upload images. Please try again.');
+        } catch (error: any) {
+            Alert.alert('Error', 'Failed to save car. ' + (error.message || ''));
             console.error(error);
         } finally {
             setUploading(false);
