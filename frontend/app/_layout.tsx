@@ -15,7 +15,7 @@ import { Platform } from 'react-native';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
 
 export const unstable_settings = {
-  anchor: '(auth)/login',
+  initialRouteName: '(auth)',
 };
 
 export default function RootLayout() {
