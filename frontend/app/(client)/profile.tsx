@@ -124,7 +124,7 @@ export default function ProfileScreen() {
                 </View>
 
                 <Text style={[styles.userName, { color: theme.text }]}>
-                    {user?.displayName || 'Traveler'}
+                    {user?.fullName || 'Traveler'}
                 </Text>
                 <Text style={[styles.userEmail, { color: theme.icon }]}>
                     {user?.email || 'user@example.com'}
@@ -155,7 +155,7 @@ export default function ProfileScreen() {
                     icon={CreditCard}
                     title="My Wallet"
                     subtitle="Payment methods & history"
-                    onPress={() => { /* Navigate to Wallet */ }}
+                    onPress={() => Alert.alert('Coming Soon', 'Wallet feature is under development.')}
                 />
             </View>
 
@@ -165,12 +165,12 @@ export default function ProfileScreen() {
                     icon={AlertCircle}
                     title="Support & Reclamations"
                     subtitle="Get help with your trips"
-                    onPress={() => { /* Navigate to Support */ }}
+                    onPress={() => Alert.alert('Support', 'Contact support@detour.app')}
                 />
                 <MenuItem
                     icon={FileText}
                     title="Terms of Service"
-                    onPress={() => { }}
+                    onPress={() => Alert.alert('Terms', 'Terms of Service content goes here.')}
                 />
             </View>
 

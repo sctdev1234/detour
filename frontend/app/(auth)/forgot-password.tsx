@@ -1,32 +1,42 @@
 import { useRouter } from 'expo-router';
-import { Lock, LogIn, Mail } from 'lucide-react-native';
+import { ArrowLeft, Mail, Send } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const login = useAuthStore((state) => state.login);
+    const forgotPassword = useAuthStore((state) => state.forgotPassword);
 
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Missing Fields', 'Please fill in all fields.');
+    const handleReset = async () => {
+        if (!email) {
+            Alert.alert('Missing Email', 'Please enter your email address.');
             return;
         }
 
         setLoading(true);
         try {
-            await login(email, password);
-            // Router automatic redirection in _layout will handle the rest
+            const token = await forgotPassword(email);
+            // In a real app, you would tell the user to check their email.
+            // For this dev setup, we might simulate the next step.
+            Alert.alert(
+                'Check your Email',
+                `We have sent a reset link to ${email}. \n\n(Dev Token: ${token.substring(0, 8)}...)`,
+                [
+                    {
+                        text: 'Enter Reset Code',
+                        onPress: () => router.push({ pathname: '/(auth)/reset-password', params: { token } })
+                    }
+                ]
+            );
         } catch (error: any) {
-            Alert.alert('Login Failed', error.message);
+            Alert.alert('Error', error.message);
         } finally {
             setLoading(false);
         }
@@ -37,15 +47,19 @@ export default function LoginScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={[styles.container, { backgroundColor: theme.background }]}
         >
-            <View style={styles.contentContainer}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <ArrowLeft size={24} color={theme.text} />
+            </TouchableOpacity>
+
+            <View style={styles.content}>
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
-                    <Text style={[styles.subtitle, { color: theme.icon }]}>Sign in to your account</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>Reset Password</Text>
+                    <Text style={[styles.subtitle, { color: theme.icon }]}>Enter your email to receive recovery instructions.</Text>
                 </View>
 
                 <View style={styles.form}>
-                    <View style={[styles.inputGroup]}>
-                        <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: theme.text }]}>Email Address</Text>
                         <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                             <Mail size={20} color={theme.icon} />
                             <TextInput
@@ -60,48 +74,19 @@ export default function LoginScreen() {
                         </View>
                     </View>
 
-                    <View style={[styles.inputGroup]}>
-                        <Text style={[styles.label, { color: theme.text }]}>Password</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <Lock size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="••••••••"
-                                placeholderTextColor={theme.icon}
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
-                        </View>
-                    </View>
-
                     <TouchableOpacity
-                        style={styles.forgotPassword}
-                        onPress={() => router.push('/(auth)/forgot-password')}
-                    >
-                        <Text style={{ color: theme.primary, fontWeight: '600' }}>Forgot Password?</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.loginButton, { backgroundColor: theme.primary }]}
-                        onPress={handleLogin}
+                        style={[styles.resetButton, { backgroundColor: theme.primary }]}
+                        onPress={handleReset}
                         disabled={loading}
                     >
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <>
-                                <LogIn size={20} color="#fff" />
-                                <Text style={styles.loginButtonText}>Sign In</Text>
+                                <Send size={20} color="#fff" />
+                                <Text style={styles.resetButtonText}>Send Link</Text>
                             </>
                         )}
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.footer}>
-                    <Text style={{ color: theme.icon }}>Don't have an account? </Text>
-                    <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                        <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -112,11 +97,19 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    contentContainer: {
-        flex: 1,
         padding: 24,
+    },
+    backButton: {
+        marginTop: 40,
+        marginBottom: 20,
+        width: 40,
+        height: 40,
         justifyContent: 'center',
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingBottom: 100, // Visual balance
     },
     header: {
         marginBottom: 32,
@@ -128,9 +121,10 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 16,
+        lineHeight: 24,
     },
     form: {
-        gap: 20,
+        gap: 24,
     },
     inputGroup: {
         gap: 8,
@@ -154,34 +148,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         height: '100%',
     },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-    },
-    loginButton: {
+    resetButton: {
         height: 56,
         borderRadius: 28,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
-        marginTop: 8,
         shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
-        shadowRadius: 12, // softer shadow
+        shadowRadius: 12,
         elevation: 6,
     },
-    loginButtonText: {
+    resetButtonText: {
         color: '#fff',
         fontSize: 18,
         fontWeight: '700',
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 32,
     },
 });

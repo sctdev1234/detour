@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "npx concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"blue,magenta\" \"npm run backend\" \"npm run frontend\"",
     "backend": "cd backend && npm run dev",
-    "frontend": "cd frontend && npx expo start --tunnel"
+    "frontend": "cd frontend && npx expo start"
   },
   "keywords": [],
   "author": "",

@@ -28,6 +28,8 @@ interface AuthState {
     isLoading: boolean;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, fullName: string, role: string) => Promise<void>;
+    forgotPassword: (email: string) => Promise<string>; // Returns token for dev simulation
+    resetPassword: (token: string, newPassword: string) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
     setVerificationStatus: (status: 'pending' | 'verified' | 'rejected' | 'unverified') => void;
@@ -66,7 +68,7 @@ export const useAuthStore = create<AuthState>()(
                             const error = JSON.parse(text);
                             errorMsg = error.msg || error.message || errorMsg;
                         } catch (e) {
-                            errorMsg = text || errorMsg; // Fallback to raw text if not JSON
+                            errorMsg = text || errorMsg;
                         }
                         throw new Error(errorMsg);
                     }
@@ -104,7 +106,7 @@ export const useAuthStore = create<AuthState>()(
                             const error = JSON.parse(text);
                             errorMsg = error.msg || error.message || errorMsg;
                         } catch (e) {
-                            errorMsg = text || errorMsg; // Fallback to raw text if not JSON
+                            errorMsg = text || errorMsg;
                         }
                         throw new Error(errorMsg);
                     }
@@ -117,6 +119,58 @@ export const useAuthStore = create<AuthState>()(
                         verificationStatus: data.user.verificationStatus,
                         isLoading: false
                     });
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            forgotPassword: async (email) => {
+                set({ isLoading: true });
+                try {
+                    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+
+                    if (!res.ok) {
+                        const text = await res.text();
+                        let errorMsg = 'Failed to request password reset';
+                        try {
+                            const error = JSON.parse(text);
+                            errorMsg = error.msg || errorMsg;
+                        } catch (e) { errorMsg = text || errorMsg; }
+                        throw new Error(errorMsg);
+                    }
+
+                    const data = await res.json();
+                    set({ isLoading: false });
+                    return data.token; // Return token for dev flow
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            resetPassword: async (token, newPassword) => {
+                set({ isLoading: true });
+                try {
+                    const res = await fetch(`${API_URL}/auth/reset-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token, newPassword })
+                    });
+                    if (!res.ok) {
+                        const text = await res.text();
+                        let errorMsg = 'Failed to reset password';
+                        try {
+                            const error = JSON.parse(text);
+                            errorMsg = error.msg || errorMsg;
+                        } catch (e) { errorMsg = text || errorMsg; }
+                        throw new Error(errorMsg);
+                    }
+                    set({ isLoading: false });
                 } catch (error) {
                     set({ isLoading: false });
                     throw error;
@@ -150,22 +204,20 @@ export const useAuthStore = create<AuthState>()(
 
                     if (res.ok) {
                         const user = await res.json();
-                        // Update user data from server
                         set({
-                            user: { ...user, id: user._id }, // Ensure ID mapping if needed
-                            role: user.role, // Ensure role matches server
+                            user: { ...user, id: user._id },
+                            role: user.role,
                             verificationStatus: user.verificationStatus,
                             isLoading: false
                         });
                     } else {
-                        // Token invalid/expired
                         console.log('Token invalid, logging out');
                         get().logout();
                     }
                 } catch (error) {
                     console.error('Auth check failed:', error);
-                    // If network error, maybe keep user logged in but warn? 
-                    // For now, fail safe and just stop loading.
+                    // Force logout on error to clear stale state during dev
+                    get().logout();
                     set({ isLoading: false });
                 }
             },
@@ -173,7 +225,7 @@ export const useAuthStore = create<AuthState>()(
             setVerificationStatus: (status) => set({ verificationStatus: status }),
             updateDocuments: (docs) => set((state) => ({ documents: { ...state.documents, ...docs } })),
 
-            // Legacy setters (kept for compatibility during refactor)
+            // Legacy setters
             setUser: (user) => set({ user }),
             setRole: (role) => set({ role }),
             setLoading: (isLoading) => set({ isLoading }),

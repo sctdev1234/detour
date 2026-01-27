@@ -1,32 +1,36 @@
-import { useRouter } from 'expo-router';
-import { Lock, LogIn, Mail } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, CheckCircle, Key, Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
-export default function LoginScreen() {
+export default function ResetPasswordScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const login = useAuthStore((state) => state.login);
+    const resetPassword = useAuthStore((state) => state.resetPassword);
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    // Auto-fill token if passed via params
+    const [token, setToken] = useState(params.token ? params.token.toString() : '');
+    const [newPassword, setNewPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Missing Fields', 'Please fill in all fields.');
+    const handleUpdate = async () => {
+        if (!token || !newPassword) {
+            Alert.alert('Missing Fields', 'Please enter the code and your new password.');
             return;
         }
 
         setLoading(true);
         try {
-            await login(email, password);
-            // Router automatic redirection in _layout will handle the rest
+            await resetPassword(token, newPassword);
+            Alert.alert('Success', 'Your password has been reset. Please log in.', [
+                { text: 'Log In', onPress: () => router.dismissAll() }
+            ]);
         } catch (error: any) {
-            Alert.alert('Login Failed', error.message);
+            Alert.alert('Reset Failed', error.message);
         } finally {
             setLoading(false);
         }
@@ -37,71 +41,60 @@ export default function LoginScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={[styles.container, { backgroundColor: theme.background }]}
         >
-            <View style={styles.contentContainer}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <ArrowLeft size={24} color={theme.text} />
+            </TouchableOpacity>
+
+            <View style={styles.content}>
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
-                    <Text style={[styles.subtitle, { color: theme.icon }]}>Sign in to your account</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>New Password</Text>
+                    <Text style={[styles.subtitle, { color: theme.icon }]}>Create a strong password for your account.</Text>
                 </View>
 
                 <View style={styles.form}>
-                    <View style={[styles.inputGroup]}>
-                        <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: theme.text }]}>Reset Code</Text>
                         <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <Mail size={20} color={theme.icon} />
+                            <Key size={20} color={theme.icon} />
                             <TextInput
                                 style={[styles.input, { color: theme.text }]}
-                                placeholder="name@email.com"
+                                placeholder="Paste code here"
                                 placeholderTextColor={theme.icon}
-                                value={email}
-                                onChangeText={setEmail}
+                                value={token}
+                                onChangeText={setToken}
                                 autoCapitalize="none"
-                                keyboardType="email-address"
                             />
                         </View>
                     </View>
 
-                    <View style={[styles.inputGroup]}>
-                        <Text style={[styles.label, { color: theme.text }]}>Password</Text>
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: theme.text }]}>New Password</Text>
                         <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                             <Lock size={20} color={theme.icon} />
                             <TextInput
                                 style={[styles.input, { color: theme.text }]}
-                                placeholder="••••••••"
+                                placeholder="Min 8 characters"
                                 placeholderTextColor={theme.icon}
-                                value={password}
-                                onChangeText={setPassword}
+                                value={newPassword}
+                                onChangeText={setNewPassword}
                                 secureTextEntry
                             />
                         </View>
                     </View>
 
                     <TouchableOpacity
-                        style={styles.forgotPassword}
-                        onPress={() => router.push('/(auth)/forgot-password')}
-                    >
-                        <Text style={{ color: theme.primary, fontWeight: '600' }}>Forgot Password?</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.loginButton, { backgroundColor: theme.primary }]}
-                        onPress={handleLogin}
+                        style={[styles.updateButton, { backgroundColor: theme.primary }]}
+                        onPress={handleUpdate}
                         disabled={loading}
                     >
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
                             <>
-                                <LogIn size={20} color="#fff" />
-                                <Text style={styles.loginButtonText}>Sign In</Text>
+                                <CheckCircle size={20} color="#fff" />
+                                <Text style={styles.updateButtonText}>Update Password</Text>
                             </>
                         )}
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.footer}>
-                    <Text style={{ color: theme.icon }}>Don't have an account? </Text>
-                    <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                        <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -112,11 +105,19 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    contentContainer: {
-        flex: 1,
         padding: 24,
+    },
+    backButton: {
+        marginTop: 40,
+        marginBottom: 20,
+        width: 40,
+        height: 40,
         justifyContent: 'center',
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingBottom: 100, // Visual balance
     },
     header: {
         marginBottom: 32,
@@ -128,9 +129,10 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 16,
+        lineHeight: 24,
     },
     form: {
-        gap: 20,
+        gap: 24,
     },
     inputGroup: {
         gap: 8,
@@ -154,34 +156,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         height: '100%',
     },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-    },
-    loginButton: {
+    updateButton: {
         height: 56,
         borderRadius: 28,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
-        marginTop: 8,
         shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
-        shadowRadius: 12, // softer shadow
+        shadowRadius: 12,
         elevation: 6,
     },
-    loginButtonText: {
+    updateButtonText: {
         color: '#fff',
         fontSize: 18,
         fontWeight: '700',
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 32,
     },
 });

@@ -112,7 +112,7 @@ export default function ClientDashboard() {
             <View style={styles.header}>
                 <View>
                     <Text style={[styles.welcomeText, { color: theme.icon }]}>{greeting},</Text>
-                    <Text style={[styles.nameText, { color: theme.text }]}>{user?.displayName || 'Traveler'}</Text>
+                    <Text style={[styles.nameText, { color: theme.text }]}>{user?.fullName || 'Traveler'}</Text>
                     {avgRating > 0 && (
                         <View style={[styles.ratingBadge, { backgroundColor: '#FFCC0020' }]}>
                             <Star size={12} color="#EBAC00" fill="#EBAC00" />

@@ -1,85 +1,73 @@
-import { createMaterialTopTabNavigator, MaterialTopTabNavigationEventMap, MaterialTopTabNavigationOptions } from '@react-navigation/material-top-tabs';
-import { ParamListBase, TabNavigationState } from '@react-navigation/native';
-import { withLayoutContext } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Calendar, Home, Search, User } from 'lucide-react-native';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { Colors } from '../../constants/theme';
-
-const { Navigator } = createMaterialTopTabNavigator();
-
-export const MaterialTopTabs = withLayoutContext<
-    MaterialTopTabNavigationOptions,
-    typeof Navigator,
-    TabNavigationState<ParamListBase>,
-    MaterialTopTabNavigationEventMap
->(Navigator);
 
 export default function ClientLayout() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
     return (
-        <MaterialTopTabs
-            tabBarPosition="bottom"
+        <Tabs
             screenOptions={{
+                headerShown: false,
                 tabBarActiveTintColor: theme.primary,
                 tabBarInactiveTintColor: theme.icon,
                 tabBarStyle: {
                     backgroundColor: theme.background,
                     borderTopColor: theme.border,
-                    borderTopWidth: 1, // Ensure border is visible
-                    height: 60,
-                    paddingBottom: 8,
+                    borderTopWidth: 1,
+                    height: Platform.OS === 'ios' ? 85 : 60, // Taller on iOS for home indicator
+                    paddingBottom: Platform.OS === 'ios' ? 25 : 8,
                     paddingTop: 8,
-                },
-                tabBarIndicatorStyle: {
-                    display: 'none', // Hide the indicator for a "bottom tab" look
                 },
                 tabBarLabelStyle: {
                     fontSize: 10,
                     fontWeight: '600',
                     textTransform: 'capitalize',
                 },
-                tabBarShowIcon: true,
-                swipeEnabled: true,
-                animationEnabled: true,
             }}
         >
-            <MaterialTopTabs.Screen
+            <Tabs.Screen
                 name="index"
                 options={{
                     title: 'Home',
                     tabBarIcon: ({ color }) => <Home size={24} color={color} />,
                 }}
             />
-            <MaterialTopTabs.Screen
+            <Tabs.Screen
                 name="search"
                 options={{
                     title: 'Find Trip',
                     tabBarIcon: ({ color }) => <Search size={24} color={color} />,
                 }}
             />
-            <MaterialTopTabs.Screen
+            <Tabs.Screen
                 name="trips"
                 options={{
                     title: 'My Trips',
                     tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
                 }}
             />
-            <MaterialTopTabs.Screen
+            <Tabs.Screen
                 name="profile"
                 options={{
                     title: 'Profile',
                     tabBarIcon: ({ color }) => <User size={24} color={color} />,
                 }}
             />
-            <MaterialTopTabs.Screen
+            <Tabs.Screen
                 name="request-trip"
                 options={{
-                    href: null, // This might not work in MaterialTopTabs directly like in Tabs
-                    tabBarItemStyle: { display: 'none' }, // Hide it this way
+                    href: null,
                 }}
             />
-        </MaterialTopTabs>
+            <Tabs.Screen
+                name="edit-profile"
+                options={{
+                    href: null,
+                }}
+            />
+        </Tabs>
     );
 }

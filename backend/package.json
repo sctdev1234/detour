@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx concurrently \"node server.js\" \"npx -y localtunnel --port 5000 --subdomain detour-app-v2\""
+    "dev": "node server.js"
   },
   "keywords": [],
   "author": "",

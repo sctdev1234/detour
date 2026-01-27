@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { CheckCircle, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -19,12 +19,12 @@ export default function SignupScreen() {
 
     const handleSignup = async () => {
         if (!name || !email || !password || !confirmPassword) {
-            Alert.alert('Error', 'Please fill in all fields');
+            Alert.alert('Missing Fields', 'Please fill in all fields.');
             return;
         }
 
         if (password !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match');
+            Alert.alert('Password Mismatch', 'Passwords do not match.');
             return;
         }
 
@@ -33,99 +33,119 @@ export default function SignupScreen() {
             await register(email, password, name, 'client'); // Default to client
             // Success - will redirect to role selection via _layout
         } catch (error: any) {
-            Alert.alert('Signup failed', error.message);
+            Alert.alert('Signup Failed', error.message);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
-                <Text style={[styles.subtitle, { color: theme.icon }]}>Join Detour and start traveling together</Text>
-            </View>
-
-            <View style={styles.form}>
-                <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <User size={20} color={theme.icon} />
-                    <TextInput
-                        style={[styles.input, { color: theme.text }]}
-                        placeholder="Full Name"
-                        placeholderTextColor={theme.icon}
-                        value={name}
-                        onChangeText={setName}
-                    />
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={[styles.container, { backgroundColor: theme.background }]}
+        >
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.header}>
+                    <Text style={[styles.title, { color: theme.text }]}>Start Your Journey</Text>
+                    <Text style={[styles.subtitle, { color: theme.icon }]}>Create your account today</Text>
                 </View>
 
-                <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <Mail size={20} color={theme.icon} />
-                    <TextInput
-                        style={[styles.input, { color: theme.text }]}
-                        placeholder="Email Address"
-                        placeholderTextColor={theme.icon}
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                    />
+                <View style={styles.form}>
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <User size={20} color={theme.icon} />
+                            <TextInput
+                                style={[styles.input, { color: theme.text }]}
+                                placeholder="John Doe"
+                                placeholderTextColor={theme.icon}
+                                value={name}
+                                onChangeText={setName}
+                            />
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <Mail size={20} color={theme.icon} />
+                            <TextInput
+                                style={[styles.input, { color: theme.text }]}
+                                placeholder="name@email.com"
+                                placeholderTextColor={theme.icon}
+                                value={email}
+                                onChangeText={setEmail}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: theme.text }]}>Password</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <Lock size={20} color={theme.icon} />
+                            <TextInput
+                                style={[styles.input, { color: theme.text }]}
+                                placeholder="Min 8 characters"
+                                placeholderTextColor={theme.icon}
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                            />
+                        </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.label, { color: theme.text }]}>Confirm Password</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <CheckCircle size={20} color={theme.icon} />
+                            <TextInput
+                                style={[styles.input, { color: theme.text }]}
+                                placeholder="Re-enter password"
+                                placeholderTextColor={theme.icon}
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                secureTextEntry
+                            />
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.signupButton, { backgroundColor: theme.primary }]}
+                        onPress={handleSignup}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={styles.signupButtonText}>Create Account</Text>
+                        )}
+                    </TouchableOpacity>
                 </View>
 
-                <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <Lock size={20} color={theme.icon} />
-                    <TextInput
-                        style={[styles.input, { color: theme.text }]}
-                        placeholder="Password"
-                        placeholderTextColor={theme.icon}
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
+                <View style={styles.footer}>
+                    <Text style={{ color: theme.icon }}>Already have an account? </Text>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <Text style={{ color: theme.primary, fontWeight: '700' }}>Sign In</Text>
+                    </TouchableOpacity>
                 </View>
-
-                <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <CheckCircle size={20} color={theme.icon} />
-                    <TextInput
-                        style={[styles.input, { color: theme.text }]}
-                        placeholder="Confirm Password"
-                        placeholderTextColor={theme.icon}
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
-                        secureTextEntry
-                    />
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.signupButton, { backgroundColor: theme.primary }]}
-                    onPress={handleSignup}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.signupButtonText}>Create Account</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            <View style={styles.footer}>
-                <Text style={{ color: theme.icon }}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={{ color: theme.primary, fontWeight: '700' }}>Sign In</Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+    },
+    scrollContent: {
         flexGrow: 1,
         padding: 24,
         justifyContent: 'center',
     },
     header: {
-        marginBottom: 40,
+        marginBottom: 32,
     },
     title: {
         fontSize: 32,
@@ -137,6 +157,14 @@ const styles = StyleSheet.create({
     },
     form: {
         gap: 16,
+    },
+    inputGroup: {
+        gap: 8,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginLeft: 4,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -150,13 +178,19 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: 16,
+        height: '100%',
     },
     signupButton: {
         height: 56,
         borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 8,
+        marginTop: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
     },
     signupButtonText: {
         color: '#fff',
@@ -167,5 +201,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         marginTop: 24,
+        marginBottom: 20
     },
 });
