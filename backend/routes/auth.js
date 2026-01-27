@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_123';
 // @route   POST api/auth/signup
 // @desc    Register new user
 router.post('/signup', async (req, res) => {
-    const { email, password, fullName, role } = req.body;
+    const { email, password, fullName, role, photoURL } = req.body;
 
     if (!email || !password || !fullName) {
         return res.status(400).json({ msg: 'Please enter all fields' });
@@ -25,7 +25,8 @@ router.post('/signup', async (req, res) => {
             email,
             password,
             fullName,
-            role: role || 'client'
+            role: role || 'client',
+            photoURL
         });
 
         // Hash password
@@ -55,7 +56,8 @@ router.post('/signup', async (req, res) => {
                         fullName: user.fullName,
                         email: user.email,
                         role: user.role,
-                        verificationStatus: user.verificationStatus
+                        verificationStatus: user.verificationStatus,
+                        photoURL: user.photoURL
                     }
                 });
             }

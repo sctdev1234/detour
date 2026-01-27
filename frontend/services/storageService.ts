@@ -1,51 +1,28 @@
-import { API_URL, BASE_URL } from './apiConfig';
+import * as FileSystem from 'expo-file-system';
 
 /**
- * Uploads an image to the backend server and returns the accessible URL.
+ * Converts a local image URI to a Base64 Data URI string.
+ * This effectively "uploads" the image by preparing it for storage in MongoDB.
  * @param uri Local URI of the image
- * @param path Storage path (optional, can be used for folder organization)
  */
-export const uploadImage = async (uri: string, path: string): Promise<string> => {
+export const uploadImage = async (uri: string, path?: string): Promise<string> => {
     try {
-        console.log(`[Upload] Starting upload for ${uri}`);
-        const formData = new FormData();
-        const filename = uri.split('/').pop() || `upload-${Date.now()}.jpg`;
-
-        // Append file data
-        formData.append('file', {
-            uri: uri,
-            name: filename,
-            type: 'image/jpeg',
-        } as any);
-
-        // Optionally send folder info if backend supports it
-        // formData.append('folder', 'cars'); 
-
-        const response = await fetch(`${API_URL}/upload`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                'Bypass-Tunnel-Reminder': 'true'
-            },
+        console.log(`[Storage] Converting ${uri} to Base64...`);
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-        }
+        // Determine mime type (simple guess, default to jpeg)
+        const fileExtension = uri.split('.').pop()?.toLowerCase();
+        let mimeType = 'image/jpeg';
+        if (fileExtension === 'png') mimeType = 'image/png';
 
-        const data = await response.json();
+        const dataUri = `data:${mimeType};base64,${base64}`;
+        console.log(`[Storage] Conversion success (${dataUri.length} chars)`);
 
-        // Ensure we get a full URL back
-        // If backend returns relative path (e.g., /uploads/file.jpg), prepend BASE_URL
-        const relativePath = data.url.startsWith('/') ? data.url : '/' + data.url;
-        const fullUrl = `${BASE_URL}${relativePath}`;
-
-        console.log(`[Upload] Success: ${fullUrl}`);
-        return fullUrl;
+        return dataUri;
     } catch (error) {
-        console.error('[Upload] Error:', error);
+        console.error('[Storage] Base64 conversion error:', error);
         throw error;
     }
 };

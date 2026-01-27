@@ -2,11 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 
 // Try to load .env from root or current directory
 const rootEnvPath = path.join(__dirname, '..', '.env');
-if (fs.existsSync(rootEnvPath)) {
+if (require('fs').existsSync(rootEnvPath)) {
     require('dotenv').config({ path: rootEnvPath });
 } else {
     require('dotenv').config();
@@ -17,19 +16,13 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+// Increase limit for Base64 images
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
-});
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Ensure upload directories exist
-const uploadDirs = ['uploads', 'uploads/cars', 'uploads/documents', 'uploads/avatars'];
-uploadDirs.forEach(dir => {
-    if (!fs.existsSync(path.join(__dirname, dir))) {
-        fs.mkdirSync(path.join(__dirname, dir), { recursive: true });
-    }
 });
 
 // Database Connection
@@ -45,8 +38,8 @@ mongoose.connect(MONGODB_URI)
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/upload', require('./routes/upload'));
 app.use('/api/cars', require('./routes/cars'));
+// app.use('/api/upload', require('./routes/upload')); // Logic moved to client (Base64)
 // app.use('/api/trips', require('./routes/trips')); // To be implemented
 
 // Base route
