@@ -3,7 +3,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
+
+// Try to load .env from root or current directory
+const rootEnvPath = path.join(__dirname, '..', '.env');
+if (fs.existsSync(rootEnvPath)) {
+    require('dotenv').config({ path: rootEnvPath });
+} else {
+    require('dotenv').config();
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -11,6 +18,10 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Ensure upload directories exist
@@ -22,7 +33,13 @@ uploadDirs.forEach(dir => {
 });
 
 // Database Connection
-mongoose.connect('mongodb://localhost:27017/detour')
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+    console.error('CRITICAL: MONGODB_URI is not defined in .env');
+    process.exit(1);
+}
+
+mongoose.connect(MONGODB_URI)
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 

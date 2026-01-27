@@ -52,13 +52,23 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const res = await fetch(`${API_URL}/auth/login`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Bypass-Tunnel-Reminder': 'true'
+                        },
                         body: JSON.stringify({ email, password })
                     });
 
                     if (!res.ok) {
-                        const error = await res.json();
-                        throw new Error(error.msg || 'Login failed');
+                        const text = await res.text();
+                        let errorMsg = 'Login failed';
+                        try {
+                            const error = JSON.parse(text);
+                            errorMsg = error.msg || error.message || errorMsg;
+                        } catch (e) {
+                            errorMsg = text || errorMsg; // Fallback to raw text if not JSON
+                        }
+                        throw new Error(errorMsg);
                     }
 
                     const data = await res.json();
@@ -80,13 +90,23 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const res = await fetch(`${API_URL}/auth/signup`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Bypass-Tunnel-Reminder': 'true'
+                        },
                         body: JSON.stringify({ email, password, fullName, role })
                     });
 
                     if (!res.ok) {
-                        const error = await res.json();
-                        throw new Error(error.msg || 'Registration failed');
+                        const text = await res.text();
+                        let errorMsg = 'Registration failed';
+                        try {
+                            const error = JSON.parse(text);
+                            errorMsg = error.msg || error.message || errorMsg;
+                        } catch (e) {
+                            errorMsg = text || errorMsg; // Fallback to raw text if not JSON
+                        }
+                        throw new Error(errorMsg);
                     }
 
                     const data = await res.json();
@@ -113,12 +133,39 @@ export const useAuthStore = create<AuthState>()(
             }),
 
             checkAuth: async () => {
-                // In a real app, you might validate the token with the backend here
-                // For now, we trust the persisted state or simple presence of token
                 const token = get().token;
-                if (token) {
+                if (!token) {
                     set({ isLoading: false });
-                } else {
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_URL}/auth/me`, {
+                        method: 'GET',
+                        headers: {
+                            'x-auth-token': token,
+                            'Bypass-Tunnel-Reminder': 'true'
+                        }
+                    });
+
+                    if (res.ok) {
+                        const user = await res.json();
+                        // Update user data from server
+                        set({
+                            user: { ...user, id: user._id }, // Ensure ID mapping if needed
+                            role: user.role, // Ensure role matches server
+                            verificationStatus: user.verificationStatus,
+                            isLoading: false
+                        });
+                    } else {
+                        // Token invalid/expired
+                        console.log('Token invalid, logging out');
+                        get().logout();
+                    }
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                    // If network error, maybe keep user logged in but warn? 
+                    // For now, fail safe and just stop loading.
                     set({ isLoading: false });
                 }
             },

@@ -62,7 +62,7 @@ router.post('/signup', async (req, res) => {
         );
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).json({ msg: 'Server Error' });
     }
 });
 
@@ -113,7 +113,39 @@ router.post('/login', async (req, res) => {
         );
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// Middleware to verify token
+const auth = (req, res, next) => {
+    const token = req.header('x-auth-token');
+
+    // Check for token
+    if (!token) {
+        return res.status(401).json({ msg: 'No token, authorization denied' });
+    }
+
+    try {
+        // Verify token
+        const decoded = jwt.verify(token, JWT_SECRET);
+        // Add user from payload
+        req.user = decoded.user;
+        next();
+    } catch (e) {
+        res.status(401).json({ msg: 'Token is not valid' });
+    }
+};
+
+// @route   GET api/auth/me
+// @desc    Get current user
+router.get('/me', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('-password');
+        res.json(user);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
     }
 });
 
