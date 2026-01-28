@@ -196,6 +196,31 @@ const auth = (req, res, next) => {
     }
 };
 
+// @route   PUT api/auth/update
+// @desc    Update user profile
+router.put('/update', auth, async (req, res) => {
+    const { fullName, photoURL } = req.body;
+    const updateFields = {};
+    if (fullName) updateFields.fullName = fullName;
+    if (photoURL) updateFields.photoURL = photoURL;
+
+    try {
+        let user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        user = await User.findByIdAndUpdate(
+            req.user.id,
+            { $set: updateFields },
+            { new: true }
+        ).select('-password');
+
+        res.json(user);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
 // @route   GET api/auth/me
 // @desc    Get current user
 router.get('/me', auth, async (req, res) => {

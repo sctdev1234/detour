@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
 import {
     AlertCircle,
     Car,
@@ -24,7 +23,6 @@ import {
     View
 } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { auth } from '../../services/firebaseConfig';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function ProfileScreen() {
@@ -44,7 +42,6 @@ export default function ProfileScreen() {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            await signOut(auth);
                             logout();
                         } catch (error) {
                             console.error(error);

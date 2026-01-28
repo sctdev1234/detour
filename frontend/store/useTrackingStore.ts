@@ -1,6 +1,5 @@
-import { off, onValue, ref } from 'firebase/database';
 import { create } from 'zustand';
-import { database } from '../services/firebaseConfig';
+import api from '../services/api';
 
 interface LocationData {
     latitude: number;
@@ -13,6 +12,7 @@ interface LocationData {
 interface TrackingState {
     driverLocation: LocationData | null;
     activeDriverId: string | null;
+    intervalId: any;
     subscribeToDriver: (driverId: string) => void;
     unsubscribe: () => void;
 }
@@ -20,6 +20,7 @@ interface TrackingState {
 export const useTrackingStore = create<TrackingState>((set, get) => ({
     driverLocation: null,
     activeDriverId: null,
+    intervalId: null,
 
     subscribeToDriver: (driverId: string) => {
         const currentDriverId = get().activeDriverId;
@@ -30,24 +31,32 @@ export const useTrackingStore = create<TrackingState>((set, get) => ({
             get().unsubscribe();
         }
 
-        const locationRef = ref(database, `drivers/${driverId}/location`);
-
-        onValue(locationRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                set({ driverLocation: data });
-            }
-        });
-
         set({ activeDriverId: driverId });
+
+        const fetchLocation = async () => {
+            try {
+                const response = await api.get(`/tracking/${driverId}`);
+                if (response.data && response.data.location) {
+                    set({ driverLocation: response.data.location });
+                }
+            } catch (error) {
+                console.error('Error fetching driver location:', error);
+            }
+        };
+
+        // Initial fetch
+        fetchLocation();
+
+        // Start polling every 5 seconds
+        const interval = setInterval(fetchLocation, 5000);
+        set({ intervalId: interval });
     },
 
     unsubscribe: () => {
-        const { activeDriverId } = get();
-        if (activeDriverId) {
-            const locationRef = ref(database, `drivers/${activeDriverId}/location`);
-            off(locationRef);
-            set({ activeDriverId: null, driverLocation: null });
+        const { intervalId } = get();
+        if (intervalId) {
+            clearInterval(intervalId);
         }
+        set({ activeDriverId: null, driverLocation: null, intervalId: null });
     },
 }));

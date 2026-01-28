@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 // Increase limit for Base64 images
-app.use(express.json({ limit: '50mb' })); 
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use((req, res, next) => {
@@ -39,6 +39,7 @@ mongoose.connect(MONGODB_URI)
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/cars', require('./routes/cars'));
+app.use('/api/tracking', require('./routes/tracking'));
 // app.use('/api/upload', require('./routes/upload')); // Logic moved to client (Base64)
 // app.use('/api/trips', require('./routes/trips')); // To be implemented
 

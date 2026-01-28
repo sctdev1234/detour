@@ -34,6 +34,7 @@ interface AuthState {
     checkAuth: () => Promise<void>;
     setVerificationStatus: (status: 'pending' | 'verified' | 'rejected' | 'unverified') => void;
     updateDocuments: (docs: Partial<AuthState['documents']>) => void;
+    updateProfile: (data: Partial<User>) => Promise<void>;
     setUser: (user: User | null) => void;
     setRole: (role: Role) => void;
     setLoading: (loading: boolean) => void;
@@ -224,6 +225,33 @@ export const useAuthStore = create<AuthState>()(
 
             setVerificationStatus: (status) => set({ verificationStatus: status }),
             updateDocuments: (docs) => set((state) => ({ documents: { ...state.documents, ...docs } })),
+
+            updateProfile: async (data) => {
+                set({ isLoading: true });
+                try {
+                    const res = await fetch(`${API_URL}/auth/update`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-auth-token': get().token || ''
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (!res.ok) throw new Error('Failed to update profile');
+
+                    const updatedUser = await res.json();
+
+                    // Merge with existing user to keep fields like role/id if not returned
+                    set((state) => ({
+                        user: { ...state.user!, ...updatedUser },
+                        isLoading: false
+                    }));
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
 
             // Legacy setters
             setUser: (user) => set({ user }),

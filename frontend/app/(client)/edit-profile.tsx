@@ -1,5 +1,4 @@
 import { Stack, useRouter } from 'expo-router';
-import { updateProfile } from 'firebase/auth';
 import { ArrowLeft, Check, Mail, User } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -16,16 +15,15 @@ import {
     View
 } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { auth } from '../../services/firebaseConfig';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function EditProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user, setUser } = useAuthStore();
+    const { user, updateProfile } = useAuthStore();
 
-    const [displayName, setDisplayName] = useState(user?.displayName || '');
+    const [displayName, setDisplayName] = useState(user?.fullName || '');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSave = async () => {
@@ -36,17 +34,10 @@ export default function EditProfileScreen() {
 
         setIsLoading(true);
         try {
-            if (auth.currentUser) {
-                await updateProfile(auth.currentUser, {
-                    displayName: displayName.trim(),
-                });
-
-                setUser({ ...user!, displayName: displayName.trim() });
-
-                Alert.alert('Success', 'Profile updated successfully', [
-                    { text: 'OK', onPress: () => router.back() }
-                ]);
-            }
+            await updateProfile({ fullName: displayName.trim() });
+            Alert.alert('Success', 'Profile updated successfully', [
+                { text: 'OK', onPress: () => router.back() }
+            ]);
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'Failed to update profile');

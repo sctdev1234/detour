@@ -36,7 +36,15 @@ const UserSchema = new mongoose.Schema({
         default: Date.now
     },
     resetPasswordToken: String,
-    resetPasswordExpires: Date
+    resetPasswordExpires: Date,
+    location: {
+        latitude: Number,
+        longitude: Number,
+        heading: Number,
+        speed: Number,
+        timestamp: Number,
+        updatedAt: { type: Date, default: Date.now }
+    }
 });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -1,9 +1,8 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { ref, set } from 'firebase/database';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { database } from '../services/firebaseConfig';
+import api from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLocationStore } from '../store/useLocationStore';
 
@@ -22,21 +21,19 @@ if (Platform.OS !== 'web') {
                 const location = locations[0];
                 useLocationStore.getState().setLocation(location);
 
-                // Sync to Firebase
+                // Sync to Backend API
                 const user = useAuthStore.getState().user;
                 if (user) {
                     try {
                         const { latitude, longitude, heading, speed } = location.coords;
-                        const userLocationRef = ref(database, `drivers/${user.uid}/location`);
-                        await set(userLocationRef, {
+                        await api.post('/tracking/update', {
                             latitude,
                             longitude,
                             heading,
-                            speed,
-                            timestamp: Date.now()
+                            speed
                         });
                     } catch (e) {
-                        // console.error('Failed to sync location', e); 
+                        console.error('Failed to sync location', e);
                     }
                 }
             }
