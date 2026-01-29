@@ -10,8 +10,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_123';
 // @desc    Register new user
 router.post('/signup', async (req, res) => {
     const { email, password, fullName, role, photoURL } = req.body;
+    console.log('--------------------------------------------------');
+    console.log('[SIGNUP ATTEMPT]', { email, fullName, role });
 
     if (!email || !password || !fullName) {
+        console.log('[SIGNUP ERROR] Missing fields:', { email: !!email, password: !!password, fullName: !!fullName });
         return res.status(400).json({ msg: 'Please enter all fields' });
     }
 
@@ -63,7 +66,8 @@ router.post('/signup', async (req, res) => {
             }
         );
     } catch (err) {
-        console.error(err.message);
+        console.error('[SIGNUP EXCEPTION]', err.message);
+        console.error(err);
         res.status(500).json({ msg: 'Server Error' });
     }
 });
@@ -72,14 +76,18 @@ router.post('/signup', async (req, res) => {
 // @desc    Authenticate user & get token
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
+    console.log('--------------------------------------------------');
+    console.log('[LOGIN ATTEMPT]', { email });
 
     if (!email || !password) {
+        console.log('[LOGIN ERROR] Missing fields');
         return res.status(400).json({ msg: 'Please enter all fields' });
     }
 
     try {
         let user = await User.findOne({ email });
         if (!user) {
+            console.log('[LOGIN ERROR] User not found:', email);
             return res.status(400).json({ msg: 'Invalid Credentials' });
         }
 
@@ -114,7 +122,8 @@ router.post('/login', async (req, res) => {
             }
         );
     } catch (err) {
-        console.error(err.message);
+        console.error('[LOGIN EXCEPTION]', err.message);
+        console.error(err);
         res.status(500).json({ msg: 'Server Error' });
     }
 });

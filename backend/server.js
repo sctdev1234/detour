@@ -32,9 +32,21 @@ if (!MONGODB_URI) {
     process.exit(1);
 }
 
-mongoose.connect(MONGODB_URI)
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.error('MongoDB Connection Error:', err));
+// Debug URI (hide password)
+const uriDebug = MONGODB_URI ? MONGODB_URI.replace(/:([^:@]+)@/, ':****@') : 'undefined';
+console.log('Attempting to connect to MongoDB with URI:', uriDebug);
+
+mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000
+})
+    .then(() => {
+        console.log('MongoDB Connected');
+        console.log('Connected to Database:', mongoose.connection.name);
+    })
+    .catch(err => {
+        console.error('MongoDB Connection Error:', err);
+        console.log('URI used:', uriDebug);
+    });
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
