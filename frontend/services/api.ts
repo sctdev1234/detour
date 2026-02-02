@@ -6,9 +6,9 @@ import { Platform } from 'react-native';
 // For Android Emulator use 10.0.2.2, for iOS/Web localhost is fine.
 // Using window.location.hostname logic for web if needed.
 const getBaseUrl = () => {
-    if (Platform.OS === 'web') return 'http://localhost:5000/api';
-    if (Platform.OS === 'android') return 'http://10.0.2.2:5000/api';
-    return 'http://localhost:5000/api';
+    if (Platform.OS === 'web') return `${process.env.EXPO_PUBLIC_API_URL}/api`;
+    if (Platform.OS === 'android') return `${process.env.EXPO_PUBLIC_API_URL}/api`;
+    return `${process.env.EXPO_PUBLIC_API_URL}/api`;
 };
 
 const api = axios.create({
