@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 /**
  * Converts a local image URI to a Base64 Data URI string.
@@ -9,7 +9,7 @@ export const uploadImage = async (uri: string, path?: string): Promise<string> =
     try {
         console.log(`[Storage] Converting ${uri} to Base64...`);
         const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
+            encoding: 'base64',
         });
 
         // Determine mime type (simple guess, default to jpeg)
