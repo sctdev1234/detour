@@ -1,9 +1,9 @@
-const { getDefaultConfig } = require('expo/metro-config');
+// metro.config.cjs
+const { getDefaultConfig } = require("expo/metro-config");
 
-/** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Ensure proper resolution of ESM packages
-config.resolver.sourceExts.push('mjs');
+// Force Metro to avoid resolving ESM "exports" entrypoints that may contain import.meta
+config.resolver.unstable_enablePackageExports = false;
 
 module.exports = config;

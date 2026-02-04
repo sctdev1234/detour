@@ -3,9 +3,21 @@
   "version": "1.0.0",
   "description": "Root orchestrator for Detour App",
   "scripts": {
-    "dev": "npx concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"blue,magenta\" \"npm run backend\" \"npm run frontend\"",
+    "================================================================": "",
+    "dev": "npx concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"green,magenta\" \"npm run backend\" \"npm run frontend\"",
     "backend": "cd backend && npm run dev",
-    "frontend": "cd frontend && npm start"
+    "frontend": "cd frontend && npm run start",
+    "================================================================": "",
+    "install-all": "npx concurrently --kill-others-on-fail -n \"PROJECT,BACKEND,FRONTEND\" -c \"green,blue,magenta\" \"npm run install-project\" \"npm run install-backend\" \"npm run install-frontend\"",
+    "install-project": "npm install",
+    "install-backend": "cd backend && npm install",
+    "install-frontend": "cd frontend && npm install",
+    "================================================================": "",
+    "clean-all": "npx concurrently --kill-others-on-fail -n \"PROJECT,BACKEND,FRONTEND\" -c \"green,blue,magenta\" \"npm run clean-project\" \"npm run clean-backend\" \"npm run clean-frontend\"",
+    "clean-project": "rm -rf node_modules package-lock.json",
+    "clean-backend": "cd backend && rm -rf node_modules package-lock.json",
+    "clean-frontend": "cd frontend && rm -rf node_modules package-lock.json",
+    "================================================================": ""
   },
   "keywords": [],
   "author": "",
