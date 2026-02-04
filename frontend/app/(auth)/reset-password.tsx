@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle, Key, Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -11,6 +12,7 @@ export default function ResetPasswordScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const resetPassword = useAuthStore((state) => state.resetPassword);
+    const { showToast, showConfirm } = useUIStore();
 
     // Auto-fill token if passed via params
     const [token, setToken] = useState(params.token ? params.token.toString() : '');
@@ -19,18 +21,23 @@ export default function ResetPasswordScreen() {
 
     const handleUpdate = async () => {
         if (!token || !newPassword) {
-            Alert.alert('Missing Fields', 'Please enter the code and your new password.');
+            showToast('Please enter the code and your new password', 'warning');
             return;
         }
 
         setLoading(true);
         try {
             await resetPassword(token, newPassword);
-            Alert.alert('Success', 'Your password has been reset. Please log in.', [
-                { text: 'Log In', onPress: () => router.dismissAll() }
-            ]);
+            showConfirm(
+                'Success',
+                'Your password has been reset. Please log in.',
+                () => router.dismissAll(),
+                undefined,
+                'Log In',
+                'OK'
+            );
         } catch (error: any) {
-            Alert.alert('Reset Failed', error.message);
+            showToast(error.message || 'Reset Failed', 'error');
         } finally {
             setLoading(false);
         }

@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import { ArrowDownLeft, ArrowUpRight, ChevronLeft, CreditCard, DollarSign, History } from 'lucide-react-native';
 import React from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Transaction, useFinanceStore } from '../../store/useFinanceStore';
@@ -12,10 +13,11 @@ export default function WalletScreen() {
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
     const { getWallet, wallets, transactions, subscribe } = useFinanceStore();
+    const { showConfirm } = useUIStore();
 
     // Force re-render when store updates
-    const wallet = user ? (wallets[user.uid] || getWallet(user.uid)) : null;
-    const myTransactions = user ? transactions.filter(t => t.userId === user.uid) : [];
+    const wallet = user ? (wallets[user.id] || getWallet(user.id)) : null;
+    const myTransactions = user ? transactions.filter(t => t.userId === user.id) : [];
 
     {/* Transactions List */ }
     const renderTransaction = ({ item }: { item: Transaction }) => {
@@ -45,18 +47,15 @@ export default function WalletScreen() {
     };
 
     const handleSubscribe = () => {
-        Alert.alert(
+        showConfirm(
             'Upgrade to Pro',
             'Subscribe for 29.99 DZD/month to unlock exclusive features.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Subscribe',
-                    onPress: () => {
-                        if (user) subscribe(user.uid);
-                    }
-                }
-            ]
+            () => {
+                if (user) subscribe(user.id);
+            },
+            () => { },
+            'Subscribe',
+            'Cancel'
         );
     };
 

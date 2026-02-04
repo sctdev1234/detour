@@ -1,3 +1,4 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import {
     AlertCircle,
@@ -13,7 +14,6 @@ import {
     UserCog
 } from 'lucide-react-native';
 import {
-    Alert,
     Image,
     ScrollView,
     StyleSheet,
@@ -30,27 +30,24 @@ export default function ProfileScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { logout, setRole, user, verificationStatus } = useAuthStore();
+    const { showToast, showConfirm } = useUIStore();
 
     const handleSignOut = async () => {
-        Alert.alert(
+        showConfirm(
             "Sign Out",
             "Are you sure you want to sign out?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Sign Out",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            logout();
-                            router.replace('/(auth)/login');
-                        } catch (error) {
-                            console.error(error);
-                            Alert.alert("Error", "Failed to sign out");
-                        }
-                    }
+            async () => {
+                try {
+                    logout();
+                    router.replace('/(auth)/login');
+                } catch (error) {
+                    console.error(error);
+                    showToast("Failed to sign out", 'error');
                 }
-            ]
+            },
+            () => { }, // cancel
+            "Sign Out",
+            "Cancel"
         );
     };
 
@@ -153,7 +150,7 @@ export default function ProfileScreen() {
                     icon={CreditCard}
                     title="My Wallet"
                     subtitle="Payment methods & history"
-                    onPress={() => Alert.alert('Coming Soon', 'Wallet feature is under development.')}
+                    onPress={() => showToast('Wallet feature is under development', 'info')}
                 />
             </View>
 
@@ -163,12 +160,12 @@ export default function ProfileScreen() {
                     icon={AlertCircle}
                     title="Support & Reclamations"
                     subtitle="Get help with your trips"
-                    onPress={() => Alert.alert('Support', 'Contact support@detour.app')}
+                    onPress={() => showToast('Contact support@detour.app', 'info')}
                 />
                 <MenuItem
                     icon={FileText}
                     title="Terms of Service"
-                    onPress={() => Alert.alert('Terms', 'Terms of Service content goes here.')}
+                    onPress={() => showToast('Terms of Service content goes here', 'info')}
                 />
             </View>
 

@@ -1,9 +1,9 @@
+import { useUIStore } from '@/store/useUIStore';
 import { Stack, useRouter } from 'expo-router';
 import { ArrowLeft, Check, Mail, User } from 'lucide-react-native';
 import { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -22,25 +22,31 @@ export default function EditProfileScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user, updateProfile } = useAuthStore();
+    const { showToast, showConfirm } = useUIStore();
 
     const [displayName, setDisplayName] = useState(user?.fullName || '');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSave = async () => {
         if (!displayName.trim()) {
-            Alert.alert('Error', 'Name cannot be empty');
+            showToast('Name cannot be empty', 'warning');
             return;
         }
 
         setIsLoading(true);
         try {
             await updateProfile({ fullName: displayName.trim() });
-            Alert.alert('Success', 'Profile updated successfully', [
-                { text: 'OK', onPress: () => router.back() }
-            ]);
+            showConfirm(
+                'Success',
+                'Profile updated successfully',
+                () => router.back(),
+                undefined,
+                'OK',
+                ''
+            );
         } catch (error) {
             console.error(error);
-            Alert.alert('Error', 'Failed to update profile');
+            showToast('Failed to update profile', 'error');
         } finally {
             setIsLoading(false);
         }

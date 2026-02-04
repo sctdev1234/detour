@@ -1,3 +1,4 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import {
     AlertCircle,
@@ -12,14 +13,13 @@ import {
     Zap
 } from 'lucide-react-native';
 import {
-    Alert,
     Image,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     useColorScheme,
-    View,
+    View
 } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -29,27 +29,24 @@ export default function DriverProfileScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { logout, setRole, user, verificationStatus } = useAuthStore();
+    const { showConfirm, showToast } = useUIStore();
 
     const handleSignOut = async () => {
-        Alert.alert(
+        showConfirm(
             "Sign Out",
             "Are you sure you want to sign out?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Sign Out",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            logout();
-                            router.replace('/(auth)/login');
-                        } catch (error) {
-                            console.error(error);
-                            Alert.alert("Error", "Failed to sign out");
-                        }
-                    }
+            async () => {
+                try {
+                    logout();
+                    router.replace('/(auth)/login');
+                } catch (error) {
+                    console.error(error);
+                    showToast("Failed to sign out", 'error');
                 }
-            ]
+            },
+            () => { }, // cancel
+            "Sign Out",
+            "Cancel"
         );
     };
 

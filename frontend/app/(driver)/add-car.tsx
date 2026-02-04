@@ -2,18 +2,20 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, ChevronLeft, Plus, Upload, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
 
-import { useAuthStore } from '../../store/useAuthStore'; // Added import
+import { useUIStore } from '@/store/useUIStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function AddCarScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const addCar = useCarStore((state) => state.addCar);
-    const user = useAuthStore((state) => state.user); // Get user
+    const user = useAuthStore((state) => state.user);
+    const { showToast } = useUIStore();
 
     const [form, setForm] = useState({
         marque: '',
@@ -69,12 +71,12 @@ export default function AddCarScreen() {
 
     const handleSave = async () => {
         if (!form.marque || !form.model || !form.year || !form.color) {
-            Alert.alert('Error', 'Please fill in all fields');
+            showToast('Please fill in all fields', 'warning');
             return;
         }
 
         if (!user?.id) {
-            Alert.alert('Error', 'User not identified');
+            showToast('User not identified', 'error');
             return;
         }
 
@@ -116,7 +118,7 @@ export default function AddCarScreen() {
 
             router.back();
         } catch (error: any) {
-            Alert.alert('Error', 'Failed to save car. ' + (error.message || ''));
+            showToast('Failed to save car. ' + (error.message || ''), 'error');
             console.error(error);
         } finally {
             setUploading(false);

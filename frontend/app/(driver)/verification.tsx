@@ -1,9 +1,10 @@
+import { useUIStore } from '@/store/useUIStore';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { AlertCircle, Camera, Check, ChevronLeft, Upload } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -14,6 +15,7 @@ export default function VerificationScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { documents, updateDocuments, setVerificationStatus } = useAuthStore();
+    const { showToast, showConfirm } = useUIStore();
 
     const [permission, requestPermission] = useCameraPermissions();
     const [cameraVisible, setCameraVisible] = useState(false);
@@ -56,11 +58,16 @@ export default function VerificationScreen() {
 
         if (cinFront && cinBack && license && carRegistration && facePhoto) {
             setVerificationStatus('pending');
-            Alert.alert('Success', 'Documents submitted for review!', [
-                { text: 'OK', onPress: () => router.back() }
-            ]);
+            showConfirm(
+                'Success',
+                'Documents submitted for review!',
+                () => router.back(),
+                undefined,
+                'OK',
+                ''
+            );
         } else {
-            Alert.alert('Incomplete', 'Please upload all required documents.');
+            showToast('Please upload all required documents', 'warning');
         }
     };
 

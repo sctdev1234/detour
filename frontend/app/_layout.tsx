@@ -5,7 +5,9 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import 'react-native-reanimated';
 
+import ConfirmationModal from '../components/ConfirmationModal';
 import LocationTracker from '../components/LocationTracker';
+import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -109,6 +111,8 @@ export default function RootLayout() {
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <LocationTracker />
+      <Toast />
+      <ConfirmationModal />
       <StatusBar style="auto" />
     </ThemeProvider>
   );

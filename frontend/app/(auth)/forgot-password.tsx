@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Mail, Send } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -10,13 +11,14 @@ export default function ForgotPasswordScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const forgotPassword = useAuthStore((state) => state.forgotPassword);
+    const { showToast, showConfirm } = useUIStore();
 
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleReset = async () => {
         if (!email) {
-            Alert.alert('Missing Email', 'Please enter your email address.');
+            showToast('Please enter your email address', 'warning');
             return;
         }
 
@@ -24,19 +26,16 @@ export default function ForgotPasswordScreen() {
         try {
             const token = await forgotPassword(email);
             // In a real app, you would tell the user to check their email.
-            // For this dev setup, we might simulate the next step.
-            Alert.alert(
+            // For this dev setup, we simulate the next step.
+            showConfirm(
                 'Check your Email',
                 `We have sent a reset link to ${email}. \n\n(Dev Token: ${token.substring(0, 8)}...)`,
-                [
-                    {
-                        text: 'Enter Reset Code',
-                        onPress: () => router.push({ pathname: '/(auth)/reset-password', params: { token } })
-                    }
-                ]
+                () => router.push({ pathname: '/(auth)/reset-password', params: { token } }),
+                () => { },
+                'Enter Reset Code'
             );
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            showToast(error.message || 'Error occurred', 'error');
         } finally {
             setLoading(false);
         }

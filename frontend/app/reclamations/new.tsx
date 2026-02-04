@@ -1,8 +1,9 @@
+import { useUIStore } from '@/store/useUIStore';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, ChevronLeft, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useReclamationStore } from '../../store/useReclamationStore';
@@ -13,6 +14,7 @@ export default function NewReclamationScreen() {
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
     const { addReclamation } = useReclamationStore();
+    const { showToast, showConfirm } = useUIStore();
 
     const [type, setType] = useState<'accident' | 'behaving' | 'lost_item' | 'other'>('other');
     const [subject, setSubject] = useState('');
@@ -35,7 +37,7 @@ export default function NewReclamationScreen() {
 
     const handleSubmit = async () => {
         if (!subject || !description) {
-            Alert.alert('Error', 'Please fill in subject and description');
+            showToast('Please fill in subject and description', 'warning');
             return;
         }
 
@@ -47,23 +49,28 @@ export default function NewReclamationScreen() {
             if (image) {
                 const id = Math.random().toString(36).substring(7);
                 evidenceUrl = await import('../../services/storageService').then(m =>
-                    m.uploadImage(image, `reclamations/${user.uid}/${id}.jpg`)
+                    m.uploadImage(image, `reclamations/${user.id}/${id}.jpg`)
                 );
             }
 
             addReclamation({
-                reporterId: user.uid,
+                reporterId: user.id,
                 type,
                 subject,
                 description,
                 evidenceUrl,
             });
 
-            Alert.alert('Success', 'Reclamation submitted successfully', [
-                { text: 'OK', onPress: () => router.back() }
-            ]);
+            showConfirm(
+                'Success',
+                'Reclamation submitted successfully',
+                () => router.back(),
+                undefined,
+                'OK',
+                ''
+            );
         } catch (error) {
-            Alert.alert('Error', 'Failed to submit reclamation');
+            showToast('Failed to submit reclamation', 'error');
             console.error(error);
         } finally {
             setUploading(false);

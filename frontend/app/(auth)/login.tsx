@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import { Lock, LogIn, Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -11,13 +12,15 @@ export default function LoginScreen() {
     const theme = Colors[colorScheme];
     const login = useAuthStore((state) => state.login);
 
+    const { showToast } = useUIStore();
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Missing Fields', 'Please fill in all fields.');
+            showToast('Please fill in all fields', 'warning');
             return;
         }
 
@@ -26,7 +29,7 @@ export default function LoginScreen() {
             await login(email, password);
             // Router automatic redirection in _layout will handle the rest
         } catch (error: any) {
-            Alert.alert('Login Failed', error.message);
+            showToast(error.message || 'Login Failed', 'error');
         } finally {
             setLoading(false);
         }

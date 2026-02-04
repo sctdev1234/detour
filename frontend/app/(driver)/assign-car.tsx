@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Percent, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
 
@@ -11,6 +12,7 @@ export default function AssignCarScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { cars, assignCar } = useCarStore();
+    const { showToast, showConfirm } = useUIStore();
 
     const car = cars.find(c => c.id === carId);
 
@@ -27,13 +29,13 @@ export default function AssignCarScreen() {
 
     const handleAssign = () => {
         if (!email || !email.includes('@')) {
-            Alert.alert('Invalid Email', 'Please enter a valid driver email.');
+            showToast('Please enter a valid driver email', 'warning');
             return;
         }
 
         const splitValue = parseFloat(split);
         if (isNaN(splitValue) || splitValue < 0 || splitValue > 100) {
-            Alert.alert('Invalid Split', 'Profit split must be between 0 and 100.');
+            showToast('Profit split must be between 0 and 100', 'warning');
             return;
         }
 
@@ -44,9 +46,14 @@ export default function AssignCarScreen() {
             status: 'active' // In a real app, this might be 'pending' until accepted
         });
 
-        Alert.alert('Success', `Car assigned to ${email} with ${splitValue}% profit split.`, [
-            { text: 'OK', onPress: () => router.back() }
-        ]);
+        showConfirm(
+            'Success',
+            `Car assigned to ${email} with ${splitValue}% profit split.`,
+            () => router.back(),
+            undefined,
+            'OK',
+            ''
+        );
     };
 
     return (

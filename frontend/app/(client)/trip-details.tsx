@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Maximize2, MessageCircle, Phone, Share2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
 import { Colors } from '../../constants/theme';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
@@ -14,6 +14,8 @@ export default function TripDetailsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+
+    const { showToast } = useUIStore();
 
     const request = useClientRequestStore(state => state.requests.find(r => r.id === requestId));
     const driverTrip = useTripStore(state => state.trips.find(t => t.id === request?.driverTripId));
@@ -63,7 +65,7 @@ export default function TripDetailsScreen() {
                 message: `Track my trip on Detour! I'm on my way from ${request?.startPoint ? 'Pickup' : 'Start'} to ${request?.endPoint ? 'Dropoff' : 'End'}. \n\nDriver: Driver Name`,
             });
         } catch (error: any) {
-            Alert.alert(error.message);
+            showToast(error.message, 'error');
         }
     };
 

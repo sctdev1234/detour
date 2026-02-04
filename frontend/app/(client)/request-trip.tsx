@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, ChevronLeft, Clock, DollarSign, Info } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
 import { useTripStore } from '../../store/useTripStore';
@@ -19,6 +20,7 @@ export default function RequestTripScreen() {
     );
 
     const addRequest = useClientRequestStore((state) => state.addRequest);
+    const { showToast, showConfirm } = useUIStore();
 
     const [proposedPrice, setProposedPrice] = useState(driverTrip?.price.toString() || '0');
     const [preferredTime, setPreferredTime] = useState(driverTrip?.timeStart || '08:00');
@@ -35,12 +37,12 @@ export default function RequestTripScreen() {
 
         const price = parseFloat(proposedPrice);
         if (isNaN(price) || price <= 0) {
-            Alert.alert("Invalid Price", "Please enter a valid price greater than 0.");
+            showToast("Please enter a valid price greater than 0", 'warning');
             return;
         }
 
         if (selectedDays.length === 0) {
-            Alert.alert("No Days Selected", "Please select at least one day for the recurring trip.");
+            showToast("Please select at least one day for the recurring trip", 'warning');
             return;
         }
 
@@ -53,9 +55,14 @@ export default function RequestTripScreen() {
             proposedPrice: price,
         });
 
-        Alert.alert('Request Sent', 'Your request has been sent to the driver!', [
-            { text: 'Great!', onPress: () => router.push('/(client)/trips') }
-        ]);
+        showConfirm(
+            'Request Sent',
+            'Your request has been sent to the driver!',
+            () => router.push('/(client)/trips'),
+            undefined,
+            'Great!',
+            ''
+        );
     };
 
     if (!driverTrip) {

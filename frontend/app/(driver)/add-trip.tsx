@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import { Car, Check, ChevronLeft, Clock, MapPin, Route as RouteIcon } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
 import { Colors } from '../../constants/theme';
 import { RouteService } from '../../services/RouteService';
@@ -16,6 +17,8 @@ export default function AddTripScreen() {
     const theme = Colors[colorScheme];
     const addTrip = useTripStore((state) => state.addTrip);
     const cars = useCarStore((state) => state.cars);
+
+    const { showToast } = useUIStore();
 
     const [points, setPoints] = useState<LatLng[]>([]);
     const [timeStart, setTimeStart] = useState('08:00');
@@ -63,15 +66,15 @@ export default function AddTripScreen() {
 
     const handleSave = () => {
         if (points.length < 2) {
-            Alert.alert('Error', 'Please select a Pickup and Dropoff point on the map.');
+            showToast('Please select a Pickup and Dropoff point', 'warning');
             return;
         }
         if (!selectedCarId) {
-            Alert.alert('Error', 'Please select a car for this trip.');
+            showToast('Please select a car for this trip', 'warning');
             return;
         }
         if (selectedDays.length === 0) {
-            Alert.alert('Error', 'Please select at least one day.');
+            showToast('Please select at least one day', 'warning');
             return;
         }
 

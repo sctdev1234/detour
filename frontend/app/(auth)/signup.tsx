@@ -1,7 +1,8 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import { CheckCircle, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -10,6 +11,7 @@ export default function SignupScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const register = useAuthStore((state) => state.register);
+    const { showToast } = useUIStore();
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -19,12 +21,12 @@ export default function SignupScreen() {
 
     const handleSignup = async () => {
         if (!name || !email || !password || !confirmPassword) {
-            Alert.alert('Missing Fields', 'Please fill in all fields.');
+            showToast('Please fill in all fields', 'warning');
             return;
         }
 
         if (password !== confirmPassword) {
-            Alert.alert('Password Mismatch', 'Passwords do not match.');
+            showToast('Passwords do not match', 'error');
             return;
         }
 
@@ -33,7 +35,7 @@ export default function SignupScreen() {
             await register(email, password, name, 'client'); // Default to client
             // Success - will redirect to role selection via _layout
         } catch (error: any) {
-            Alert.alert('Signup Failed', error.message);
+            showToast(error.message || 'Signup Failed', 'error');
         } finally {
             setLoading(false);
         }
