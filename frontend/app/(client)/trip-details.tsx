@@ -7,6 +7,7 @@ import { Colors } from '../../constants/theme';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
 import { useTrackingStore } from '../../store/useTrackingStore';
 import { useTripStore } from '../../store/useTripStore';
+import { useUIStore } from '../../store/useUIStore';
 import { calculateDistance, estimateDuration, formatDuration } from '../../utils/location';
 
 export default function TripDetailsScreen() {
