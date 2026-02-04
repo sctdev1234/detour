@@ -43,6 +43,7 @@ export default function ProfileScreen() {
                     onPress: async () => {
                         try {
                             logout();
+                            router.replace('/(auth)/login');
                         } catch (error) {
                             console.error(error);
                             Alert.alert("Error", "Failed to sign out");
