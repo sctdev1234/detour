@@ -149,6 +149,30 @@ export default function LoginScreen() {
                         <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
                     </TouchableOpacity>
                 </View>
+
+                <View style={styles.footer}>
+                    <Text style={{ color: theme.icon }}>Temporary Development Users</Text>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                            onPress={() => {
+                                setEmail('client@gmail.com')
+                                setPassword('12345678')
+                            }}
+                        >
+                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Client</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                            onPress={() => {
+                                setEmail('driver@gmail.com')
+                                setPassword('12345678')
+                            }}
+                        >
+                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Driver</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </View>
         </KeyboardAvoidingView>
     );
