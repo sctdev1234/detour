@@ -169,13 +169,13 @@ export default function ClientTripsScreen() {
             {/* Custom Tabs */}
             <View style={[styles.tabContainer, { backgroundColor: theme.surface }]}>
                 <TouchableOpacity
-                    style={[styles.tab, activeTab === 'current' && { backgroundColor: theme.background, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}
+                    style={[styles.tab, activeTab === 'current' && { backgroundColor: theme.background, boxShadow: '0px 2px 4px rgba(0,0,0,0.1)', elevation: 3 }]}
                     onPress={() => setActiveTab('current')}
                 >
                     <Text style={[styles.tabText, { color: activeTab === 'current' ? theme.text : theme.icon }]}>Active & Pending</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.tab, activeTab === 'history' && { backgroundColor: theme.background, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}
+                    style={[styles.tab, activeTab === 'history' && { backgroundColor: theme.background, boxShadow: '0px 2px 4px rgba(0,0,0,0.1)', elevation: 3 }]}
                     onPress={() => setActiveTab('history')}
                 >
                     <Text style={[styles.tabText, { color: activeTab === 'history' ? theme.text : theme.icon }]}>History</Text>

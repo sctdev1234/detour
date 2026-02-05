@@ -141,10 +141,7 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 20,
         elevation: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 1,
+        boxShadow: '0px 1px 1px rgba(0,0,0,0.1)',
     },
     myBubble: {
         borderBottomRightRadius: 4,

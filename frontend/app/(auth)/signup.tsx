@@ -188,10 +188,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
         elevation: 6,
     },
     signupButtonText: {

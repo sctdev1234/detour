@@ -237,10 +237,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 16,
         marginBottom: 32,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        boxShadow: '0px 4px 8px rgba(0,0,0,0.15)',
         elevation: 5,
     },
     notifIcon: {

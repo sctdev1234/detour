@@ -107,6 +107,30 @@ export default function LoginScreen() {
                         <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
                     </TouchableOpacity>
                 </View>
+
+                <View style={styles.footer}>
+                    <Text style={{ color: theme.icon }}>Temporary Development Users</Text>
+                    <div className="flex flex-row gap-4">
+                        <button
+                            className="flex flex-row items-center gap-2"
+                            onClick={() => {
+                                setEmail('client@gmail.com')
+                                setPassword('12345678')
+                            }}
+                        >
+                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Client</Text>
+                        </button>
+                        <button
+                            className="flex flex-row items-center gap-2"
+                            onClick={() => {
+                                setEmail('driver@gmail.com')
+                                setPassword('12345678')
+                            }}
+                        >
+                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Driver</Text>
+                        </button>
+                    </div>
+                </View>
             </View>
         </KeyboardAvoidingView>
     );
@@ -168,13 +192,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         marginTop: 8,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 12, // softer shadow
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
         elevation: 6,
     },
     loginButtonText: {

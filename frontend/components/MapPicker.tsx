@@ -1,4 +1,4 @@
-import { Navigation, Trash2 } from 'lucide-react-native';
+import { Car, Navigation, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -179,10 +179,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        boxShadow: '0px 2px 3.84px rgba(0,0,0,0.25)',
     },
     infoBox: {
         paddingVertical: 10,
@@ -190,10 +187,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         borderWidth: 1,
         elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        boxShadow: '0px 2px 3.84px rgba(0,0,0,0.25)',
     },
     infoText: {
         fontWeight: '700',
@@ -208,9 +202,6 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#fff',
         elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        boxShadow: '0px 2px 3.84px rgba(0,0,0,0.25)',
     }
 });

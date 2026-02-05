@@ -443,11 +443,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         marginTop: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
         elevation: 4,
+        boxShadow: '0px 4px 8px rgba(0,0,0,0.2)',
     },
     saveButtonText: {
         color: '#fff',
