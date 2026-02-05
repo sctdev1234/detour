@@ -59,6 +59,7 @@ app.use('/api/cars', require('./routes/cars'));
 app.use('/api/tracking', require('./routes/tracking'));
 // app.use('/api/upload', require('./routes/upload')); // Logic moved to client (Base64)
 // app.use('/api/trips', require('./routes/trips')); // To be implemented
+app.use('/api/admin', require('./routes/admin'));
 
 // Base route
 app.get('/', (req, res) => {
