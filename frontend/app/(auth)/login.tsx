@@ -110,26 +110,26 @@ export default function LoginScreen() {
 
                 <View style={styles.footer}>
                     <Text style={{ color: theme.icon }}>Temporary Development Users</Text>
-                    <div className="flex flex-row gap-4">
-                        <button
-                            className="flex flex-row items-center gap-2"
-                            onClick={() => {
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                            onPress={() => {
                                 setEmail('client@gmail.com')
                                 setPassword('12345678')
                             }}
                         >
                             <Text style={{ color: theme.primary, fontWeight: '700' }}>Client</Text>
-                        </button>
-                        <button
-                            className="flex flex-row items-center gap-2"
-                            onClick={() => {
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                            onPress={() => {
                                 setEmail('driver@gmail.com')
                                 setPassword('12345678')
                             }}
                         >
                             <Text style={{ color: theme.primary, fontWeight: '700' }}>Driver</Text>
-                        </button>
-                    </div>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </KeyboardAvoidingView>
