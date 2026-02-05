@@ -20,7 +20,6 @@ export default function DriverLayout() {
                     paddingBottom: Platform.OS === 'ios' ? 25 : 8,
                     paddingTop: 8,
                     height: Platform.OS === 'ios' ? 85 : 70,
-                    shadowColor: 'transparent',
                     elevation: 0,
                 },
                 tabBarIndicatorStyle: {

@@ -20,7 +20,6 @@ export default function ClientLayout() {
                     paddingBottom: Platform.OS === 'ios' ? 25 : 8,
                     paddingTop: 8,
                     height: Platform.OS === 'ios' ? 85 : 70, // Increased height for better touch area
-                    shadowColor: 'transparent', // Remove shadow to match previous look
                     elevation: 0,
                 },
                 tabBarIndicatorStyle: {

@@ -242,4 +242,21 @@ router.get('/me', auth, async (req, res) => {
     }
 });
 
+// @route   DELETE api/auth/delete
+// @desc    Delete user account
+router.delete('/delete', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+
+        await User.findByIdAndDelete(req.user.id);
+        res.json({ msg: 'User deleted' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
 module.exports = router;

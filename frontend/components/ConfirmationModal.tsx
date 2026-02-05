@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useUIStore } from '../store/useUIStore';
 
@@ -12,7 +12,10 @@ export default function ConfirmationModal() {
         onCancelConfig,
         confirmText,
         cancelText,
-        hideConfirm
+        hideConfirm,
+        validationText,
+        confirmInput,
+        setConfirmInput
     } = useUIStore();
 
     const colorScheme = useColorScheme() ?? 'light';
@@ -28,6 +31,8 @@ export default function ConfirmationModal() {
         hideConfirm();
     };
 
+    const isConfirmDisabled = validationText ? confirmInput !== validationText : false;
+
     return (
         <Modal
             animationType="fade"
@@ -41,6 +46,22 @@ export default function ConfirmationModal() {
                     <Text style={[styles.title, { color: theme.text }]}>{confirmTitle}</Text>
                     <Text style={[styles.message, { color: theme.icon }]}>{confirmMessage}</Text>
 
+                    {validationText && (
+                        <View style={styles.inputContainer}>
+                            <Text style={[styles.label, { color: theme.icon }]}>
+                                Type <Text style={{ fontWeight: '700', color: theme.text }}>{validationText}</Text> to confirm
+                            </Text>
+                            <TextInput
+                                style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
+                                placeholder={validationText}
+                                placeholderTextColor={theme.icon}
+                                value={confirmInput}
+                                onChangeText={setConfirmInput}
+                                autoCapitalize="none"
+                            />
+                        </View>
+                    )}
+
                     <View style={styles.actions}>
                         <TouchableOpacity
                             style={[styles.button, styles.cancelButton, { borderColor: theme.border }]}
@@ -50,7 +71,13 @@ export default function ConfirmationModal() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.button, styles.confirmButton, { backgroundColor: theme.primary }]}
+                            style={[
+                                styles.button,
+                                styles.confirmButton,
+                                { backgroundColor: isConfirmDisabled ? theme.border : theme.primary },
+                                { opacity: isConfirmDisabled ? 0.5 : 1 }
+                            ]}
+                            disabled={isConfirmDisabled}
                             onPress={handleConfirm}
                         >
                             <Text style={[styles.buttonText, { color: '#fff', fontWeight: '700' }]}>{confirmText}</Text>
@@ -111,5 +138,21 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         fontSize: 16,
+    },
+    inputContainer: {
+        marginBottom: 24,
+        gap: 8,
+    },
+    label: {
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    input: {
+        height: 48,
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        fontSize: 16,
+        textAlign: 'center',
     }
 });

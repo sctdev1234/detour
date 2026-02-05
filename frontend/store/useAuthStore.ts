@@ -33,6 +33,7 @@ interface AuthState {
     resetPassword: (token: string, newPassword: string) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
+    deleteAccount: () => Promise<void>;
     setVerificationStatus: (status: 'pending' | 'verified' | 'rejected' | 'unverified') => void;
     updateDocuments: (docs: Partial<AuthState['documents']>) => void;
     updateProfile: (data: Partial<User>) => Promise<void>;
@@ -221,6 +222,26 @@ export const useAuthStore = create<AuthState>()(
                     // Force logout on error to clear stale state during dev
                     get().logout();
                     set({ isLoading: false });
+                }
+            },
+
+            deleteAccount: async () => {
+                set({ isLoading: true });
+                try {
+                    const res = await fetch(`${API_URL}/auth/delete`, {
+                        method: 'DELETE',
+                        headers: {
+                            'x-auth-token': get().token || '',
+                        }
+                    });
+
+                    if (!res.ok) throw new Error('Failed to delete account');
+
+                    // Logout after successful deletion
+                    get().logout();
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
                 }
             },
 

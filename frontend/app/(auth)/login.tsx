@@ -150,29 +150,6 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.footer}>
-                    <Text style={{ color: theme.icon }}>Temporary Development Users</Text>
-                    <View style={{ flexDirection: 'row', gap: 16 }}>
-                        <TouchableOpacity
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                            onPress={() => {
-                                setEmail('client@gmail.com')
-                                setPassword('12345678')
-                            }}
-                        >
-                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Client</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                            onPress={() => {
-                                setEmail('driver@gmail.com')
-                                setPassword('12345678')
-                            }}
-                        >
-                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Driver</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
             </View>
         </KeyboardAvoidingView>
     );
@@ -198,10 +175,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
         elevation: 5,
         boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
     },
@@ -253,13 +226,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         marginTop: 8,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
         elevation: 6,
         boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
     },

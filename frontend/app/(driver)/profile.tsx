@@ -8,6 +8,7 @@ import {
     LogOut,
     ShieldCheck,
     Star,
+    Trash2,
     User,
     UserCog,
     Zap
@@ -28,7 +29,7 @@ export default function DriverProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { logout, setRole, user, verificationStatus } = useAuthStore();
+    const { logout, setRole, user, deleteAccount } = useAuthStore();
     const { showConfirm, showToast } = useUIStore();
 
     const handleSignOut = async () => {
@@ -47,6 +48,29 @@ export default function DriverProfileScreen() {
             () => { }, // cancel
             "Sign Out",
             "Cancel"
+        );
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!user?.email) return;
+
+        showConfirm(
+            "Delete Account",
+            "This action cannot be undone. Please type your email to confirm.",
+            async () => {
+                try {
+                    await deleteAccount();
+                    router.replace('/(auth)/login');
+                    showToast("Account deleted successfully", 'success');
+                } catch (error: any) {
+                    console.error(error);
+                    showToast(error.message || "Failed to delete account", 'error');
+                }
+            },
+            () => { }, // cancel
+            "Delete Account",
+            "Cancel",
+            user.email // validation text
         );
     };
 
@@ -172,6 +196,13 @@ export default function DriverProfileScreen() {
                     title="Sign Out"
                     destructive
                     onPress={handleSignOut}
+                    showChevron={false}
+                />
+                <MenuItem
+                    icon={Trash2}
+                    title="Delete Account"
+                    destructive
+                    onPress={handleDeleteAccount}
                     showChevron={false}
                 />
             </View>
