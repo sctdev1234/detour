@@ -1,6 +1,6 @@
 import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
-import { Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
+import { Eye, EyeOff, Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
@@ -16,6 +16,7 @@ export default function LoginScreen() {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
@@ -80,8 +81,15 @@ export default function LoginScreen() {
                                 placeholderTextColor={theme.icon}
                                 value={password}
                                 onChangeText={setPassword}
-                                secureTextEntry
+                                secureTextEntry={!showPassword}
                             />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                {showPassword ? (
+                                    <EyeOff size={20} color={theme.icon} />
+                                ) : (
+                                    <Eye size={20} color={theme.icon} />
+                                )}
+                            </TouchableOpacity>
                         </View>
                     </View>
 

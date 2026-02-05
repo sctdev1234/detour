@@ -1,6 +1,6 @@
 import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
-import { CheckCircle, Lock, Mail, User } from 'lucide-react-native';
+import { Car, CheckCircle, Eye, EyeOff, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
@@ -16,7 +16,10 @@ export default function SignupScreen() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [role, setRole] = useState<'client' | 'driver'>('client');
     const [loading, setLoading] = useState(false);
 
     const handleSignup = async () => {
@@ -32,7 +35,7 @@ export default function SignupScreen() {
 
         setLoading(true);
         try {
-            await register(email, password, name, 'client'); // Default to client
+            await register(email, password, name, role);
             // Success - will redirect to role selection via _layout
         } catch (error: any) {
             showToast(error.message || 'Signup Failed', 'error');
@@ -50,6 +53,38 @@ export default function SignupScreen() {
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: theme.text }]}>Start Your Journey</Text>
                     <Text style={[styles.subtitle, { color: theme.icon }]}>Create your account today</Text>
+                </View>
+
+                <View style={styles.roleContainer}>
+                    <TouchableOpacity
+                        style={[
+                            styles.roleButton,
+                            role === 'client' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                            { borderColor: theme.border, backgroundColor: theme.surface }
+                        ]}
+                        onPress={() => setRole('client')}
+                    >
+                        <User size={24} color={role === 'client' ? '#fff' : theme.icon} />
+                        <Text style={[
+                            styles.roleText,
+                            { color: role === 'client' ? '#fff' : theme.text }
+                        ]}>Passenger</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[
+                            styles.roleButton,
+                            role === 'driver' && { backgroundColor: theme.primary, borderColor: theme.primary },
+                            { borderColor: theme.border, backgroundColor: theme.surface }
+                        ]}
+                        onPress={() => setRole('driver')}
+                    >
+                        <Car size={24} color={role === 'driver' ? '#fff' : theme.icon} />
+                        <Text style={[
+                            styles.roleText,
+                            { color: role === 'driver' ? '#fff' : theme.text }
+                        ]}>Driver</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.form}>
@@ -93,8 +128,15 @@ export default function SignupScreen() {
                                 placeholderTextColor={theme.icon}
                                 value={password}
                                 onChangeText={setPassword}
-                                secureTextEntry
+                                secureTextEntry={!showPassword}
                             />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                {showPassword ? (
+                                    <EyeOff size={20} color={theme.icon} />
+                                ) : (
+                                    <Eye size={20} color={theme.icon} />
+                                )}
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -108,8 +150,15 @@ export default function SignupScreen() {
                                 placeholderTextColor={theme.icon}
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
-                                secureTextEntry
+                                secureTextEntry={!showConfirmPassword}
                             />
+                            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                {showConfirmPassword ? (
+                                    <EyeOff size={20} color={theme.icon} />
+                                ) : (
+                                    <Eye size={20} color={theme.icon} />
+                                )}
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -156,6 +205,25 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 16,
+    },
+    roleContainer: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 24,
+    },
+    roleButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    roleText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
     form: {
         gap: 16,
