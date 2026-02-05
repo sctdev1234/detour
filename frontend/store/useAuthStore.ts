@@ -11,6 +11,7 @@ interface User {
     fullName: string;
     role: Role;
     verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
+    photoURL?: string;
 }
 
 interface AuthState {

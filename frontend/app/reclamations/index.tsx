@@ -13,7 +13,7 @@ export default function ReclamationsListScreen() {
     const { user } = useAuthStore();
     const { getReclamationsByReporter } = useReclamationStore();
 
-    const myReclamations = user ? getReclamationsByReporter(user.uid) : [];
+    const myReclamations = user ? getReclamationsByReporter(user.id) : [];
 
     const renderItem = ({ item }: { item: Reclamation }) => {
         const getStatusColor = (status: string) => {

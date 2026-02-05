@@ -46,7 +46,7 @@ export default function ClientTripsScreen() {
         if (selectedRequest && user) {
             addRating({
                 tripId: selectedRequest.id,
-                raterId: user.uid,
+                raterId: user.id,
                 targetId: selectedRequest.driverTripId || 'demo_driver',
                 rating,
                 comment,

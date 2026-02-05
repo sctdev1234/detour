@@ -36,7 +36,7 @@ export default function ClientDashboard() {
     const { cars } = useCarStore();
 
     const getAverageRating = useRatingStore((state) => state.getAverageRating);
-    const avgRating = getAverageRating(user?.uid || '');
+    const avgRating = getAverageRating(user?.id || '');
 
     const [greeting, setGreeting] = useState('Hello');
 

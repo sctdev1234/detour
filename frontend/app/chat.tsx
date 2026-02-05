@@ -21,13 +21,13 @@ export default function ChatScreen() {
 
     const handleSend = () => {
         if (inputText.trim() && user) {
-            addMessage(requestId, user.uid, inputText.trim());
+            addMessage(requestId, user.id, inputText.trim());
             setInputText('');
         }
     };
 
     const renderMessage = ({ item }: { item: Message }) => {
-        const isMe = item.senderId === user?.uid;
+        const isMe = item.senderId === user?.id;
 
         return (
             <View style={[

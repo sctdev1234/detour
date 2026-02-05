@@ -19,7 +19,7 @@ export default function DriverDashboard() {
         state.requests.filter(r => r.status === 'pending').length
     );
     const getAverageRating = useRatingStore((state) => state.getAverageRating);
-    const avgRating = getAverageRating(user?.uid || '');
+    const avgRating = getAverageRating(user?.id || '');
 
     const stats = [
         { label: 'Weekly Profit', value: '$450.00', icon: DollarSign, color: '#4CD964' },
@@ -34,7 +34,7 @@ export default function DriverDashboard() {
                 <View style={styles.headerContent}>
                     <View>
                         <Text style={[styles.welcomeText, { color: theme.icon }]}>Good Morning,</Text>
-                        <Text style={[styles.nameText, { color: theme.text }]}>{user?.displayName || 'Driver'}</Text>
+                        <Text style={[styles.nameText, { color: theme.text }]}>{user?.fullName || 'Driver'}</Text>
                         {avgRating > 0 && (
                             <View style={styles.ratingBadge}>
                                 <Star size={14} color="#FFCC00" fill="#FFCC00" />

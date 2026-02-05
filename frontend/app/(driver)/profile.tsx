@@ -69,7 +69,14 @@ export default function DriverProfileScreen() {
         </View>
     );
 
-    const MenuItem = ({ icon: Icon, title, subtitle, onPress, destructive = false, showChevron = true }) => (
+    const MenuItem = ({ icon: Icon, title, subtitle, onPress, destructive = false, showChevron = true }: {
+        icon: any;
+        title: string;
+        subtitle?: string;
+        onPress: () => void;
+        destructive?: boolean;
+        showChevron?: boolean;
+    }) => (
         <TouchableOpacity
             style={[styles.menuItem, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={onPress}
@@ -107,7 +114,7 @@ export default function DriverProfileScreen() {
                 </View>
 
                 <Text style={[styles.userName, { color: theme.text }]}>
-                    {user?.displayName || 'Driver'}
+                    {user?.fullName || 'Driver'}
                 </Text>
                 <Text style={[styles.userEmail, { color: theme.icon }]}>
                     {user?.email || 'driver@detour.com'}

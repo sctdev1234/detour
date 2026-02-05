@@ -81,7 +81,14 @@ export default function ProfileScreen() {
         </View>
     );
 
-    const MenuItem = ({ icon: Icon, title, subtitle, onPress, destructive = false, showChevron = true }) => (
+    const MenuItem = ({ icon: Icon, title, subtitle, onPress, destructive = false, showChevron = true }: {
+        icon: any;
+        title: string;
+        subtitle?: string;
+        onPress: () => void;
+        destructive?: boolean;
+        showChevron?: boolean;
+    }) => (
         <TouchableOpacity
             style={[styles.menuItem, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={onPress}

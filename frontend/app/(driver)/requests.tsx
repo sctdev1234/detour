@@ -14,7 +14,7 @@ export default function DriverRequestsScreen() {
 
     // In a real app, filter requests for THIS driver's trips
     // For manual testing, we might need to handle the filtering logic carefully
-    const driverTrips = useTripStore(state => state.trips.filter(t => t.driverId === user?.uid));
+    const driverTrips = useTripStore(state => state.trips.filter(t => t.driverId === user?.id));
     const requests = useClientRequestStore((state) => state.requests);
     const updateRequestStatus = useClientRequestStore((state) => state.updateRequestStatus);
 
