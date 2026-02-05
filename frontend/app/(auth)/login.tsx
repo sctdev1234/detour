@@ -1,8 +1,8 @@
 import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
-import { Lock, LogIn, Mail } from 'lucide-react-native';
+import { Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -42,12 +42,19 @@ export default function LoginScreen() {
         >
             <View style={styles.contentContainer}>
                 <View style={styles.header}>
+                    <View style={[styles.logoContainer, { backgroundColor: theme.surface }]}>
+                        <Image
+                            source={require('../../assets/images/logo.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
+                    </View>
                     <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
-                    <Text style={[styles.subtitle, { color: theme.icon }]}>Sign in to your account</Text>
+                    <Text style={[styles.subtitle, { color: theme.icon }]}>Sign in to continue to Detour</Text>
                 </View>
 
                 <View style={styles.form}>
-                    <View style={[styles.inputGroup]}>
+                    <View style={styles.inputGroup}>
                         <Text style={[styles.label, { color: theme.text }]}>Email</Text>
                         <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                             <Mail size={20} color={theme.icon} />
@@ -63,7 +70,7 @@ export default function LoginScreen() {
                         </View>
                     </View>
 
-                    <View style={[styles.inputGroup]}>
+                    <View style={styles.inputGroup}>
                         <Text style={[styles.label, { color: theme.text }]}>Password</Text>
                         <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                             <Lock size={20} color={theme.icon} />
@@ -101,35 +108,38 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                 </View>
 
+                <View style={[styles.quickLoginContainer, { borderTopColor: theme.border }]}>
+                    <Text style={[styles.quickLoginTitle, { color: theme.icon }]}>Quick Login (Dev)</Text>
+                    <View style={styles.quickLoginRow}>
+                        <TouchableOpacity
+                            style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                            onPress={() => {
+                                setEmail('client@gmail.com');
+                                setPassword('12345678');
+                            }}
+                        >
+                            <User size={16} color={theme.primary} />
+                            <Text style={[styles.quickLoginText, { color: theme.primary }]}>Client</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                            onPress={() => {
+                                setEmail('driver@gmail.com');
+                                setPassword('12345678');
+                            }}
+                        >
+                            <ShieldCheck size={16} color={theme.secondary} />
+                            <Text style={[styles.quickLoginText, { color: theme.secondary }]}>Driver</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 <View style={styles.footer}>
                     <Text style={{ color: theme.icon }}>Don't have an account? </Text>
                     <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
                         <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
                     </TouchableOpacity>
-                </View>
-
-                <View style={styles.footer}>
-                    <Text style={{ color: theme.icon }}>Temporary Development Users</Text>
-                    <div className="flex flex-row gap-4">
-                        <button
-                            className="flex flex-row items-center gap-2"
-                            onClick={() => {
-                                setEmail('client@gmail.com')
-                                setPassword('12345678')
-                            }}
-                        >
-                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Client</Text>
-                        </button>
-                        <button
-                            className="flex flex-row items-center gap-2"
-                            onClick={() => {
-                                setEmail('driver@gmail.com')
-                                setPassword('12345678')
-                            }}
-                        >
-                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Driver</Text>
-                        </button>
-                    </div>
                 </View>
             </View>
         </KeyboardAvoidingView>
@@ -147,9 +157,28 @@ const styles = StyleSheet.create({
     },
     header: {
         marginBottom: 32,
+        alignItems: 'center',
+    },
+    logoContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 5,
+        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+    },
+    logo: {
+        width: 48,
+        height: 48,
     },
     title: {
-        fontSize: 32,
+        fontSize: 28,
         fontWeight: '800',
         marginBottom: 8,
     },
@@ -192,8 +221,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         marginTop: 8,
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
         elevation: 6,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
     },
     loginButtonText: {
         color: '#fff',
@@ -204,5 +240,35 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         marginTop: 32,
+    },
+    quickLoginContainer: {
+        marginTop: 40,
+        borderTopWidth: 1,
+        paddingTop: 24,
+        alignItems: 'center',
+        gap: 16,
+    },
+    quickLoginTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    quickLoginRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    quickLoginChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    quickLoginText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
