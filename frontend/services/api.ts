@@ -14,7 +14,19 @@ const api = axios.create({
 // Add a request interceptor to add the auth token
 api.interceptors.request.use(
     async (config) => {
-        const token = await AsyncStorage.getItem('token');
+        // useAuthStore persists state to 'auth-storage' wrapping it in { state: { ... } }
+        const storageData = await AsyncStorage.getItem('auth-storage');
+        let token = null;
+
+        if (storageData) {
+            try {
+                const parsed = JSON.parse(storageData);
+                token = parsed.state?.token;
+            } catch (e) {
+                console.error('[API] Failed to parse auth-storage', e);
+            }
+        }
+
         if (token) {
             config.headers['x-auth-token'] = token;
         }

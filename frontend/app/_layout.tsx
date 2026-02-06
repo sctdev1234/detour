@@ -61,6 +61,9 @@ export default function RootLayout() {
     const isLoginScreen = segmentsArray.length > 1 && segmentsArray[1] === 'login';
     const isSignupScreen = segmentsArray.length > 1 && segmentsArray[1] === 'signup';
 
+    // List of routes that are accessible to authenticated users regardless of role
+    const sharedRoutes = ['change-password', 'edit-profile', 'chat', 'modal'];
+
     if (!user) {
       if (!inAuthGroup || (!isLoginScreen && !isSignupScreen)) {
         router.replace('/(auth)/login');
@@ -69,13 +72,17 @@ export default function RootLayout() {
       if (segmentsArray.length > 1 && segmentsArray[1] !== 'role-selection') {
         router.replace('/(auth)/role-selection');
       }
-    } else if (role === 'driver') {
-      if (segmentsArray[0] !== '(driver)') {
-        router.replace('/(driver)');
-      }
-    } else if (role === 'client') {
-      if (segmentsArray[0] !== '(client)') {
-        router.replace('/(client)');
+    } else {
+      // If user has a role, ensure they are in their role group OR a shared route
+      const currentGroup = segmentsArray[0];
+      const isSharedRoute = sharedRoutes.includes(currentGroup);
+
+      if (!isSharedRoute) {
+        if (role === 'driver' && currentGroup !== '(driver)') {
+          router.replace('/(driver)');
+        } else if (role === 'client' && currentGroup !== '(client)') {
+          router.replace('/(client)');
+        }
       }
     }
   }, [user, role, segments, isLoading, router]);
@@ -112,6 +119,8 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(driver)" options={{ headerShown: false }} />
           <Stack.Screen name="(client)" options={{ headerShown: false }} />
+          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+          <Stack.Screen name="change-password" options={{ headerShown: false }} />
           <Stack.Screen name="chat" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>

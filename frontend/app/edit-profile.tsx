@@ -1,9 +1,11 @@
 import { useUIStore } from '@/store/useUIStore';
+import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Check, Mail, User } from 'lucide-react-native';
+import { ArrowLeft, Camera, Check, ChevronRight, Lock, Mail, User } from 'lucide-react-native';
 import { useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -14,18 +16,53 @@ import {
     useColorScheme,
     View
 } from 'react-native';
-import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore';
+import { Colors } from '../constants/theme';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function EditProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user, updateProfile } = useAuthStore();
+    const { user, updateProfile, uploadProfileImage } = useAuthStore();
     const { showToast, showConfirm } = useUIStore();
 
     const [displayName, setDisplayName] = useState(user?.fullName || '');
     const [isLoading, setIsLoading] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+
+    const pickImage = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.5,
+            });
+
+            if (!result.canceled) {
+                setUploadingImage(true);
+                const asset = result.assets[0];
+
+                // Create FormData
+                const formData = new FormData();
+                formData.append('image', {
+                    uri: asset.uri,
+                    name: asset.fileName || 'profile.jpg',
+                    type: asset.mimeType || 'image/jpeg',
+                } as any);
+
+                const url = await uploadProfileImage(formData);
+                await updateProfile({ photoURL: url });
+
+                showToast('Profile photo updated', 'success');
+            }
+        } catch (error: any) {
+            console.error('Image upload failed:', error);
+            showToast(error.message || 'Failed to upload image', 'error');
+        } finally {
+            setUploadingImage(false);
+        }
+    };
 
     const handleSave = async () => {
         if (!displayName.trim()) {
@@ -70,6 +107,26 @@ export default function EditProfileScreen() {
                 style={{ flex: 1 }}
             >
                 <ScrollView contentContainerStyle={styles.content}>
+                    {/* Image Upload */}
+                    <View style={styles.avatarSection}>
+                        <TouchableOpacity onPress={pickImage} style={[styles.avatarContainer, { borderColor: theme.border }]}>
+                            {user?.photoURL ? (
+                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                            ) : (
+                                <User size={40} color={theme.icon} />
+                            )}
+                            {uploadingImage && (
+                                <View style={styles.loadingOverlay}>
+                                    <ActivityIndicator color="#fff" />
+                                </View>
+                            )}
+                            <View style={[styles.cameraBadge, { backgroundColor: theme.primary, borderColor: theme.background }]}>
+                                <Camera size={14} color="#fff" />
+                            </View>
+                        </TouchableOpacity>
+                        <Text style={[styles.changePhotoText, { color: theme.primary }]}>Change Photo</Text>
+                    </View>
+
                     <View style={styles.formGroup}>
                         <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
                         <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -94,10 +151,19 @@ export default function EditProfileScreen() {
                                 editable={false}
                             />
                         </View>
-                        <Text style={{ fontSize: 12, color: theme.icon, marginTop: 8, marginLeft: 4 }}>
-                            Email cannot be changed directly. Contact support for assistance.
-                        </Text>
                     </View>
+
+                    {/* Change Password Link */}
+                    <TouchableOpacity
+                        style={[styles.passwordLink, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => router.push('/change-password')}
+                    >
+                        <View style={styles.passwordLinkContent}>
+                            <Lock size={20} color={theme.text} />
+                            <Text style={[styles.passwordLinkText, { color: theme.text }]}>Change Password</Text>
+                        </View>
+                        <ChevronRight size={20} color={theme.icon} />
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={[styles.saveButton, { backgroundColor: theme.primary }]}
@@ -148,6 +214,46 @@ const styles = StyleSheet.create({
         padding: 24,
         paddingTop: 10,
     },
+    avatarSection: {
+        alignItems: 'center',
+        marginBottom: 32,
+    },
+    avatarContainer: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+        marginBottom: 12,
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cameraBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+    },
+    changePhotoText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
     formGroup: {
         marginBottom: 28,
     },
@@ -188,6 +294,24 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+    },
+    passwordLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginBottom: 12,
+    },
+    passwordLinkContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    passwordLinkText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 

@@ -122,6 +122,23 @@ class AuthController {
         }
     }
 
+    async changePassword(req, res) {
+        const { oldPassword, newPassword } = req.body;
+        try {
+            if (!oldPassword || !newPassword) {
+                return res.status(400).json({ msg: 'Please provide both old and new passwords' });
+            }
+            await authService.changePassword(req.user.id, { oldPassword, newPassword });
+            res.json({ msg: 'Password updated successfully' });
+        } catch (err) {
+            console.error(err.message);
+            if (err.message === 'Invalid current password') {
+                return res.status(400).json({ msg: err.message });
+            }
+            res.status(500).send('Server Error');
+        }
+    }
+
     async getMe(req, res) {
         try {
             const user = await User.findById(req.user.id).select('-password');

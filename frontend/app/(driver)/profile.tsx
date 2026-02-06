@@ -5,6 +5,7 @@ import {
     Car,
     ChevronRight,
     CreditCard,
+    Lock,
     LogOut,
     ShieldCheck,
     Star,
@@ -131,7 +132,7 @@ export default function DriverProfileScreen() {
                     </View>
                     <TouchableOpacity
                         style={[styles.editBadge, { backgroundColor: theme.primary, borderColor: theme.background }]}
-                        onPress={() => router.push('/(client)/edit-profile')}
+                        onPress={() => router.push('/edit-profile')}
                     >
                         <UserCog size={14} color="#fff" />
                     </TouchableOpacity>
@@ -164,6 +165,18 @@ export default function DriverProfileScreen() {
                     title="My Garage"
                     subtitle="Manage vehicles"
                     onPress={() => router.push('/(driver)/cars')}
+                />
+                <MenuItem
+                    icon={User}
+                    title="Edit Profile"
+                    subtitle="Update details & Photo"
+                    onPress={() => router.push('/edit-profile')}
+                />
+                <MenuItem
+                    icon={Lock}
+                    title="Change Password"
+                    subtitle="Update security"
+                    onPress={() => router.push('/change-password')}
                 />
                 <MenuItem
                     icon={CreditCard}

@@ -34,4 +34,8 @@ router.get('/me', auth, (req, res) => authController.getMe(req, res));
 // @desc    Delete user account
 router.delete('/delete', auth, (req, res) => authController.delete(req, res));
 
+// @route   POST api/auth/change-password
+// @desc    Change user password
+router.post('/change-password', auth, (req, res) => authController.changePassword(req, res));
+
 module.exports = router;

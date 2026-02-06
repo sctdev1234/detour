@@ -7,6 +7,7 @@ import {
     Clock,
     CreditCard,
     FileText,
+    Lock,
     LogOut,
     ShieldCheck,
     Star,
@@ -143,7 +144,7 @@ export default function ProfileScreen() {
                     </View>
                     <TouchableOpacity
                         style={[styles.editBadge, { backgroundColor: theme.primary, borderColor: theme.background }]}
-                        onPress={() => router.push('/(client)/edit-profile')}
+                        onPress={() => router.push('/edit-profile')}
                     >
                         <UserCog size={14} color="#fff" />
                     </TouchableOpacity>
@@ -174,8 +175,16 @@ export default function ProfileScreen() {
                 <MenuItem
                     icon={User}
                     title="Edit Profile"
+                    icon={User}
+                    title="Edit Profile"
                     subtitle="Personal details"
-                    onPress={() => router.push('/(client)/edit-profile')}
+                    onPress={() => router.push('/edit-profile')}
+                />
+                <MenuItem
+                    icon={Lock}
+                    title="Change Password"
+                    subtitle="Update your security"
+                    onPress={() => router.push('/change-password')}
                 />
                 <MenuItem
                     icon={CreditCard}

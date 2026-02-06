@@ -65,6 +65,15 @@ app.use('/api/tracking', require('./routes/tracking'));
 // app.use('/api/upload', require('./routes/upload')); // Logic moved to client (Base64)
 // app.use('/api/trips', require('./routes/trips')); // To be implemented
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/upload', require('./routes/upload'));
+
+// Serve Uploads Static Folder
+const fs = require('fs');
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Error Handling Middleware
 const { errorHandler } = require('./middleware/errorMiddleware');

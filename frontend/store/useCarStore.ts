@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { API_URL } from '../services/apiConfig';
+import api from '../services/api';
 
 export interface Car {
     id: string; // MongoDB _id
@@ -45,16 +45,10 @@ export const useCarStore = create<CarState>()(
 
             fetchCars: async (ownerId) => {
                 try {
-                    // Assuming GET /api/cars?ownerId=...
-                    const res = await fetch(`${API_URL}/cars?ownerId=${ownerId}`, {
-                        headers: { 'Bypass-Tunnel-Reminder': 'true' }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        // Map _id to id
-                        const cars = data.map((c: any) => ({ ...c, id: c._id }));
-                        set({ cars });
-                    }
+                    const res = await api.get(`/cars?ownerId=${ownerId}`);
+                    // Map _id to id
+                    const cars = res.data.map((c: any) => ({ ...c, id: c._id }));
+                    set({ cars });
                 } catch (error) {
                     console.error("Failed to fetch cars", error);
                 }
@@ -62,21 +56,8 @@ export const useCarStore = create<CarState>()(
 
             addCar: async (carData, ownerId) => {
                 try {
-                    const res = await fetch(`${API_URL}/cars`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Bypass-Tunnel-Reminder': 'true'
-                        },
-                        body: JSON.stringify({ ...carData, ownerId })
-                    });
-
-                    if (!res.ok) {
-                        const errText = await res.text();
-                        throw new Error(`Failed to create car: ${errText}`);
-                    }
-
-                    const newCar = await res.json();
+                    const res = await api.post('/cars', { ...carData, ownerId });
+                    const newCar = res.data;
 
                     set((state) => {
                         // Map _id in response to id
@@ -87,23 +68,18 @@ export const useCarStore = create<CarState>()(
                         );
                         return { cars: [...updatedCars, carWithId] };
                     });
-                } catch (error) {
-                    console.error("Failed to add car", error);
+                } catch (error: any) {
+                    console.error("Failed to add car", error.response?.data || error.message);
                     throw error;
                 }
             },
 
             removeCar: async (id) => {
                 try {
-                    const res = await fetch(`${API_URL}/cars/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Bypass-Tunnel-Reminder': 'true' }
-                    });
-                    if (res.ok) {
-                        set((state) => ({
-                            cars: state.cars.filter((c) => c.id !== id),
-                        }));
-                    }
+                    await api.delete(`/cars/${id}`);
+                    set((state) => ({
+                        cars: state.cars.filter((c) => c.id !== id),
+                    }));
                 } catch (error) {
                     console.error("Failed to remove car", error);
                 }
@@ -119,17 +95,7 @@ export const useCarStore = create<CarState>()(
                         })),
                     }));
 
-                    // Call API to persist
-                    // We might need a specific endpoint or just update the specific car
-                    // Simplifying by just updating the one car for now if API doesn't handle batch
-                    await fetch(`${API_URL}/cars/${id}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Bypass-Tunnel-Reminder': 'true'
-                        },
-                        body: JSON.stringify({ isDefault: true })
-                    });
+                    await api.patch(`/cars/${id}`, { isDefault: true });
                 } catch (error) {
                     console.error("Failed to set default car", error);
                 }
@@ -137,20 +103,10 @@ export const useCarStore = create<CarState>()(
 
             updateCar: async (id, updates) => {
                 try {
-                    const res = await fetch(`${API_URL}/cars/${id}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Bypass-Tunnel-Reminder': 'true'
-                        },
-                        body: JSON.stringify(updates)
-                    });
-
-                    if (res.ok) {
-                        set((state) => ({
-                            cars: state.cars.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-                        }));
-                    }
+                    await api.patch(`/cars/${id}`, updates);
+                    set((state) => ({
+                        cars: state.cars.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+                    }));
                 } catch (error) {
                     console.error("Failed to update car", error);
                 }
@@ -158,19 +114,10 @@ export const useCarStore = create<CarState>()(
 
             assignCar: async (id, assignment) => {
                 try {
-                    const res = await fetch(`${API_URL}/cars/${id}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Bypass-Tunnel-Reminder': 'true'
-                        },
-                        body: JSON.stringify({ assignment })
-                    });
-                    if (res.ok) {
-                        set((state) => ({
-                            cars: state.cars.map((c) => (c.id === id ? { ...c, assignment } : c)),
-                        }));
-                    }
+                    await api.patch(`/cars/${id}`, { assignment });
+                    set((state) => ({
+                        cars: state.cars.map((c) => (c.id === id ? { ...c, assignment } : c)),
+                    }));
                 } catch (error) {
                     console.error("Failed to assign car", error);
                 }
@@ -182,25 +129,16 @@ export const useCarStore = create<CarState>()(
                     if (car && car.assignment) {
                         const updatedAssignment = { ...car.assignment, status: 'ended' };
 
-                        const res = await fetch(`${API_URL}/cars/${id}`, {
-                            method: 'PATCH',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Bypass-Tunnel-Reminder': 'true'
-                            },
-                            body: JSON.stringify({ assignment: updatedAssignment })
-                        });
+                        await api.patch(`/cars/${id}`, { assignment: updatedAssignment });
 
-                        if (res.ok) {
-                            set((state) => ({
-                                cars: state.cars.map((c) => {
-                                    if (c.id === id && c.assignment) {
-                                        return { ...c, assignment: { ...c.assignment, status: 'ended' as const } };
-                                    }
-                                    return c;
-                                }),
-                            }));
-                        }
+                        set((state) => ({
+                            cars: state.cars.map((c) => {
+                                if (c.id === id && c.assignment) {
+                                    return { ...c, assignment: { ...c.assignment, status: 'ended' as const } };
+                                }
+                                return c;
+                            }),
+                        }));
                     }
                 } catch (error) {
                     console.error("Failed to revoke assignment", error);

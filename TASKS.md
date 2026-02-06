@@ -1,8 +1,8 @@
-- user update image
-- user update password
-- trips management (the trip becomes trip if the places are great for both the client and the driver)
-- coupon logic
-- credits and withdraw money logic
+[X] - allow user (client & driver) to update profile image
+[ ] - allow user (client & driver) to update password
+[ ] - trips management (the trip becomes trip if the places are great for both the client and the driver)
+[ ] - coupon logic
+[ ] - credits and withdraw money logic
 
 # abonnement payment logic
 - 10% of the trip price goes to the company
