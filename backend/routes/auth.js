@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { auth } = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_123';
 
@@ -185,27 +186,7 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
-// Middleware to verify token
-const auth = (req, res, next) => {
-    const token = req.header('x-auth-token');
 
-    // Check for token
-    if (!token) {
-        return res.status(401).json({ msg: 'No token, authorization denied' });
-    }
-
-    try {
-        // Verify token
-        const decoded = jwt.verify(token, JWT_SECRET);
-        // Add user from payload
-        req.user = decoded.user;
-        next();
-    } catch (e) {
-        res.status(401).json({ msg: 'Token is not valid' });
-    }
-};
-
-// @route   PUT api/auth/update
 // @desc    Update user profile
 router.put('/update', auth, async (req, res) => {
     const { fullName, photoURL } = req.body;
@@ -222,6 +203,36 @@ router.put('/update', auth, async (req, res) => {
             { $set: updateFields },
             { new: true }
         ).select('-password');
+
+        res.json(user);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   POST api/auth/verify
+// @desc    Submit verification documents
+router.post('/verify', auth, async (req, res) => {
+    const { cinFront, cinBack, license, carRegistration, facePhoto } = req.body;
+
+    try {
+        let user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        // Add to documents history
+        user.documents.push({
+            cinFront,
+            cinBack,
+            license,
+            carRegistration,
+            facePhoto
+        });
+
+        // Set status to pending
+        user.verificationStatus = 'pending';
+
+        await user.save();
 
         res.json(user);
     } catch (err) {

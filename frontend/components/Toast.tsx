@@ -71,6 +71,7 @@ export default function Toast() {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
+        top: 0,
         left: 20,
         right: 20,
         zIndex: 9999,
@@ -79,21 +80,25 @@ const styles = StyleSheet.create({
     content: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        boxShadow: '0px 4px 8px rgba(0,0,0,0.15)',
-        elevation: 6,
+        paddingVertical: 14,
+        paddingHorizontal: 18,
+        borderRadius: 20,
+        boxShadow: '0px 8px 20px rgba(0,0,0,0.15)',
+        elevation: 8,
         width: '100%',
+        gap: 12,
     },
     message: {
         color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
         flex: 1,
+        letterSpacing: 0.2,
     },
     closeButton: {
-        marginLeft: 12,
         padding: 4,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 12,
     }
 });
+

@@ -1,44 +1,37 @@
+import { Stack } from 'expo-router';
 import { Bell, Car, LayoutDashboard, MapPin, User } from 'lucide-react-native';
-import { Platform, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
+import { DriverTabBar } from '../../components/DriverTabBar';
 import { SwipeableTabs } from '../../components/SwipeableLayout';
 import { Colors } from '../../constants/theme';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function DriverLayout() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
+    const { user } = useAuthStore();
+
+    // If driver is not verified, restrict access
+    if (user?.role === 'driver' && user?.verificationStatus !== 'verified') {
+        // Redirect if on a restricted route
+        // This is a safety catch, but the Stack below limits accessible screens visually
+        // Note: Expo Router might still match other files, so we could add a listener or effect here if strictly needed.
+        // For now, by only exposing a Stack with 'verification' and 'profile', we visually restrict them.
+        return (
+            <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="verification" />
+                <Stack.Screen name="profile" />
+                <Stack.Screen name="index" redirect={true} />
+                {/* Redirect any other attempts to 'verification' effectively */}
+            </Stack>
+        );
+    }
+
     return (
         <SwipeableTabs
             tabBarPosition="bottom"
-            screenOptions={{
-                tabBarActiveTintColor: theme.primary,
-                tabBarInactiveTintColor: theme.icon,
-                tabBarStyle: {
-                    backgroundColor: theme.background,
-                    borderTopColor: theme.border,
-                    borderTopWidth: 1,
-                    paddingBottom: Platform.OS === 'ios' ? 25 : 8,
-                    paddingTop: 8,
-                    height: Platform.OS === 'ios' ? 85 : 70,
-                    elevation: 0,
-                },
-                tabBarIndicatorStyle: {
-                    height: 0,
-                },
-                tabBarLabelStyle: {
-                    fontSize: 10,
-                    fontWeight: '600',
-                    textTransform: 'capitalize',
-                    marginTop: 4,
-                },
-                tabBarShowIcon: true,
-                tabBarContentContainerStyle: {
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                },
-                animationEnabled: true,
-                swipeEnabled: true,
-            }}
+            tabBar={(props) => <DriverTabBar {...props} />}
         >
             <SwipeableTabs.Screen
                 name="index"
@@ -77,22 +70,11 @@ export default function DriverLayout() {
             />
 
             {/* Hidden Screens */}
-            {/* <SwipeableTabs.Screen name="add-car" options={{
-                // @ts-ignore
-                href: null
-            }} />
-            <SwipeableTabs.Screen name="add-trip" options={{
-                // @ts-ignore
-                href: null
-            }} />
-            <SwipeableTabs.Screen name="assign-car" options={{
-                // @ts-ignore
-                href: null
-            }} />
-            <SwipeableTabs.Screen name="verification" options={{
-                // @ts-ignore
-                href: null
-            }} /> */}
+            <SwipeableTabs.Screen name="add-car" options={{ swipeEnabled: false }} />
+            <SwipeableTabs.Screen name="add-trip" options={{ swipeEnabled: false }} />
+            <SwipeableTabs.Screen name="assign-car" options={{ swipeEnabled: false }} />
+            <SwipeableTabs.Screen name="verification" options={{ swipeEnabled: false }} />
+
         </SwipeableTabs>
     );
 }

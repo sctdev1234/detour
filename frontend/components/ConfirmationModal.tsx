@@ -102,31 +102,34 @@ const styles = StyleSheet.create({
     modal: {
         width: '100%',
         maxWidth: 340,
-        borderRadius: 20,
-        padding: 24,
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.2)',
-        elevation: 10,
+        borderRadius: 32,
+        padding: 28,
+        boxShadow: '0px 12px 32px rgba(0,0,0,0.25)',
+        elevation: 16,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 22,
+        fontWeight: '800',
         marginBottom: 12,
         textAlign: 'center',
+        letterSpacing: -0.5,
     },
     message: {
-        fontSize: 15,
+        fontSize: 16,
         textAlign: 'center',
-        marginBottom: 24,
-        lineHeight: 22,
+        marginBottom: 28,
+        lineHeight: 24,
+        fontWeight: '500',
+        opacity: 0.9,
     },
     actions: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 16,
     },
     button: {
         flex: 1,
-        height: 48,
-        borderRadius: 24,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -134,25 +137,30 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     confirmButton: {
-
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
     },
     buttonText: {
         fontSize: 16,
+        fontWeight: '700',
     },
     inputContainer: {
-        marginBottom: 24,
-        gap: 8,
+        marginBottom: 28,
+        gap: 12,
     },
     label: {
         fontSize: 14,
         textAlign: 'center',
+        fontWeight: '600',
     },
     input: {
-        height: 48,
+        height: 56,
         borderWidth: 1,
-        borderRadius: 12,
-        paddingHorizontal: 16,
+        borderRadius: 16,
+        paddingHorizontal: 20,
         fontSize: 16,
         textAlign: 'center',
+        fontWeight: '600',
     }
 });
+

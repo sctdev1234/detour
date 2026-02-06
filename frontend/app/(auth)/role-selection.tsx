@@ -1,8 +1,8 @@
+import { ArrowRight, Car, User } from 'lucide-react-native';
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
-import { useAuthStore, Role } from '../../store/useAuthStore';
+import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { Car, User, ArrowRight } from 'lucide-react-native';
+import { Role, useAuthStore } from '../../store/useAuthStore';
 
 export default function RoleSelection() {
     const colorScheme = useColorScheme() ?? 'light';
@@ -59,40 +59,52 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 32,
-        fontWeight: '700',
+        fontWeight: '800',
         marginBottom: 8,
+        letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 18,
+        fontWeight: '500',
+        opacity: 0.7,
         marginBottom: 48,
+        lineHeight: 26,
     },
     rolesContainer: {
-        gap: 16,
+        gap: 20,
     },
     roleCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 20,
-        borderRadius: 20,
+        padding: 24,
+        borderRadius: 28,
         borderWidth: 1,
+        elevation: 4,
+        boxShadow: '0px 4px 16px rgba(0,0,0,0.06)',
     },
     iconContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 72,
+        height: 72,
+        borderRadius: 36,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 20,
+        elevation: 2,
+        boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
     },
     roleInfo: {
         flex: 1,
+        gap: 4,
     },
     roleTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        marginBottom: 4,
+        fontSize: 22,
+        fontWeight: '800',
     },
     roleDescription: {
         fontSize: 14,
+        fontWeight: '500',
+        opacity: 0.7,
+        lineHeight: 20,
     },
 });
+

@@ -185,16 +185,22 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: 24,
         paddingTop: 60,
         paddingBottom: 20,
     },
     backButton: {
-        padding: 4,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+        elevation: 3,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20,
+        fontWeight: '800',
     },
     content: {
         padding: 24,
@@ -203,14 +209,15 @@ const styles = StyleSheet.create({
     guideCard: {
         flexDirection: 'row',
         padding: 20,
-        borderRadius: 16,
+        borderRadius: 24,
         gap: 16,
         alignItems: 'center',
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.03)',
     },
     guideIcon: {
         width: 48,
         height: 48,
-        borderRadius: 24,
+        borderRadius: 20,
         backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
@@ -219,6 +226,8 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         lineHeight: 20,
+        fontWeight: '500',
+        opacity: 0.8,
     },
     section: {
         gap: 12,
@@ -226,53 +235,55 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: '700',
+        marginLeft: 4,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         height: 64,
-        borderRadius: 16,
+        borderRadius: 22,
         borderWidth: 1,
-        paddingHorizontal: 20,
-        gap: 12,
+        paddingHorizontal: 24,
+        gap: 14,
     },
     input: {
         flex: 1,
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
+        height: '100%',
     },
-    helperRow: { // Added helper row style
+    helperRow: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        paddingRight: 4,
+        paddingRight: 8,
     },
     daysGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 12,
     },
     dayItem: {
-        width: '18%', // Approx 5 items per row with gap
+        width: '18%',
         aspectRatio: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 12,
+        borderRadius: 16,
         borderWidth: 1,
     },
     dayText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '700',
     },
     submitButton: {
         flexDirection: 'row',
-        height: 60,
-        borderRadius: 30, // Pill shape
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
         marginTop: 20,
-        elevation: 4,
-        boxShadow: '0px 4px 8px rgba(0,0,0,0.2)',
+        elevation: 6,
+        boxShadow: '0px 8px 16px rgba(0,0,0,0.15)',
     },
     submitButtonText: {
         color: '#fff',
@@ -280,3 +291,4 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
 });
+

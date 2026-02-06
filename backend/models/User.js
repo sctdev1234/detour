@@ -25,12 +25,17 @@ const UserSchema = new mongoose.Schema({
         enum: ['pending', 'verified', 'rejected', 'unverified'],
         default: 'unverified'
     },
-    documents: {
+    documents: [{
         cinFront: String,
         cinBack: String,
         license: String,
-        facePhoto: String
-    },
+        carRegistration: String,
+        facePhoto: String,
+        submittedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     createdAt: {
         type: Date,
         default: Date.now

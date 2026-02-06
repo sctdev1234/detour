@@ -5,7 +5,9 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import 'react-native-reanimated';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ConfirmationModal from '../components/ConfirmationModal';
+import GlobalHeader from '../components/GlobalHeader';
 import LocationTracker from '../components/LocationTracker';
 import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
@@ -103,17 +105,20 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={theme}>
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(driver)" options={{ headerShown: false }} />
-        <Stack.Screen name="(client)" options={{ headerShown: false }} />
-        <Stack.Screen name="chat" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <LocationTracker />
-      <Toast />
-      <ConfirmationModal />
-      <StatusBar style="auto" />
+      <SafeAreaProvider>
+        <GlobalHeader />
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(driver)" options={{ headerShown: false }} />
+          <Stack.Screen name="(client)" options={{ headerShown: false }} />
+          <Stack.Screen name="chat" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        </Stack>
+        <LocationTracker />
+        <Toast />
+        <ConfirmationModal />
+        <StatusBar style="auto" />
+      </SafeAreaProvider>
     </ThemeProvider>
   );
 }

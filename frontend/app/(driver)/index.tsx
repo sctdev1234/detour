@@ -1,4 +1,4 @@
-import { Bell, Car, ChevronRight, DollarSign, MapPin, Power, Star, User } from 'lucide-react-native';
+import { Bell, Car, ChevronRight, DollarSign, MapPin, Power, Star } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
 import { useRatingStore } from '../../store/useRatingStore';
+import { useTripStore } from '../../store/useTripStore';
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -21,11 +22,30 @@ export default function DriverDashboard() {
     const getAverageRating = useRatingStore((state) => state.getAverageRating);
     const avgRating = getAverageRating(user?.id || '');
 
+    // Real Data from TripStore
+    const trips = useTripStore((state) => state.trips.filter(t => t.driverId === user?.id || t.driverId === 'me'));
+
+    // Calculate Stats
+    const activeRoutes = trips.length; // Assuming all in list are active for now, or filter by status
+    const totalDistance = trips.reduce((acc, t) => acc + (t.distanceKm || 0), 0);
+    // Weekly potential: Sum of (price * days per week)
+    const weeklyPotential = trips.reduce((acc, t) => acc + (t.price * t.days.length), 0);
+
     const stats = [
-        { label: 'Weekly Profit', value: '$450.00', icon: DollarSign, color: '#4CD964' },
-        { label: 'Total KM', value: '1,240', icon: MapPin, color: theme.primary },
-        { label: 'Trips Done', value: '24', icon: Car, color: theme.secondary },
+        { label: 'Weekly Potential', value: `$${weeklyPotential.toFixed(0)}`, icon: DollarSign, color: '#4CD964' },
+        { label: 'Total Distance', value: `${totalDistance.toFixed(0)} km`, icon: MapPin, color: theme.primary },
+        { label: 'Active Routes', value: `${activeRoutes}`, icon: Car, color: theme.secondary },
     ];
+
+    // Get Today's Routes
+    const daysMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const todayIndex = new Date().getDay();
+    const todayName = daysMap[todayIndex];
+
+    const todaysTrips = trips.filter(t => t.days.includes(todayName));
+
+    // Sort by time
+    todaysTrips.sort((a, b) => a.timeStart.localeCompare(b.timeStart));
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
@@ -42,12 +62,6 @@ export default function DriverDashboard() {
                             </View>
                         )}
                     </View>
-                    <TouchableOpacity
-                        style={[styles.profileButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                        onPress={() => router.push('/(driver)/profile')}
-                    >
-                        <User color={theme.primary} size={24} />
-                    </TouchableOpacity>
                 </View>
 
                 {/* Online Toggle */}
@@ -103,33 +117,50 @@ export default function DriverDashboard() {
             {/* Upcoming Routes */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Routes</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Routes ({todayName})</Text>
                     <TouchableOpacity onPress={() => router.push('/(driver)/routes')}>
                         <Text style={[styles.seeAllText, { color: theme.primary }]}>View All</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Example Card */}
-                <TouchableOpacity style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <View style={styles.timelineStrip}>
-                        <View style={[styles.dot, { backgroundColor: theme.primary }]} />
-                        <View style={[styles.line, { backgroundColor: theme.border }]} />
-                        <View style={[styles.dot, { backgroundColor: theme.secondary }]} />
-                    </View>
-                    <View style={styles.tripInfo}>
-                        <View style={styles.tripHeader}>
-                            <Text style={[styles.tripTime, { color: theme.text }]}>08:00 AM</Text>
-                            <View style={[styles.priceTag, { backgroundColor: '#4CD96420' }]}>
-                                <Text style={{ color: '#4CD964', fontSize: 12, fontWeight: '700' }}>$50</Text>
+                {todaysTrips.length > 0 ? (
+                    todaysTrips.map((trip) => (
+                        <TouchableOpacity
+                            key={trip.id}
+                            style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border, marginBottom: 16 }]}
+                            onPress={() => router.push('/(driver)/routes')}
+                        >
+                            <View style={styles.timelineStrip}>
+                                <View style={[styles.dot, { backgroundColor: theme.primary }]} />
+                                <View style={[styles.line, { backgroundColor: theme.border }]} />
+                                <View style={[styles.dot, { backgroundColor: theme.secondary }]} />
                             </View>
-                        </View>
-                        <Text style={[styles.routeLoc, { color: theme.text }]}>Casablanca</Text>
-                        <Text style={[styles.routeLoc, { color: theme.text, marginTop: 12 }]}>Rabat</Text>
-                        <View style={styles.participantsRow}>
-                            <Text style={{ fontSize: 12, color: theme.icon }}>3 Passengers</Text>
-                        </View>
+                            <View style={styles.tripInfo}>
+                                <View style={styles.tripHeader}>
+                                    <Text style={[styles.tripTime, { color: theme.text }]}>{trip.timeStart}</Text>
+                                    <View style={[styles.priceTag, { backgroundColor: '#4CD96420' }]}>
+                                        <Text style={{ color: '#4CD964', fontSize: 12, fontWeight: '700' }}>
+                                            ${trip.price} {trip.priceType === 'km' ? '/km' : ''}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Text style={[styles.routeLoc, { color: theme.text }]}>From: {trip.startPoint.latitude.toFixed(3)}...</Text>
+                                <Text style={[styles.routeLoc, { color: theme.text, marginTop: 12 }]}>To: {trip.endPoint.latitude.toFixed(3)}...</Text>
+                                <View style={styles.participantsRow}>
+                                    <Text style={{ fontSize: 12, color: theme.icon }}>{trip.passengers?.length || 0} Passengers</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    ))
+                ) : (
+                    <View style={[styles.emptyContainer, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                        <Car size={32} color={theme.icon} />
+                        <Text style={[styles.emptyText, { color: theme.icon }]}>No scheduled routes for today.</Text>
+                        <TouchableOpacity onPress={() => router.push('/(driver)/add-trip')}>
+                            <Text style={{ color: theme.primary, fontWeight: '600', marginTop: 8 }}>+ Add Route</Text>
+                        </TouchableOpacity>
                     </View>
-                </TouchableOpacity>
+                )}
             </View>
 
             {/* Quick Actions */}
@@ -179,10 +210,14 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         marginBottom: 4,
+        opacity: 0.7,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     nameText: {
-        fontSize: 28,
+        fontSize: 32,
         fontWeight: '800',
+        letterSpacing: -0.5,
     },
     ratingBadge: {
         flexDirection: 'row',
@@ -191,12 +226,12 @@ const styles = StyleSheet.create({
         marginTop: 6,
         backgroundColor: '#FFCC0015',
         alignSelf: 'flex-start',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
     },
     ratingText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '700',
     },
     profileButton: {
@@ -211,14 +246,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
-        borderRadius: 20,
+        padding: 18,
+        borderRadius: 24,
         borderWidth: 1,
+        boxShadow: '0px 4px 10px rgba(0,0,0,0.04)',
     },
     statusIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -227,23 +263,25 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     statusSubtitle: {
-        fontSize: 12,
+        fontSize: 13,
+        fontWeight: '500',
+        opacity: 0.7,
     },
     notificationBanner: {
         marginHorizontal: 24,
-        padding: 16,
-        borderRadius: 20,
+        padding: 18,
+        borderRadius: 22,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 16,
         marginBottom: 32,
-        boxShadow: '0px 4px 8px rgba(0,0,0,0.15)',
-        elevation: 5,
+        boxShadow: '0px 6px 14px rgba(0,0,0,0.15)',
+        elevation: 6,
     },
     notifIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -256,40 +294,44 @@ const styles = StyleSheet.create({
     },
     notificationText: {
         color: 'rgba(255,255,255,0.9)',
-        fontSize: 12,
+        fontSize: 13,
+        fontWeight: '500',
     },
     statsContainer: {
         flexDirection: 'row',
         paddingHorizontal: 24,
         gap: 12,
-        marginBottom: 32,
+        marginBottom: 36,
     },
     statCard: {
         flex: 1,
-        padding: 16,
-        borderRadius: 20,
+        padding: 18,
+        borderRadius: 24,
         borderWidth: 1,
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.03)',
     },
     iconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
     },
     statValue: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20,
+        fontWeight: '800',
     },
     statLabel: {
         fontSize: 12,
         textAlign: 'center',
+        fontWeight: '600',
+        opacity: 0.7,
     },
     section: {
         paddingHorizontal: 24,
-        marginBottom: 32,
+        marginBottom: 36,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -300,31 +342,35 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: '700',
+        letterSpacing: -0.5,
     },
     seeAllText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '700',
     },
     tripCard: {
         flexDirection: 'row',
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 28,
         borderWidth: 1,
         gap: 16,
+        boxShadow: '0px 2px 8px rgba(0,0,0,0.03)',
     },
     timelineStrip: {
         alignItems: 'center',
         paddingVertical: 4,
     },
     dot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
     },
     line: {
         width: 2,
         flex: 1,
         marginVertical: 4,
+        borderRadius: 1,
+        opacity: 0.3,
     },
     tripInfo: {
         flex: 1,
@@ -333,26 +379,32 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
     },
     tripTime: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20,
+        fontWeight: '800',
     },
     priceTag: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
     },
     routeLoc: {
         fontSize: 15,
         fontWeight: '500',
+        opacity: 0.9,
     },
     participantsRow: {
-        marginTop: 12,
+        marginTop: 14,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        backgroundColor: 'rgba(0,0,0,0.03)',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
     },
     actionsGrid: {
         flexDirection: 'row',
@@ -360,14 +412,16 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
-        padding: 20,
-        borderRadius: 24,
+        padding: 24,
+        borderRadius: 28,
         alignItems: 'center',
-        gap: 12,
+        gap: 14,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
+        elevation: 4,
     },
     actionIcon: {
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
         borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
@@ -377,4 +431,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+    emptyContainer: {
+        padding: 32,
+        borderRadius: 24,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderStyle: 'dashed',
+    },
+    emptyText: {
+        marginTop: 16,
+        fontSize: 15,
+        fontWeight: '500',
+        textAlign: 'center',
+    }
 });

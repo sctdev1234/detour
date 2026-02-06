@@ -2,12 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Car = require('../models/Car');
 
-// TODO: specific middleware to check JWT token would go here
-// const auth = require('../middleware/auth');
+const { auth, requireVerification } = require('../middleware/auth');
 
 // @route   POST api/cars
 // @desc    Add a new car
-router.post('/', async (req, res) => {
+router.post('/', auth, requireVerification, async (req, res) => {
     try {
         const { marque, model, year, color, places, isDefault, images, documents, ownerId } = req.body;
 

@@ -12,6 +12,7 @@ interface User {
     role: Role;
     verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
     photoURL?: string;
+    documents?: any[]; // Array of document submissions
 }
 
 interface AuthState {
@@ -34,6 +35,7 @@ interface AuthState {
     logout: () => void;
     checkAuth: () => Promise<void>;
     deleteAccount: () => Promise<void>;
+    submitVerification: (docs: AuthState['documents']) => Promise<void>;
     setVerificationStatus: (status: 'pending' | 'verified' | 'rejected' | 'unverified') => void;
     updateDocuments: (docs: Partial<AuthState['documents']>) => void;
     updateProfile: (data: Partial<User>) => Promise<void>;
@@ -239,6 +241,32 @@ export const useAuthStore = create<AuthState>()(
 
                     // Logout after successful deletion
                     get().logout();
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+            submitVerification: async (docs) => {
+                set({ isLoading: true });
+                try {
+                    const res = await fetch(`${API_URL}/auth/verify`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-auth-token': get().token || ''
+                        },
+                        body: JSON.stringify(docs)
+                    });
+
+                    if (!res.ok) throw new Error('Failed to submit verification');
+
+                    const updatedUser = await res.json();
+
+                    set((state) => ({
+                        user: { ...state.user!, ...updatedUser },
+                        verificationStatus: 'pending',
+                        isLoading: false
+                    }));
                 } catch (error) {
                     set({ isLoading: false });
                     throw error;

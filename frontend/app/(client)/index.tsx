@@ -11,7 +11,6 @@ import {
 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
-    Image,
     ScrollView,
     StyleSheet,
     Text,
@@ -120,16 +119,7 @@ export default function ClientDashboard() {
                         </View>
                     )}
                 </View>
-                <TouchableOpacity
-                    style={[styles.profileButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                    onPress={() => router.push('/(client)/profile')}
-                >
-                    {user?.photoURL ? (
-                        <Image source={{ uri: user.photoURL }} style={styles.profileImage} />
-                    ) : (
-                        <User color={theme.icon} size={24} />
-                    )}
-                </TouchableOpacity>
+
             </View>
 
             {/* Search Bar */}
@@ -230,154 +220,154 @@ const styles = StyleSheet.create({
     welcomeText: {
         fontSize: 16,
         marginBottom: 4,
-        fontWeight: '500',
+        fontWeight: '600',
+        opacity: 0.7,
     },
     nameText: {
-        fontSize: 26,
+        fontSize: 32,
         fontWeight: '800',
+        letterSpacing: -0.5,
     },
     ratingBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
         marginTop: 8,
         alignSelf: 'flex-start',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 16,
     },
     ratingText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '700',
-    },
-    profileButton: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        overflow: 'hidden',
-    },
-    profileImage: {
-        width: '100%',
-        height: '100%',
     },
     searchBarContainer: {
         paddingHorizontal: 24,
-        marginBottom: 24,
+        marginBottom: 28,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 20,
+        padding: 18,
+        borderRadius: 24,
         borderWidth: 1,
-        gap: 12,
-        boxShadow: '0px 2px 10px rgba(0,0,0,0.05)',
-        elevation: 2,
+        gap: 14,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.06)',
+        elevation: 4,
     },
     searchPlaceholder: {
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     quickActionsContainer: {
         flexDirection: 'row',
         paddingHorizontal: 24,
-        gap: 12,
-        marginBottom: 32,
+        gap: 16,
+        marginBottom: 36,
     },
     quickAction: {
         flex: 1,
-        paddingVertical: 16,
-        borderRadius: 16,
+        paddingVertical: 18,
+        borderRadius: 22,
         borderWidth: 1,
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
+        boxShadow: '0px 4px 10px rgba(0,0,0,0.03)',
+        elevation: 2,
     },
     quickActionIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 52,
+        height: 52,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
     },
     quickActionText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '700',
     },
     section: {
-        marginBottom: 32,
+        marginBottom: 36,
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 24,
-        marginBottom: 16,
+        marginBottom: 20,
     },
     sectionTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: '700',
+        letterSpacing: -0.5,
     },
     seeAllText: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
     },
     tripCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 20,
+        padding: 18,
+        borderRadius: 24,
         borderWidth: 1,
         marginHorizontal: 24,
+        boxShadow: '0px 2px 8px rgba(0,0,0,0.03)',
     },
     tripIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 52,
+        height: 52,
+        borderRadius: 18,
         backgroundColor: '#0066FF10',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 18,
     },
     tripDetails: {
         flex: 1,
     },
     tripTitle: {
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: '700',
         marginBottom: 4,
     },
     tripSubtitle: {
         fontSize: 13,
+        opacity: 0.7,
+        fontWeight: '500',
     },
     reorderButton: {
-        padding: 8,
-        borderRadius: 12,
+        padding: 10,
+        borderRadius: 14,
+        marginLeft: 8,
     },
     driversScroll: {
         paddingHorizontal: 24,
         gap: 16,
     },
     driverCard: {
-        width: 140,
+        width: 150,
         padding: 16,
-        borderRadius: 24,
+        paddingVertical: 20,
+        borderRadius: 26,
         borderWidth: 1,
         alignItems: 'center',
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.04)',
+        elevation: 3,
     },
     driverAvatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 60,
+        height: 60,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        marginBottom: 8,
+        borderWidth: 2,
+        marginBottom: 10,
+        boxShadow: '0px 4px 8px rgba(0,0,0,0.08)',
     },
     driverName: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '700',
         marginBottom: 2,
     },
@@ -385,7 +375,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        marginBottom: 8,
+        marginTop: 6,
+        marginBottom: 10,
+        backgroundColor: 'rgba(255, 204, 0, 0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 10,
     },
     ratingValue: {
         fontSize: 12,
@@ -397,18 +392,21 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     priceBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 14,
     },
     driverPrice: {
-        fontSize: 12,
-        fontWeight: '700',
+        fontSize: 14,
+        fontWeight: '800',
     },
     emptyStateBanner: {
         marginHorizontal: 24,
-        padding: 20,
-        borderRadius: 16,
+        padding: 24,
+        borderRadius: 20,
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        borderStyle: 'dashed',
     }
 });

@@ -26,7 +26,6 @@ interface ConfirmSlice {
         onConfirm: () => void,
         onCancel?: () => void,
         confirmText?: string,
-        confirmText?: string,
         cancelText?: string,
         validationText?: string
     ) => void;
