@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_123';
+
 
 const auth = (req, res, next) => {
     const token = req.header('x-auth-token');
@@ -11,7 +11,10 @@ const auth = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        if (!process.env.JWT_SECRET) {
+            throw new Error('FATAL: JWT_SECRET is not defined.');
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded.user;
         next();
     } catch (e) {

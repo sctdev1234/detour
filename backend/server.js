@@ -16,12 +16,13 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-    origin: '*', // Allow all origins (for ngrok/mobile testing)
+    origin: '*', // TODO: Lock this down in production to specific domains
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'Bypass-Tunnel-Reminder'],
     credentials: true
 }));
-// Increase limit for Base64 images
+
+// Increase limit for Base64 images (TODO: Remove when Cloudinary is implemented)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -34,6 +35,10 @@ app.use((req, res, next) => {
 const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
     console.error('CRITICAL: MONGODB_URI is not defined in .env');
+    process.exit(1);
+}
+if (!process.env.JWT_SECRET) {
+    console.error('CRITICAL: JWT_SECRET is not defined in .env');
     process.exit(1);
 }
 
@@ -60,6 +65,10 @@ app.use('/api/tracking', require('./routes/tracking'));
 // app.use('/api/upload', require('./routes/upload')); // Logic moved to client (Base64)
 // app.use('/api/trips', require('./routes/trips')); // To be implemented
 app.use('/api/admin', require('./routes/admin'));
+
+// Error Handling Middleware
+const { errorHandler } = require('./middleware/errorMiddleware');
+app.use(errorHandler);
 
 // Base route
 app.get('/', (req, res) => {

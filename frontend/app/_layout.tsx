@@ -11,6 +11,7 @@ import GlobalHeader from '../components/GlobalHeader';
 import LocationTracker from '../components/LocationTracker';
 import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
+import '../global.css';
 import { useAuthStore } from '../store/useAuthStore';
 
 import Constants from 'expo-constants';
