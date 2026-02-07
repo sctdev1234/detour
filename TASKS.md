@@ -1,5 +1,5 @@
 [X] - allow user (client & driver) to update profile image
-[ ] - allow user (client & driver) to update password
+[X] - allow user (client & driver) to update password
 [ ] - trips management (the trip becomes trip if the places are great for both the client and the driver)
 [ ] - coupon logic
 [ ] - credits and withdraw money logic
@@ -41,13 +41,13 @@
 - if the user didn't complited the tasks, show him only the tasks page (no home page, no other pages)
 
 - the client tasks are:
--- select Pickup Point and Destination Point and confirm them
--- select the days of the week he wants to use the service
--- select the time of the trip
+-- create a trip (Pickup Point and Destination Point)
 
 - the driver tasks are:
--- select the days of the week he wants to use the service
--- select the time of the trip
+-- upload the Documents
+-- Add a Car or Receive it from another driver
+-- wait for admin approval 
+-- create a trip (Pickup Point and Destination Point)
 
 # Notes
 - the [CLIENT] can be late for 5min max ([DRIVER] should wait for him)
