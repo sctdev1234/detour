@@ -38,7 +38,7 @@ export default function ClientSearchScreen() {
     };
 
     // Filter Logic
-    const filteredTrips = searchResults
+    const filteredTrips = (searchResults || [])
         .filter(trip => {
             if (maxPrice && parseFloat(maxPrice) > 0) {
                 return trip.price <= parseFloat(maxPrice);

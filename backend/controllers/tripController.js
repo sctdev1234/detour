@@ -1,57 +1,22 @@
-const RideRequest = require('../models/RideRequest');
-const DriverRoute = require('../models/DriverRoute');
+const Route = require('../models/Route');
 const Trip = require('../models/Trip');
+const JoinRequest = require('../models/JoinRequest');
 const User = require('../models/User');
 
-// @desc    Create a ride request (Client)
-// @access  Private (Client)
-exports.createRequest = async (req, res) => {
-    try {
-        const { pickup, destination, schedule } = req.body;
-
-        const newRequest = new RideRequest({
-            userId: req.user.id,
-            pickup,
-            destination,
-            schedule
-        });
-
-        const savedRequest = await newRequest.save();
-        res.json(savedRequest);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-};
-
-// @desc    Create a new driver route
-// @access  Private (Driver)
+// @desc    Create a new route (Driver or Client)
+// @access  Private
 exports.createRoute = async (req, res) => {
     try {
-        const { schedule, carId, startPoint, endPoint, waypoints, routeGeometry, price, priceType, days, timeStart, timeArrival, distanceKm, estimatedDurationMin } = req.body;
+        const {
+            role, carId, startPoint, endPoint, waypoints,
+            routeGeometry, price, priceType, days,
+            timeStart, timeArrival, distanceKm, estimatedDurationMin
+        } = req.body;
 
-        // Construct schedule from flat structure if needed
-        let finalSchedule = schedule;
-        if (!finalSchedule) {
-            finalSchedule = {
-                days: days || [],
-                time: timeStart || '',
-                timeArrival: timeArrival || ''
-            };
+        if (!role || !['driver', 'client'].includes(role)) {
+            return res.status(400).json({ msg: 'Valid role (driver/client) is required' });
         }
 
-        // Construct price object
-        let finalPrice = {};
-        if (typeof price === 'number') {
-            finalPrice = {
-                amount: price,
-                type: priceType || 'fix'
-            };
-        } else if (typeof price === 'object' && price !== null) {
-            finalPrice = price;
-        }
-
-        // Transform points to GeoJSON [lng, lat]
         const formattedStart = {
             type: 'Point',
             coordinates: [startPoint.longitude, startPoint.latitude],
@@ -70,215 +35,251 @@ exports.createRoute = async (req, res) => {
             address: wp.address
         }));
 
-        // Always create a new route
-        const route = new DriverRoute({
+        const newRoute = new Route({
             userId: req.user.id,
-            schedule: finalSchedule,
-            carId,
+            role,
+            carId: role === 'driver' ? carId : undefined,
             startPoint: formattedStart,
             endPoint: formattedEnd,
             waypoints: formattedWaypoints,
             routeGeometry,
+            schedule: {
+                days: days || [],
+                time: timeStart || '',
+                timeArrival: timeArrival || ''
+            },
             distanceKm,
             estimatedDurationMin,
-            price: finalPrice,
-            isActive: true
+            price: {
+                amount: price || 0,
+                type: priceType || 'fix'
+            },
+            status: 'pending'
         });
 
-        await route.save();
-        res.json(route);
+        const savedRoute = await newRoute.save();
+
+        // If Driver created a route, automatically create an empty Trip
+        if (role === 'driver') {
+            const newTrip = new Trip({
+                driverId: req.user.id,
+                routeId: savedRoute._id,
+                status: 'pending'
+            });
+            await newTrip.save();
+        }
+
+        res.json(savedRoute);
     } catch (err) {
         console.error("Error in createRoute:", err.message);
         res.status(500).send('Server Error');
     }
 };
 
-// @desc    Get all routes for the logged-in driver
-// @access  Private (Driver)
-exports.getDriverRoutes = async (req, res) => {
+// @desc    Get all routes for the logged-in user
+// @access  Private
+exports.getRoutes = async (req, res) => {
     try {
-        const routes = await DriverRoute.find({ userId: req.user.id }).sort({ createdAt: -1 });
+        const routes = await Route.find({ userId: req.user.id }).sort({ createdAt: -1 });
         res.json(routes);
     } catch (err) {
-        console.error("Error in getDriverRoutes:", err.message);
+        console.error("Error in getRoutes:", err.message);
         res.status(500).send('Server Error');
     }
 };
 
-// @desc    Delete a driver route
-// @access  Private (Driver)
-exports.deleteDriverRoute = async (req, res) => {
+// @desc    Delete a route
+// @access  Private
+exports.deleteRoute = async (req, res) => {
     try {
-        const route = await DriverRoute.findById(req.params.id);
-
-        if (!route) {
-            return res.status(404).json({ msg: 'Route not found' });
-        }
-
-        // Check user
-        if (route.userId.toString() !== req.user.id) {
-            return res.status(401).json({ msg: 'User not authorized' });
-        }
+        const route = await Route.findById(req.params.id);
+        if (!route) return res.status(404).json({ msg: 'Route not found' });
+        if (route.userId.toString() !== req.user.id) return res.status(401).json({ msg: 'Not authorized' });
 
         await route.deleteOne();
 
+        // Also clean up associated Trips if it was a driver route
+        if (route.role === 'driver') {
+            await Trip.deleteMany({ routeId: route._id });
+        }
+
         res.json({ msg: 'Route removed' });
     } catch (err) {
-        console.error("Error in deleteDriverRoute:", err.message);
-        if (err.kind === 'ObjectId') {
-            return res.status(404).json({ msg: 'Route not found' });
-        }
+        console.error("Error in deleteRoute:", err.message);
         res.status(500).send('Server Error');
     }
 };
 
-// @desc    Search for driver routes based on pickup and destination
-// @access  Private (Client)
-exports.searchRoutes = async (req, res) => {
+// @desc    Search for driver routes/trips for a client route
+// @access  Private
+exports.searchMatches = async (req, res) => {
     try {
-        const { pickup, destination, days, time } = req.body;
+        const { routeId } = req.params;
+        const clientRoute = await Route.findById(routeId);
+        if (!clientRoute) return res.status(404).json({ msg: 'Client route not found' });
 
-        if (!pickup || !destination) {
-            return res.status(400).json({ msg: 'Pickup and destination are required' });
-        }
+        const maxDistance = 5000; // 5km
+        const pickup = clientRoute.startPoint.coordinates;
+        const destination = clientRoute.endPoint.coordinates;
 
-        // Search parameters:
-        // Match routes within 5km of pickup and 5km of destination
-        // Note: Coordinates are [lng, lat]
-        const maxDistance = 5000; // 5km in meters
-
-        const query = {
-            isActive: true,
+        // Find Driver Routes that are near
+        const matches = await Route.find({
+            role: 'driver',
+            status: { $ne: 'inactive' },
             'startPoint.coordinates': {
                 $near: {
-                    $geometry: {
-                        type: "Point",
-                        coordinates: [pickup.longitude, pickup.latitude]
-                    },
-                    $maxDistance: maxDistance
-                }
-            },
-            'endPoint.coordinates': {
-                $near: {
-                    $geometry: {
-                        type: "Point",
-                        coordinates: [destination.longitude, destination.latitude]
-                    },
-                    $maxDistance: maxDistance
-                }
-            }
-        };
-
-        // Optional filters
-        if (days && days.length > 0) {
-            query['schedule.days'] = { $in: days };
-        }
-
-        // For time, we could add a window (e.g. +/- 30 mins), 
-        // but for now let's keep it simple or exact match if provided.
-        if (time) {
-            query['schedule.time'] = time;
-        }
-
-        // Execute $near queries in sequence or use $and if supported with multiple $near (requires version 4.0+)
-        // Actually, MongoDB handles multiple $near in $and sometimes, 
-        // but often only one $near per query is allowed unless using $geoWithin.
-        // Let's use $geoWithin with $centerSphere for one of them if needed, or filter manually.
-
-        // Revised approach: Use $near for startPoint, then filter endPoint with $geoWithin
-        const results = await DriverRoute.find({
-            isActive: true,
-            'startPoint.coordinates': {
-                $near: {
-                    $geometry: {
-                        type: "Point",
-                        coordinates: [pickup.longitude, pickup.latitude]
-                    },
+                    $geometry: { type: "Point", coordinates: pickup },
                     $maxDistance: maxDistance
                 }
             },
             'endPoint.coordinates': {
                 $geoWithin: {
-                    $centerSphere: [[destination.longitude, destination.latitude], maxDistance / 6378100] // meters to radians
+                    $centerSphere: [destination, maxDistance / 6378100]
                 }
-            }
+            },
+            'schedule.days': { $in: clientRoute.schedule.days }
         }).populate('userId', 'fullName email photoURL');
 
-        res.json(results);
+        // Link with their active Trips
+        const detailedMatches = await Promise.all(matches.map(async (route) => {
+            const trip = await Trip.findOne({ routeId: route._id, status: { $ne: 'completed' } });
+            return {
+                route,
+                trip
+            };
+        }));
+
+        res.json(detailedMatches);
     } catch (err) {
-        console.error("Error in searchRoutes:", err.message);
+        console.error("Error in searchMatches:", err.message);
         res.status(500).send('Server Error');
     }
 };
 
-// @desc    Find matches for a given Ride Request (Phase 1 legacy logic)
+// @desc    Send a join request (Client -> Trip)
 // @access  Private
-exports.findMatches = async (req, res) => {
+exports.sendJoinRequest = async (req, res) => {
     try {
-        const requestId = req.params.requestId;
-        const request = await RideRequest.findById(requestId);
+        const { clientRouteId, tripId } = req.body;
 
-        if (!request) {
-            return res.status(404).json({ msg: 'Request not found' });
-        }
-
-        // Matching start/end via geo
-        const maxDistance = 5000;
-        const potentialDrivers = await DriverRoute.find({
-            isActive: true,
-            'startPoint.coordinates': {
-                $near: {
-                    $geometry: {
-                        type: "Point",
-                        coordinates: [request.pickup.longitude, request.pickup.latitude]
-                    },
-                    $maxDistance: maxDistance
-                }
-            },
-            'endPoint.coordinates': {
-                $geoWithin: {
-                    $centerSphere: [[request.destination.longitude, request.destination.latitude], maxDistance / 6378100]
-                }
-            },
-            'schedule.days': { $in: request.schedule.days }
-        }).populate('userId', 'fullName email photoURL');
-
-        res.json(potentialDrivers);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-};
-
-// @desc    Confirm a trip (Create Trip)
-// @access  Private
-exports.confirmTrip = async (req, res) => {
-    try {
-        const { rideRequestId, driverId, price } = req.body;
-
-        // Validation
-        const request = await RideRequest.findById(rideRequestId);
-        if (!request) return res.status(404).json({ msg: 'Ride Request not found' });
-
-        const driver = await User.findById(driverId);
-        if (!driver) return res.status(404).json({ msg: 'Driver not found' });
-
-        // Create Trip
-        const trip = new Trip({
-            rideRequestId,
-            driverId,
-            price
+        const existingRequest = await JoinRequest.findOne({
+            clientId: req.user.id,
+            clientRouteId,
+            tripId
         });
 
-        await trip.save();
+        if (existingRequest) {
+            return res.status(400).json({ msg: 'Request already sent' });
+        }
 
-        // Update Request Status
-        request.status = 'matched';
-        await request.save();
+        const joinRequest = new JoinRequest({
+            clientId: req.user.id,
+            clientRouteId,
+            tripId,
+            status: 'pending'
+        });
 
-        res.json(trip);
+        await joinRequest.save();
+        res.json(joinRequest);
     } catch (err) {
-        console.error(err.message);
+        console.error("Error in sendJoinRequest:", err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Handle join request (Driver accepts/rejects)
+// @access  Private (Driver)
+exports.handleJoinRequest = async (req, res) => {
+    try {
+        const { requestId, status } = req.body; // 'accepted' or 'rejected'
+        const joinRequest = await JoinRequest.findById(requestId).populate('tripId');
+
+        if (!joinRequest) return res.status(404).json({ msg: 'Request not found' });
+
+        // Check if the current user is the driver of the trip
+        if (joinRequest.tripId.driverId.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'Not authorized' });
+        }
+
+        joinRequest.status = status;
+        await joinRequest.save();
+
+        if (status === 'accepted') {
+            // Update the Trip with the new client
+            await Trip.findByIdAndUpdate(joinRequest.tripId._id, {
+                $push: { clients: { userId: joinRequest.clientId, routeId: joinRequest.clientRouteId } }
+            });
+
+            // If the trip reaches capacity (could add a car capacity check here), set status to 'active'
+            // For now, let's just keep it 'pending' or move to 'active' if at least 1 client joined?
+            // User said: "when Trip is full (requested clients), both of the Client and Driver can see it in his app/trips page (status active)"
+            // Since we don't have capacity defined yet, let's just update trip status to active for now.
+            await Trip.findByIdAndUpdate(joinRequest.tripId._id, { status: 'active' });
+        }
+
+        res.json(joinRequest);
+    } catch (err) {
+        console.error("Error in handleJoinRequest:", err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Get all trips for the logged-in user
+// @access  Private
+exports.getTrips = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const trips = await Trip.find({
+            $or: [
+                { driverId: userId },
+                { 'clients.userId': userId }
+            ]
+        }).populate('driverId', 'fullName photoURL')
+            .populate('routeId')
+            .populate('clients.userId', 'fullName photoURL')
+            .populate('clients.routeId')
+            .sort({ createdAt: -1 });
+
+        res.json(trips);
+    } catch (err) {
+        console.error("Error in getTrips:", err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Get requests for driver
+// @access  Private (Driver)
+exports.getDriverRequests = async (req, res) => {
+    try {
+        const trips = await Trip.find({ driverId: req.user.id });
+        const tripIds = trips.map(t => t._id);
+
+        const requests = await JoinRequest.find({ tripId: { $in: tripIds }, status: 'pending' })
+            .populate('clientId', 'fullName photoURL')
+            .populate('clientRouteId')
+            .populate('tripId');
+
+        res.json(requests);
+    } catch (err) {
+        console.error("Error in getDriverRequests:", err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Get requests for client
+// @access  Private (Client)
+exports.getClientRequests = async (req, res) => {
+    try {
+        const requests = await JoinRequest.find({ clientId: req.user.id })
+            .populate({
+                path: 'tripId',
+                populate: { path: 'driverId', select: 'fullName photoURL' }
+            })
+            .sort({ createdAt: -1 });
+
+        res.json(requests);
+    } catch (err) {
+        console.error("Error in getClientRequests:", err.message);
         res.status(500).send('Server Error');
     }
 };

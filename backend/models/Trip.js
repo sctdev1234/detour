@@ -1,26 +1,35 @@
 const mongoose = require('mongoose');
 
 const TripSchema = new mongoose.Schema({
-    rideRequestId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'RideRequest',
-        required: true
-    },
     driverId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    price: {
-        type: Number,
+    routeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Route', // The Driver's Route
         required: true
     },
+    clients: [{
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        routeId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Route' // The Client's Route
+        },
+        joinedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     status: {
         type: String,
-        enum: ['active', 'completed', 'cancelled'],
-        default: 'active'
+        enum: ['pending', 'active', 'completed', 'cancelled'],
+        default: 'pending'
     },
-    // Optional: Track individual daily rides within this subscription trip
     createdAt: {
         type: Date,
         default: Date.now

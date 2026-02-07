@@ -8,7 +8,7 @@ export function ClientTabBar({ state, descriptors, navigation }: MaterialTopTabB
     const theme = Colors[colorScheme];
 
     // Define which routes to show and their order
-    const visibleRoutes = ['index', 'search', 'trips', 'profile'];
+    const visibleRoutes = ['index', 'search', 'routes', 'trips', 'profile'];
 
     // Filter state routes that are in the visible list
     const routesToShow = state.routes.filter(route => visibleRoutes.includes(route.name));

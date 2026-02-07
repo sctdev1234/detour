@@ -71,7 +71,7 @@ export default function DriverLayout() {
 
             {/* Hidden Screens */}
             <SwipeableTabs.Screen name="add-car" options={{ swipeEnabled: false }} />
-            <SwipeableTabs.Screen name="add-trip" options={{ swipeEnabled: false }} />
+            <SwipeableTabs.Screen name="add-route" options={{ swipeEnabled: false }} />
             <SwipeableTabs.Screen name="assign-car" options={{ swipeEnabled: false }} />
             <SwipeableTabs.Screen name="verification" options={{ swipeEnabled: false }} />
 

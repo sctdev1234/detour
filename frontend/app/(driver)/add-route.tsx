@@ -1,22 +1,21 @@
 import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
-import { Car, Check, ChevronLeft, Clock, MapPin, Route as RouteIcon, Star, X } from 'lucide-react-native';
+import { Car, Check, ChevronLeft, Clock, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
 import { Colors } from '../../constants/theme';
 import { RouteService } from '../../services/RouteService';
-import { useAuthStore } from '../../store/useAuthStore';
 import { useCarStore } from '../../store/useCarStore';
 import { LatLng, useTripStore } from '../../store/useTripStore';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export default function AddTripScreen() {
+export default function AddRouteScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const addTrip = useTripStore((state) => state.addTrip);
+    const addRoute = useTripStore((state) => state.addRoute);
     const cars = useCarStore((state) => state.cars);
 
     const { showToast } = useUIStore();
@@ -77,13 +76,13 @@ export default function AddTripScreen() {
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (points.length < 2) {
             showToast('Please select a Pickup and Dropoff point', 'warning');
             return;
         }
         if (!selectedCarId) {
-            showToast('Please select a car for this trip', 'warning');
+            showToast('Please select a car for this route', 'warning');
             return;
         }
         if (selectedDays.length === 0) {
@@ -91,23 +90,28 @@ export default function AddTripScreen() {
             return;
         }
 
-        addTrip({
-            carId: selectedCarId,
-            startPoint: { ...points[0], address: pointAddresses[0] },
-            endPoint: { ...points[points.length - 1], address: pointAddresses[points.length - 1] },
-            waypoints: points.slice(1, -1).map((p, i) => ({ ...p, address: pointAddresses[i + 1] })),
-            timeStart,
-            timeArrival,
-            days: selectedDays,
-            price: parseFloat(price) || 0,
-            priceType,
-            status: 'active',
-            distanceKm: routeMetrics?.distance,
-            estimatedDurationMin: routeMetrics?.duration,
-            routeGeometry: routeMetrics?.geometry,
-        });
-
-        router.back();
+        try {
+            await addRoute({
+                role: 'driver',
+                carId: selectedCarId,
+                startPoint: { ...points[0], address: pointAddresses[0] },
+                endPoint: { ...points[points.length - 1], address: pointAddresses[points.length - 1] },
+                waypoints: points.slice(1, -1).map((p, i) => ({ ...p, address: pointAddresses[i + 1] })),
+                timeStart,
+                timeArrival,
+                days: selectedDays,
+                price: parseFloat(price) || 0,
+                priceType,
+                status: 'pending',
+                distanceKm: routeMetrics?.distance,
+                estimatedDurationMin: routeMetrics?.duration,
+                routeGeometry: routeMetrics?.geometry,
+            });
+            showToast('Route created successfully!', 'success');
+            router.back();
+        } catch (error) {
+            showToast('Failed to create route', 'error');
+        }
     };
 
     return (
@@ -116,7 +120,7 @@ export default function AddTripScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.surface }]}>
                     <ChevronLeft size={24} color={theme.text} />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>New Route</Text>
+                <Text style={[styles.title, { color: theme.text }]}>New Driver Route</Text>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -132,7 +136,7 @@ export default function AddTripScreen() {
                             <View style={[styles.stepBadge, { backgroundColor: theme.primary }]}>
                                 <Text style={styles.stepText}>1</Text>
                             </View>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Define Route</Text>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Define Trajectory</Text>
                         </View>
 
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
@@ -156,45 +160,22 @@ export default function AddTripScreen() {
                                             <Text style={[styles.pointName, { color: theme.text }]} numberOfLines={1}>
                                                 {pointAddresses[index] || `Point ${index + 1}`}
                                             </Text>
-                                            <Text style={[styles.pointCoords, { color: theme.icon }]}>
-                                                {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
-                                            </Text>
                                         </View>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                            <TouchableOpacity
-                                                style={styles.deletePointButton}
-                                                onPress={() => {
-                                                    useAuthStore.getState().addSavedPlace({
-                                                        label: `Saved Location ${index + 1}`,
-                                                        address: `Lat: ${point.latitude.toFixed(2)}, Lng: ${point.longitude.toFixed(2)}`,
-                                                        latitude: point.latitude,
-                                                        longitude: point.longitude,
-                                                        icon: 'map-pin'
-                                                    }).then(() => {
-                                                        alert('Location saved!');
-                                                    }).catch(err => {
-                                                        alert('Failed to save location');
-                                                    });
-                                                }}
-                                            >
-                                                <Star size={16} color={theme.primary} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.deletePointButton}
-                                                onPress={() => {
-                                                    const newPoints = points.filter((_, i) => i !== index);
-                                                    handlePointsChange(newPoints);
-                                                }}
-                                            >
-                                                <X size={16} color={theme.icon} />
-                                            </TouchableOpacity>
-                                        </View>
+                                        <TouchableOpacity
+                                            style={styles.deletePointButton}
+                                            onPress={() => {
+                                                const newPoints = points.filter((_, i) => i !== index);
+                                                handlePointsChange(newPoints);
+                                            }}
+                                        >
+                                            <X size={16} color={theme.icon} />
+                                        </TouchableOpacity>
                                     </View>
                                 ))}
                             </View>
                         )}
 
-                        {isCalculating && <Text style={{ color: theme.icon, textAlign: 'center', marginTop: 8 }}>Calculating best route...</Text>}
+                        {isCalculating && <Text style={{ color: theme.icon, textAlign: 'center', marginTop: 8 }}>Calculating最佳 route...</Text>}
 
                         {routeMetrics && (
                             <View style={[styles.metricsCard, { backgroundColor: theme.surface }]}>
@@ -258,7 +239,7 @@ export default function AddTripScreen() {
                         </View>
                     </View>
 
-                    {/* Step 3: Car & Price */}
+                    {/* Step 3: Car & Pricing */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <View style={[styles.stepBadge, { backgroundColor: theme.primary }]}>
@@ -350,7 +331,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 3,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
     },
     title: {
         fontSize: 20,
@@ -392,7 +372,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         overflow: 'hidden',
         position: 'relative',
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.05)',
     },
     mapOverlay: {
         position: 'absolute',
@@ -405,7 +384,6 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         gap: 8,
         elevation: 4,
-        boxShadow: '0px 4px 8px rgba(0,0,0,0.15)',
     },
     overlayText: {
         fontWeight: '700',
@@ -487,7 +465,6 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         borderWidth: 1,
         gap: 14,
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.04)',
     },
     carName: {
         fontWeight: '700',
@@ -519,7 +496,6 @@ const styles = StyleSheet.create({
         gap: 12,
         marginTop: 24,
         elevation: 6,
-        boxShadow: '0px 8px 16px rgba(0,0,0,0.15)',
     },
     saveButtonText: {
         color: '#fff',
@@ -557,9 +533,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
     },
-    pointCoords: {
-        fontSize: 11,
-    },
     deletePointButton: {
         width: 32,
         height: 32,
@@ -569,4 +542,3 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     }
 });
-
