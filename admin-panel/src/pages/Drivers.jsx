@@ -1,11 +1,13 @@
-import { CheckCircle, Filter, Search, XCircle } from 'lucide-react';
+import { Eye, Filter, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import DriverDetailModal from '../components/DriverDetailModal';
 import api from '../lib/axios';
 
 export default function Drivers() {
     const [drivers, setDrivers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'all'
+    const [selectedDriver, setSelectedDriver] = useState(null);
 
     useEffect(() => {
         fetchDrivers();
@@ -14,9 +16,11 @@ export default function Drivers() {
     const fetchDrivers = async () => {
         setLoading(true);
         try {
-            // In a real app, we'd have different endpoints for pending vs all
-            // For now, reusing the pending endpoint for pending tab
-            const res = await api.get('/admin/pending-drivers');
+            const endpoint = activeTab === 'pending'
+                ? '/admin/pending-drivers'
+                : '/admin/users?role=driver';
+
+            const res = await api.get(endpoint);
             setDrivers(res.data);
         } catch (err) {
             console.error(err);
@@ -30,6 +34,7 @@ export default function Drivers() {
         try {
             await api.post(`/admin/verify-driver/${id}`);
             setDrivers(drivers.filter(d => d._id !== id));
+            setSelectedDriver(null);
         } catch (err) {
             alert('Failed');
         }
@@ -40,10 +45,28 @@ export default function Drivers() {
         try {
             await api.post(`/admin/reject-driver/${id}`);
             setDrivers(drivers.filter(d => d._id !== id));
+            setSelectedDriver(null);
         } catch (err) {
             alert('Failed');
         }
     };
+
+    const banDriver = async (id) => {
+        if (!confirm('Are you sure you want to BAN this driver?')) return;
+        try {
+            await api.post(`/admin/ban-user/${id}`);
+            // If in 'all' tab, Update status locally instead of removing
+            if (activeTab === 'all') {
+                setDrivers(drivers.map(d => d._id === id ? { ...d, verificationStatus: 'rejected' } : d));
+            } else {
+                setDrivers(drivers.filter(d => d._id !== id));
+            }
+            setSelectedDriver(null);
+        } catch (err) {
+            alert('Failed to ban user');
+        }
+    };
+
 
     return (
         <div>
@@ -98,9 +121,13 @@ export default function Drivers() {
             ) : (
                 <div className="grid gap-4">
                     {drivers.map(driver => (
-                        <div key={driver._id} className="p-6 bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl flex flex-col md:flex-row items-start md:items-center gap-6 hover:border-slate-600 transition-colors">
+                        <div
+                            key={driver._id}
+                            onClick={() => setSelectedDriver(driver)}
+                            className="p-6 bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl flex flex-col md:flex-row items-start md:items-center gap-6 hover:border-blue-500/50 hover:bg-slate-800/80 cursor-pointer transition-all group"
+                        >
                             {/* Avatar */}
-                            <div className="w-16 h-16 rounded-full bg-slate-700 overflow-hidden shrink-0">
+                            <div className="w-16 h-16 rounded-full bg-slate-700 overflow-hidden shrink-0 ring-2 ring-transparent group-hover:ring-blue-500/50 transition-all">
                                 {driver.photoURL ? (
                                     <img src={driver.photoURL} alt={driver.fullName} className="w-full h-full object-cover" />
                                 ) : (
@@ -112,7 +139,7 @@ export default function Drivers() {
 
                             {/* Info */}
                             <div className="flex-1">
-                                <h3 className="text-lg font-bold text-slate-100">{driver.fullName}</h3>
+                                <h3 className="text-lg font-bold text-slate-100 group-hover:text-blue-400 transition-colors">{driver.fullName}</h3>
                                 <p className="text-sm text-slate-400">{driver.email}</p>
                                 <div className="mt-2 flex gap-2">
                                     <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
@@ -124,26 +151,24 @@ export default function Drivers() {
                                 </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="flex gap-3 w-full md:w-auto">
-                                <button
-                                    onClick={() => verifyDriver(driver._id)}
-                                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg border border-emerald-500/20 transition-colors"
-                                >
-                                    <CheckCircle className="w-4 h-4" />
-                                    <span>Approve</span>
-                                </button>
-                                <button
-                                    onClick={() => rejectDriver(driver._id)}
-                                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg border border-red-500/20 transition-colors"
-                                >
-                                    <XCircle className="w-4 h-4" />
-                                    <span>Reject</span>
-                                </button>
+                            {/* Quick Action (View) */}
+                            <div className="hidden md:flex text-slate-500 group-hover:text-blue-400 transition-colors">
+                                <Eye className="w-6 h-6" />
                             </div>
                         </div>
                     ))}
                 </div>
+            )}
+
+            {/* Modal */}
+            {selectedDriver && (
+                <DriverDetailModal
+                    driver={selectedDriver}
+                    onClose={() => setSelectedDriver(null)}
+                    onApprove={verifyDriver}
+                    onReject={rejectDriver}
+                    onBan={banDriver}
+                />
             )}
         </div>
     );

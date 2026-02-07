@@ -1,8 +1,12 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
+import Coupons from './pages/Coupons';
+import Credits from './pages/Credits';
 import DashboardHome from './pages/DashboardHome';
 import Drivers from './pages/Drivers';
 import Login from './pages/Login';
+import Places from './pages/Places';
+import Subscriptions from './pages/Subscriptions';
 import Support from './pages/Support';
 import Trips from './pages/Trips';
 import Users from './pages/Users';
@@ -22,6 +26,10 @@ function App() {
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardHome />} />
           <Route path="/drivers" element={<Drivers />} />
+          <Route path="/places" element={<Places />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
+          <Route path="/coupons" element={<Coupons />} />
+          <Route path="/credits" element={<Credits />} />
           <Route path="/users" element={<Users />} />
           <Route path="/trips" element={<Trips />} />
           <Route path="/support" element={<Support />} />

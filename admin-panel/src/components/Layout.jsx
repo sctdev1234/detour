@@ -1,9 +1,12 @@
 import {
     Car,
+    CreditCard,
+    DollarSign,
     LayoutDashboard,
     LogOut,
     Map,
     MessageSquare,
+    Tag,
     Users
 } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
@@ -19,8 +22,11 @@ export default function Layout() {
     const navItems = [
         { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
         { path: '/drivers', label: 'Drivers', icon: Car },
+        { path: '/places', label: 'Places', icon: Map },
+        { path: '/subscriptions', label: 'Abonnements', icon: CreditCard },
+        { path: '/coupons', label: 'Coupons', icon: Tag },
+        { path: '/credits', label: 'Finance', icon: DollarSign },
         { path: '/users', label: 'Clients', icon: Users },
-        { path: '/trips', label: 'Trips', icon: Map },
         { path: '/support', label: 'Support', icon: MessageSquare },
     ];
 

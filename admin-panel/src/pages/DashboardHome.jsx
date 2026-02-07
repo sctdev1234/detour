@@ -1,4 +1,4 @@
-import { AlertCircle, Map, TrendingUp, Users } from 'lucide-react';
+import { AlertCircle, Car, CheckCircle, Map, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import api from '../lib/axios';
 
@@ -22,19 +22,23 @@ const StatCard = ({ title, value, icon: Icon, color, trend }) => (
 export default function DashboardHome() {
     const [stats, setStats] = useState({
         pendingDrivers: 0,
-        totalUsers: 142, // Mocked for now
-        activeTrips: 12, // Mocked
-        revenue: '$1,240' // Mocked
+        totalUsers: 0,
+        totalDrivers: 0,
+        pendingWithdrawals: 0,
+        activeTrips: 0,
+        completedTrips: 0
     });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Fetch real stats where possible
         const fetchStats = async () => {
             try {
-                const res = await api.get('/admin/pending-drivers');
-                setStats(prev => ({ ...prev, pendingDrivers: res.data.length }));
+                const res = await api.get('/admin/stats');
+                setStats(res.data);
             } catch (err) {
                 console.error("Failed to fetch dashboard stats", err);
+            } finally {
+                setLoading(false);
             }
         };
         fetchStats();
@@ -47,38 +51,52 @@ export default function DashboardHome() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <StatCard
-                    title="Pending Approvals"
-                    value={stats.pendingDrivers}
+                    title="Pending Drivers"
+                    value={loading ? '...' : stats.pendingDrivers}
                     icon={AlertCircle}
                     color="yellow"
                 />
                 <StatCard
                     title="Active Users"
-                    value={stats.totalUsers}
+                    value={loading ? '...' : stats.totalUsers}
                     icon={Users}
                     color="blue"
                     trend="+5.2%"
                 />
                 <StatCard
                     title="Active Trips"
-                    value={stats.activeTrips}
+                    value={loading ? '...' : stats.activeTrips}
                     icon={Map}
                     color="purple"
                     trend="+12%"
                 />
                 <StatCard
-                    title="Total Revenue"
-                    value={stats.revenue}
+                    title="Pending Payouts"
+                    value={loading ? '...' : stats.pendingWithdrawals}
                     icon={TrendingUp}
                     color="emerald"
-                    trend="+4.1%"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <StatCard
+                    title="Total Drivers"
+                    value={loading ? '...' : stats.totalDrivers}
+                    icon={Car}
+                    color="indigo"
+                />
+                <StatCard
+                    title="Completed Trips"
+                    value={loading ? '...' : stats.completedTrips}
+                    icon={CheckCircle}
+                    color="green"
                 />
             </div>
 
             {/* Placeholder for Recent Activity Chart or Table */}
             <div className="grid lg:grid-cols-2 gap-6">
                 <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-2xl h-64 flex items-center justify-center text-slate-500">
-                    Chart Placeholder
+                    User Growth Chart Placeholder
                 </div>
                 <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-2xl h-64 flex items-center justify-center text-slate-500">
                     Recent Activity Placeholder
