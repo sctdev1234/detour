@@ -1,102 +1,215 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import api from '../services/api';
 
-export interface LatLng {
+export type RideRequest = {
+    _id?: string;
+    userId?: string;
+    pickup: { lat: number; lng: number; address: string };
+    destination: { lat: number; lng: number; address: string };
+    schedule: { days: string[]; time: string };
+    status?: 'pending' | 'matched' | 'completed' | 'cancelled';
+};
+
+export type LatLng = {
     latitude: number;
     longitude: number;
-}
+    address?: string;
+};
 
-export interface Trip {
-    id: string;
-    driverId: string;
+export type TripData = {
     carId: string;
     startPoint: LatLng;
     endPoint: LatLng;
     waypoints: LatLng[];
-    timeStart: string; // e.g., "08:00"
-    timeArrival: string; // e.g., "09:00"
-    days: string[]; // e.g., ["Monday", "Tuesday"]
+    timeStart: string;
+    timeArrival: string;
+    days: string[];
     price: number;
     priceType: 'fix' | 'km';
-    status: 'active' | 'inactive';
+    status: string;
+    driverId?: string;
+    driverName?: string;
+    profilePhoto?: string;
+    passengers?: any[];
     distanceKm?: number;
     estimatedDurationMin?: number;
     routeGeometry?: string;
-    passengers?: string[]; // Array of client IDs
-}
+};
+
+export type Trip = TripData & {
+    id: string;
+};
 
 interface TripState {
+    currentRequest: RideRequest | null;
+    matches: any[];
     trips: Trip[];
-    addTrip: (trip: Omit<Trip, 'id' | 'driverId'>) => void;
-    removeTrip: (id: string) => void;
-    updateTrip: (id: string, updates: Partial<Trip>) => void;
-    addPassenger: (tripId: string, clientId: string) => void;
-    removePassenger: (tripId: string, clientId: string) => void;
+    isLoading: boolean;
+    searchResults: Trip[];
+    createRequest: (data: Partial<RideRequest>) => Promise<void>;
+    addTrip: (data: TripData) => Promise<void>;
+    fetchTrips: () => Promise<void>;
+    searchTrips: (params: { pickup: LatLng; destination: LatLng; days?: string[]; time?: string }) => Promise<void>;
+    removeTrip: (tripId: string) => Promise<void>;
+    findMatches: (requestId: string) => Promise<void>;
+    confirmTrip: (rideRequestId: string, driverId: string, price: number) => Promise<void>;
 }
 
-export const useTripStore = create<TripState>()(
-    persist(
-        (set, get) => ({
-            trips: [],
-            addTrip: (tripData) => {
-                const state = get();
+export const useTripStore = create<TripState>((set) => ({
+    currentRequest: null,
+    matches: [],
+    trips: [],
+    searchResults: [],
+    isLoading: false,
 
-                // Check for conflicts
-                const hasConflict = state.trips.some(existingTrip => {
-                    const daysOverlap = existingTrip.days.some(day => tripData.days.includes(day));
-                    if (!daysOverlap) return false;
-
-                    // Simple time string comparison (HH:mm)
-                    return (
-                        (tripData.timeStart >= existingTrip.timeStart && tripData.timeStart < existingTrip.timeArrival) ||
-                        (tripData.timeArrival > existingTrip.timeStart && tripData.timeArrival <= existingTrip.timeArrival) ||
-                        (tripData.timeStart <= existingTrip.timeStart && tripData.timeArrival >= existingTrip.timeArrival)
-                    );
-                });
-
-                if (hasConflict) {
-                    throw new Error("Schedule Conflict: You already have a trip at this time.");
-                }
-
-                set((state) => {
-                    const id = Math.random().toString(36).substring(7);
-                    const newTrip: Trip = {
-                        ...tripData,
-                        id,
-                        driverId: 'me',
-                        distanceKm: tripData.distanceKm || 0,
-                        estimatedDurationMin: tripData.estimatedDurationMin || 0,
-                        routeGeometry: tripData.routeGeometry || '',
-                        passengers: []
-                    };
-                    return { trips: [...state.trips, newTrip] };
-                });
-            },
-            removeTrip: (id) => set((state) => ({
-                trips: state.trips.filter((t) => t.id !== id),
-            })),
-            updateTrip: (id, updates) => set((state) => ({
-                trips: state.trips.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-            })),
-            addPassenger: (tripId, clientId) => set((state) => ({
-                trips: state.trips.map((t) =>
-                    t.id === tripId
-                        ? { ...t, passengers: [...(t.passengers || []), clientId] }
-                        : t
-                ),
-            })),
-            removePassenger: (tripId, clientId) => set((state) => ({
-                trips: state.trips.map((t) =>
-                    t.id === tripId
-                        ? { ...t, passengers: (t.passengers || []).filter(p => p !== clientId) }
-                        : t
-                ),
-            })),
-        }),
-        {
-            name: 'trip-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+    createRequest: async (data: Partial<RideRequest>) => {
+        set({ isLoading: true });
+        try {
+            const res = await api.post('/trip/request', data);
+            set({ currentRequest: res.data, isLoading: false });
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
         }
-    )
-);
+    },
+
+    addTrip: async (tripData: TripData) => {
+        set({ isLoading: true });
+        try {
+            const res = await api.post('/trip/route', tripData);
+            const newTrip: Trip = {
+                ...tripData,
+                id: res.data._id
+            };
+            set((state) => ({
+                trips: [newTrip, ...state.trips],
+                isLoading: false
+            }));
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
+        }
+    },
+
+    fetchTrips: async () => {
+        set({ isLoading: true });
+        try {
+            const res = await api.get('/trip/route');
+            const formattedTrips: Trip[] = res.data.map((item: any) => ({
+                id: item._id,
+                carId: item.carId,
+                driverId: item.userId,
+                passengers: item.passengers || [],
+                startPoint: {
+                    latitude: item.startPoint?.coordinates?.[1] || item.startPoint?.latitude,
+                    longitude: item.startPoint?.coordinates?.[0] || item.startPoint?.longitude,
+                    address: item.startPoint?.address
+                },
+                endPoint: {
+                    latitude: item.endPoint?.coordinates?.[1] || item.endPoint?.latitude,
+                    longitude: item.endPoint?.coordinates?.[0] || item.endPoint?.longitude,
+                    address: item.endPoint?.address
+                },
+                waypoints: (item.waypoints || []).map((wp: any) => ({
+                    latitude: wp.coordinates?.[1] || wp.latitude,
+                    longitude: wp.coordinates?.[0] || wp.longitude,
+                    address: wp.address
+                })),
+                timeStart: item.schedule?.time || '',
+                timeArrival: item.schedule?.timeArrival || '',
+                days: item.schedule?.days || [],
+                price: item.price?.amount || 0,
+                priceType: item.price?.type || 'fix',
+                status: item.isActive ? 'active' : 'inactive',
+                distanceKm: item.distanceKm,
+                estimatedDurationMin: item.estimatedDurationMin,
+                routeGeometry: item.routeGeometry
+            }));
+            set({ trips: formattedTrips, isLoading: false });
+        } catch (error) {
+            set({ isLoading: false });
+            console.error('Failed to fetch trips', error);
+        }
+    },
+
+    searchTrips: async (params) => {
+        set({ isLoading: true });
+        try {
+            const res = await api.post('/trip/search', params);
+            const formattedResults: Trip[] = res.data.map((item: any) => ({
+                id: item._id,
+                carId: item.carId,
+                driverId: item.userId?._id || item.userId,
+                driverName: item.userId?.fullName || 'Driver',
+                passengers: item.passengers || [],
+                profilePhoto: item.userId?.photoURL,
+                startPoint: {
+                    latitude: item.startPoint?.coordinates[1],
+                    longitude: item.startPoint?.coordinates[0],
+                    address: item.startPoint?.address
+                },
+                endPoint: {
+                    latitude: item.endPoint?.coordinates[1],
+                    longitude: item.endPoint?.coordinates[0],
+                    address: item.endPoint?.address
+                },
+                waypoints: (item.waypoints || []).map((wp: any) => ({
+                    latitude: wp.coordinates?.[1],
+                    longitude: wp.coordinates?.[0],
+                    address: wp.address
+                })),
+                timeStart: item.schedule?.time || '',
+                timeArrival: item.schedule?.timeArrival || '',
+                days: item.schedule?.days || [],
+                price: item.price?.amount || 0,
+                priceType: item.price?.type || 'fix',
+                status: item.isActive ? 'active' : 'inactive',
+                distanceKm: item.distanceKm,
+                estimatedDurationMin: item.estimatedDurationMin,
+                routeGeometry: item.routeGeometry
+            }));
+            set({ searchResults: formattedResults, isLoading: false });
+        } catch (error) {
+            set({ isLoading: false });
+            console.error('Failed to search trips', error);
+            throw error;
+        }
+    },
+
+    removeTrip: async (tripId: string) => {
+        set({ isLoading: true });
+        try {
+            await api.delete(`/trip/route/${tripId}`);
+            set((state) => ({
+                trips: state.trips.filter(t => t.id !== tripId),
+                isLoading: false
+            }));
+        } catch (error) {
+            set({ isLoading: false });
+            console.error('Failed to remove trip', error);
+            throw error;
+        }
+    },
+
+    findMatches: async (requestId: string) => {
+        set({ isLoading: true });
+        try {
+            const res = await api.get(`/trip/matches/${requestId}`);
+            set({ matches: res.data, isLoading: false });
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
+        }
+    },
+
+    confirmTrip: async (rideRequestId: string, driverId: string, price: number) => {
+        set({ isLoading: true });
+        try {
+            await api.post('/trip/confirm', { rideRequestId, driverId, price });
+            set({ isLoading: false });
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
+        }
+    },
+}));

@@ -1,160 +1,55 @@
-import { Navigation, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LatLng } from '../store/useTripStore';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
-interface MapPickerProps {
-    onPointsChange: (points: LatLng[]) => void;
-    theme: any;
-}
+// Dynamically import the Leaflet component on client-side only
+// This is necessary because 'leaflet' accesses 'window' during module initialization
+export default function MapPicker(props: any) {
+    const [MapComponent, setMapComponent] = useState<any>(null);
 
-export default function MapPicker({ onPointsChange, theme }: MapPickerProps) {
-    const [points, setPoints] = useState<LatLng[]>([]);
+    useEffect(() => {
+        let isMounted = true;
 
-    const simulatePointAdd = () => {
-        // Mock points for Casablanca -> Rabat area
-        const mockPoints: LatLng[] = [
-            { latitude: 33.5731, longitude: -7.5898 },
-            { latitude: 34.0209, longitude: -6.8416 }
-        ];
+        // Only import relevant map on web client
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            import('./MapPickerLeaflet').then((module) => {
+                if (isMounted) {
+                    setMapComponent(() => module.default);
+                }
+            }).catch((err) => {
+                console.error("Failed to load map component:", err);
+            });
+        }
 
-        const nextPoint = points.length === 0 ? mockPoints[0] :
-            points.length === 1 ? mockPoints[1] :
-                { latitude: points[points.length - 1].latitude + 0.01, longitude: points[points.length - 1].longitude + 0.01 };
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
-        const newPoints = [...points, nextPoint];
-        setPoints(newPoints);
-        onPointsChange(newPoints);
-    };
-
-    const clearPoints = () => {
-        setPoints([]);
-        onPointsChange([]);
-    };
-
-    return (
-        <View style={styles.container}>
-            <View style={[styles.webPlaceholder, { backgroundColor: theme.surface }]}>
-                <Text style={[styles.placeholderText, { color: theme.icon }]}>
-                    Map view is optimized for mobile devices.
-                </Text>
-                <Text style={[styles.placeholderSubtext, { color: theme.icon }]}>
-                    Interactive map features are unavailable on web.
-                </Text>
-
-                <TouchableOpacity
-                    style={[styles.simulateButton, { backgroundColor: theme.primary }]}
-                    onPress={simulatePointAdd}
-                >
-                    <Text style={styles.simulateButtonText}>Simulate Route Selection</Text>
-                </TouchableOpacity>
-
-                {points.length > 0 && (
-                    <View style={styles.pointsList}>
-                        <Text style={{ color: theme.text, fontWeight: '700' }}>Points Added: {points.length}</Text>
-                        <Text style={{ color: theme.icon, fontSize: 10 }}>
-                            {points[0].latitude.toFixed(4)}, {points[0].longitude.toFixed(4)} ...
-                        </Text>
-                    </View>
-                )}
+    if (!MapComponent) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>Loading Map...</Text>
             </View>
+        );
+    }
 
-            <View style={styles.controls}>
-                <View style={styles.leftControls}>
-                    {points.length > 0 && (
-                        <TouchableOpacity
-                            style={[styles.controlButton, { backgroundColor: theme.accent }]}
-                            onPress={clearPoints}
-                        >
-                            <Trash2 size={20} color="#fff" />
-                        </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                        style={[styles.controlButton, { backgroundColor: theme.primary }]}
-                        onPress={() => { }}
-                    >
-                        <Navigation size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={[styles.infoBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <Text style={[styles.infoText, { color: theme.text }]}>
-                        {points.length === 0 ? 'Click button to simulate Start Point' :
-                            points.length === 1 ? 'Click button to simulate End Point' :
-                                `Route with ${points.length} points simulated`}
-                    </Text>
-                </View>
-            </View>
-        </View>
-    );
+    return <MapComponent {...props} />;
 }
 
 const styles = StyleSheet.create({
-    container: {
-        height: 480,
+    loadingContainer: {
+        height: 400,
         borderRadius: 20,
-        overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#ccc',
-    },
-    webPlaceholder: {
-        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
-        gap: 12,
+        backgroundColor: '#f5f5f5',
     },
-    placeholderText: {
-        fontSize: 18,
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-    placeholderSubtext: {
+    loadingText: {
+        marginTop: 10,
+        color: '#666',
         fontSize: 14,
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    simulateButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 12,
-    },
-    simulateButtonText: {
-        color: '#fff',
-        fontWeight: '700',
-    },
-    pointsList: {
-        marginTop: 20,
-        alignItems: 'center',
-    },
-    controls: {
-        position: 'absolute',
-        bottom: 16,
-        left: 16,
-        right: 16,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    leftControls: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    controlButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    infoBox: {
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-        borderRadius: 22,
-        borderWidth: 1,
-    },
-    infoText: {
-        fontWeight: '700',
-        fontSize: 12,
-    },
+    }
 });

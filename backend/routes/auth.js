@@ -38,4 +38,12 @@ router.delete('/delete', auth, (req, res) => authController.delete(req, res));
 // @desc    Change user password
 router.post('/change-password', auth, (req, res) => authController.changePassword(req, res));
 
+// @route   POST api/auth/places
+// @desc    Add a saved place
+router.post('/places', auth, (req, res) => authController.addSavedPlace(req, res));
+
+// @route   DELETE api/auth/places/:id
+// @desc    Remove a saved place
+router.delete('/places/:id', auth, (req, res) => authController.removeSavedPlace(req, res));
+
 module.exports = router;

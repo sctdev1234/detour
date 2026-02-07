@@ -41,5 +41,20 @@ export const RouteService = {
     estimatePrice: (distanceKm: number, model: 'fixed' | 'per_km', perKmRate?: number) => {
         if (model === 'fixed') return 0; // User sets manually
         return (distanceKm * (perKmRate || 2)).toFixed(2); // Default 2 TND/km?
+    },
+
+    reverseGeocode: async (lat: number, lng: number): Promise<string> => {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                headers: {
+                    'User-Agent': 'DetourApp/1.0'
+                }
+            });
+            const data = await response.json();
+            return data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        }
     }
 };

@@ -19,6 +19,10 @@ npm install
 # Install frontend dependencies
 cd ../frontend
 npm install
+
+# Install admin-panel dependencies
+cd ../admin-panel
+npm install
 ```
 
 ### 2. Running the Project
@@ -40,6 +44,14 @@ Start the Expo development server.
 ```bash
 # From the root directory
 npm run frontend
+```
+
+#### Terminal 3: Admin Panel
+Start the admin panel server (connects to MongoDB).
+
+```bash
+# From the root directory
+npm run admin-panel
 ```
 
 ### 📱 Testing on your Phone

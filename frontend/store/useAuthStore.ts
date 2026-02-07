@@ -13,6 +13,14 @@ interface User {
     verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
     photoURL?: string;
     documents?: any[]; // Array of document submissions
+    savedPlaces?: {
+        _id: string;
+        label: string;
+        address: string;
+        latitude: number;
+        longitude: number;
+        icon: string;
+    }[];
 }
 
 interface AuthState {
@@ -44,6 +52,8 @@ interface AuthState {
     setUser: (user: User | null) => void;
     setRole: (role: Role) => void;
     setLoading: (loading: boolean) => void;
+    addSavedPlace: (place: { label: string; address: string; latitude: number; longitude: number; icon: string }) => Promise<void>;
+    removeSavedPlace: (placeId: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -353,6 +363,54 @@ export const useAuthStore = create<AuthState>()(
                     const data = await res.json();
                     set({ isLoading: false });
                     return data.url;
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            addSavedPlace: async (place) => {
+                set({ isLoading: true });
+                try {
+                    const res = await fetch(`${API_URL}/auth/places`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-auth-token': get().token || ''
+                        },
+                        body: JSON.stringify(place)
+                    });
+
+                    if (!res.ok) throw new Error('Failed to add saved place');
+
+                    const savedPlaces = await res.json();
+                    set((state) => ({
+                        user: { ...state.user!, savedPlaces },
+                        isLoading: false
+                    }));
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            removeSavedPlace: async (placeId) => {
+                set({ isLoading: true });
+                try {
+                    const res = await fetch(`${API_URL}/auth/places/${placeId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'x-auth-token': get().token || ''
+                        }
+                    });
+
+                    if (!res.ok) throw new Error('Failed to remove saved place');
+
+                    const savedPlaces = await res.json();
+                    set((state) => ({
+                        user: { ...state.user!, savedPlaces },
+                        isLoading: false
+                    }));
                 } catch (error) {
                     set({ isLoading: false });
                     throw error;

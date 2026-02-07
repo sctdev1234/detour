@@ -23,6 +23,13 @@ export default function GlobalHeader() {
                 <View style={styles.brandContainer}>
                     <Text style={[styles.brandText, { color: theme.primary }]}>Detour</Text>
                     <Text style={[styles.brandDot, { color: theme.secondary }]}>.</Text>
+                    {user && role && (
+                        <View style={[styles.roleBadge, { backgroundColor: theme.surface }]}>
+                            <Text style={[styles.roleText, { color: theme.icon }]}>
+                                {role === 'driver' ? 'Driver' : 'Client'}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Right Side: User Profile or Login */}
@@ -79,6 +86,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         elevation: 2,
         boxShadow: '0px 2px 6px rgba(0,0,0,0.05)',
+    },
+    roleBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginLeft: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+    },
+    roleText: {
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 });
 

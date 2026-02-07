@@ -139,6 +139,28 @@ class AuthController {
         }
     }
 
+    async addSavedPlace(req, res) {
+        try {
+            const places = await authService.addSavedPlace(req.user.id, req.body);
+            res.json(places);
+        } catch (err) {
+            console.error(err.message);
+            if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
+            res.status(500).send('Server Error');
+        }
+    }
+
+    async removeSavedPlace(req, res) {
+        try {
+            const places = await authService.removeSavedPlace(req.user.id, req.params.id);
+            res.json(places);
+        } catch (err) {
+            console.error(err.message);
+            if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
+            res.status(500).send('Server Error');
+        }
+    }
+
     async getMe(req, res) {
         try {
             const user = await User.findById(req.user.id).select('-password');

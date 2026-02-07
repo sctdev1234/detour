@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const SavedPlace = require('../models/SavedPlace');
+const fs = require('fs');
 
 class AuthService {
     async signup({ email, password, fullName, role, photoURL }) {
@@ -39,8 +41,26 @@ class AuthService {
             throw new Error('Invalid Credentials');
         }
 
-        const token = this.generateToken(user);
-        return { user, token };
+        // Fetch saved places
+        const savedPlaces = await SavedPlace.find({ user: user.id });
+        const userObj = user.toObject();
+        userObj.savedPlaces = savedPlaces;
+
+        return {
+            token: this.generateToken(user),
+            user: userObj
+        };
+    }
+
+    async getUser(userId) {
+        const user = await User.findById(userId).select('-password');
+        if (!user) return null;
+
+        const savedPlaces = await SavedPlace.find({ user: userId });
+        const userObj = user.toObject();
+        userObj.savedPlaces = savedPlaces;
+
+        return userObj;
     }
 
     async forgotPassword({ email }) {
@@ -126,6 +146,35 @@ class AuthService {
 
         await user.save();
         return true;
+    }
+
+    // ...
+
+    async addSavedPlace(userId, placeData) {
+        const user = await User.findById(userId);
+        if (!user) throw new Error('User not found');
+
+        const newPlace = new SavedPlace({
+            user: userId,
+            ...placeData
+        });
+        await newPlace.save();
+
+        // Return all saved places for the user to keep frontend state consistent
+        return SavedPlace.find({ user: userId });
+    }
+
+    async removeSavedPlace(userId, placeId) {
+        // Ensure the place belongs to the user
+        const result = await SavedPlace.findOneAndDelete({ _id: placeId, user: userId });
+        if (!result) throw new Error('Place not found or not authorized');
+
+        // Return updated list
+        return SavedPlace.find({ user: userId });
+    }
+
+    async getSavedPlaces(userId) {
+        return SavedPlace.find({ user: userId });
     }
 
     generateToken(user) {

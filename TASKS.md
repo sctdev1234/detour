@@ -3,11 +3,14 @@
 [ ] - trips management (the trip becomes trip if the places are great for both the client and the driver)
 [ ] - coupon logic
 [ ] - credits and withdraw money logic
+[ ] - saved places for client and driver (home, work, school, etc)
+
+[ ] - allow the driver to be [EMERGENCY-DRIVER] in offtime like inDrive (earn extra money)
+[ ] - allow the client to be [EMERGENCY-CLIENT] in offtime like inDrive (extra payment) 
 
 # abonnement payment logic
-- 10% of the trip price goes to the company
-- 90% of the trip price goes to the driver
-- minimum is 5 MAD for every place in the trip goes to the company
+- 10% of the trip price goes to the [COMPANY] (minimum 5 MAD for every place in the trip)
+- 90% of the trip price goes to the [DRIVER]
 - the price is set by the driver
 
 # features
@@ -62,8 +65,8 @@
 
 - the [CLIENT] must pay the [DRIVER] monthly (pay first day of the month)
 - the [DRIVER] should get paid from the [CLIENT]'s monthly payment
-- 10% of the trip price goes to the [COMPANY] and 90% of the trip price goes to the [DRIVER]
-- minimum is 5 MAD for every place in the trip goes to the [COMPANY]
+- 10% of the trip price goes to the [COMPANY] (minimum 5 MAD for every place in the trip)
+- 90% of the trip price goes to the [DRIVER]
 - the [DRIVER] get 5DH credits Gift from the [COMPANY] after signing up (to try the service)
 - the [DRIVER] can buy credits (to get more trips or keep renew trips subscription)
 - if the [CLIENT] didn't pay the [DRIVER] monthly, the [DRIVER] should cancel the trip and the [CLIENT] should be banned

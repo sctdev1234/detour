@@ -1,17 +1,19 @@
+import { useAuthStore } from '@/store/useAuthStore';
+import { useCarStore } from '@/store/useCarStore';
+import { useTripStore } from '@/store/useTripStore';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Clock, DollarSign, Filter, Search, X } from 'lucide-react-native';
-import { useState } from 'react';
-import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ArrowLeft, ChevronRight, Clock, DollarSign, Filter, Search, Star, X } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
 import { Colors } from '../../constants/theme';
-import { useCarStore } from '../../store/useCarStore';
-import { Trip, useTripStore } from '../../store/useTripStore';
+import { Trip } from '../../store/useTripStore';
 
 export default function ClientSearchScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const allDriverTrips = useTripStore((state) => state.trips);
+    const { searchResults, searchTrips, isLoading } = useTripStore();
     const cars = useCarStore((state) => state.cars);
 
     const [points, setPoints] = useState<any[]>([]);
@@ -22,13 +24,21 @@ export default function ClientSearchScreen() {
     const [maxPrice, setMaxPrice] = useState<string>('');
     const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         if (points.length < 2) return;
-        setShowResults(true);
+        try {
+            await searchTrips({
+                pickup: points[0],
+                destination: points[1]
+            });
+            setShowResults(true);
+        } catch (error) {
+            console.error('Search failed', error);
+        }
     };
 
     // Filter Logic
-    const filteredTrips = allDriverTrips
+    const filteredTrips = searchResults
         .filter(trip => {
             if (maxPrice && parseFloat(maxPrice) > 0) {
                 return trip.price <= parseFloat(maxPrice);
@@ -36,9 +46,8 @@ export default function ClientSearchScreen() {
             return true;
         })
         .sort((a, b) => {
-            if (sortBy === 'price') return a.price - b.price;
-            // Simple string comparison for time (e.g. "08:00") works for same-day
-            return a.timeStart.localeCompare(b.timeStart);
+            if (sortBy === 'price') return (a.price || 0) - (b.price || 0);
+            return (a.timeStart || '').localeCompare(b.timeStart || '');
         });
 
     const renderDriverTrip = ({ item }: { item: Trip }) => {
@@ -54,11 +63,15 @@ export default function ClientSearchScreen() {
             >
                 <View style={styles.driverInfo}>
                     <View style={[styles.avatar, { backgroundColor: theme.primary + '10' }]}>
-                        <Text style={[styles.avatarText, { color: theme.primary }]}>D</Text>
+                        {item.profilePhoto ? (
+                            <Text style={[styles.avatarText, { color: theme.primary }]}>{item.driverName?.charAt(0) || 'D'}</Text>
+                        ) : (
+                            <Text style={[styles.avatarText, { color: theme.primary }]}>{item.driverName?.charAt(0) || 'D'}</Text>
+                        )}
                     </View>
                     <View style={styles.driverDetails}>
-                        <Text style={[styles.driverName, { color: theme.text }]}>Driver Name</Text>
-                        <Text style={[styles.carInfo, { color: theme.icon }]}>{car ? `${car.marque} ${car.model}` : 'Standard Car'}</Text>
+                        <Text style={[styles.driverName, { color: theme.text }]}>{item.driverName || 'Driver'}</Text>
+                        <Text style={[styles.carInfo, { color: theme.icon }]}>{car ? `${car.marque} ${car.model}` : 'Verified Driver'}</Text>
                     </View>
                     <View style={styles.priceContainer}>
                         <Text style={[styles.priceText, { color: theme.primary }]}>
@@ -75,7 +88,7 @@ export default function ClientSearchScreen() {
                         <Text style={[styles.metaText, { color: theme.text }]}>{item.timeStart}</Text>
                     </View>
                     <View style={styles.metaAction}>
-                        <Text style={[styles.viewText, { color: theme.primary }]}>View</Text>
+                        <Text style={[styles.viewText, { color: theme.primary }]}>View Details</Text>
                         <ChevronRight size={16} color={theme.primary} />
                     </View>
                 </View>
@@ -89,6 +102,7 @@ export default function ClientSearchScreen() {
                 <View style={styles.flexContainer}>
                     <View style={styles.header}>
                         <Text style={[styles.title, { color: theme.text }]}>Find a Ride</Text>
+                        <Text style={{ fontSize: 16, color: theme.icon, marginTop: 4 }}>Where are we going today?</Text>
                     </View>
 
                     <View style={styles.mapWrapper}>
@@ -106,7 +120,39 @@ export default function ClientSearchScreen() {
                         )}
                     </View>
 
+
+
                     <View style={[styles.bottomPanel, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
+
+                        {/* Saved Places Quick Access */}
+                        {points.length < 2 && useAuthStore.getState().user?.savedPlaces && (useAuthStore.getState().user?.savedPlaces?.length ?? 0) > 0 && (
+                            <View style={{ marginBottom: 20 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text, marginBottom: 12, marginLeft: 4 }}>Saved Places</Text>
+                                <FlatList
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    data={useAuthStore.getState().user?.savedPlaces}
+                                    keyExtractor={(item, index) => item._id || index.toString()}
+                                    contentContainerStyle={{ gap: 12, paddingRight: 20 }}
+                                    renderItem={({ item }) => (
+                                        <TouchableOpacity
+                                            style={[styles.savedPlaceChip, { backgroundColor: theme.background, borderColor: theme.border }]}
+                                            onPress={() => {
+                                                const newPoint = { latitude: item.latitude, longitude: item.longitude };
+                                                if (points.length === 0) setPoints([newPoint]);
+                                                else if (points.length === 1) setPoints([...points, newPoint]);
+                                            }}
+                                        >
+                                            <View style={[styles.savedIcon, { backgroundColor: theme.primary + '20' }]}>
+                                                <Star size={12} color={theme.primary} fill={theme.primary} />
+                                            </View>
+                                            <Text style={[styles.savedPlaceText, { color: theme.text }]}>{item.label}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                />
+                            </View>
+                        )}
+
                         <View style={styles.routeSummary}>
                             <View style={styles.routeDotLine}>
                                 <View style={[styles.dot, { backgroundColor: theme.primary }]} />
@@ -114,26 +160,106 @@ export default function ClientSearchScreen() {
                                 <View style={[styles.square, { borderColor: theme.text }]} />
                             </View>
                             <View style={styles.routeTexts}>
-                                <Text style={[styles.routeLabel, { color: theme.text }]}>
-                                    {points.length > 0 ? 'Pickup Set' : 'Select Pickup Point'}
-                                </Text>
-                                <View style={{ height: 24 }} />
-                                <Text style={[styles.routeLabel, { color: theme.text }]}>
-                                    {points.length > 1 ? 'Destination Set' : 'Select Destination'}
-                                </Text>
+                                {/* Pickup Row */}
+                                <View style={[styles.locationRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.routeLabel, { color: points.length > 0 ? theme.text : theme.icon }]}>
+                                            {points.length > 0 ? (points[0].latitude === 33.5731 ? 'Casablanca, Morocco' : 'Selected Pickup') : 'Select Pickup Point'}
+                                        </Text>
+                                        {points.length > 0 && (
+                                            <Text style={[styles.routeSubtext, { color: theme.icon }]}>
+                                                {points[0].latitude.toFixed(4)}, {points[0].longitude.toFixed(4)}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    {points.length > 0 && (
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            <TouchableOpacity
+                                                style={styles.actionButton}
+                                                onPress={() => {
+                                                    useAuthStore.getState().addSavedPlace({
+                                                        label: `Saved Pickup ${new Date().toLocaleDateString()}`,
+                                                        address: `Lat: ${points[0].latitude.toFixed(2)}, Lng: ${points[0].longitude.toFixed(2)}`,
+                                                        latitude: points[0].latitude,
+                                                        longitude: points[0].longitude,
+                                                        icon: 'map-pin'
+                                                    }).then(() => alert('Pickup saved!'));
+                                                }}
+                                            >
+                                                <Star size={18} color={theme.primary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, { backgroundColor: '#fee2e2' }]}
+                                                onPress={() => {
+                                                    const newPoints = points.filter((_, i) => i !== 0);
+                                                    setPoints(newPoints);
+                                                }}
+                                            >
+                                                <X size={18} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* Destination Row */}
+                                <View style={[styles.locationRow, { marginTop: 12 }]}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.routeLabel, { color: points.length > 1 ? theme.text : theme.icon }]}>
+                                            {points.length > 1 ? (points[1].latitude === 34.0209 ? 'Rabat, Morocco' : 'Selected Destination') : 'Select Destination'}
+                                        </Text>
+                                        {points.length > 1 && (
+                                            <Text style={[styles.routeSubtext, { color: theme.icon }]}>
+                                                {points[1].latitude.toFixed(4)}, {points[1].longitude.toFixed(4)}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    {points.length > 1 && (
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            <TouchableOpacity
+                                                style={styles.actionButton}
+                                                onPress={() => {
+                                                    useAuthStore.getState().addSavedPlace({
+                                                        label: `Saved Destination ${new Date().toLocaleDateString()}`,
+                                                        address: `Lat: ${points[1].latitude.toFixed(2)}, Lng: ${points[1].longitude.toFixed(2)}`,
+                                                        latitude: points[1].latitude,
+                                                        longitude: points[1].longitude,
+                                                        icon: 'map-pin'
+                                                    }).then(() => alert('Destination saved!'));
+                                                }}
+                                            >
+                                                <Star size={18} color={theme.primary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.actionButton, { backgroundColor: '#fee2e2' }]}
+                                                onPress={() => {
+                                                    const newPoints = points.filter((_, i) => i !== 1);
+                                                    setPoints(newPoints);
+                                                }}
+                                            >
+                                                <X size={18} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
                             </View>
                         </View>
 
                         <TouchableOpacity
                             style={[
                                 styles.searchButton,
-                                { backgroundColor: theme.primary, opacity: points.length < 2 ? 0.5 : 1 }
+                                { backgroundColor: theme.primary, opacity: (points.length < 2 || isLoading) ? 0.6 : 1 }
                             ]}
                             onPress={handleSearch}
-                            disabled={points.length < 2}
+                            disabled={points.length < 2 || isLoading}
                         >
-                            <Search size={20} color="#fff" />
-                            <Text style={styles.searchButtonText}>Search Available Trips</Text>
+                            {isLoading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <>
+                                    <Search size={20} color="#fff" />
+                                    <Text style={styles.searchButtonText}>Search Available Trips</Text>
+                                </>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -271,6 +397,9 @@ const styles = StyleSheet.create({
         zIndex: 1,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: '#f5f5f5', // fallback
+        elevation: 5,
+        boxShadow: '0px 10px 30px rgba(0,0,0,0.1)',
     },
     instructionBadge: {
         position: 'absolute',
@@ -560,5 +689,51 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+    routeSubtext: {
+        fontSize: 12,
+        marginTop: 4,
+    },
+    deletePointButton: {
+        width: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 12,
+    },
+    savedPlaceChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        borderWidth: 1,
+        gap: 8,
+    },
+    savedIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    savedPlaceText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    locationRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+    },
+    actionButton: {
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 16,
+    }
 });
 

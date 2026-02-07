@@ -125,7 +125,7 @@ export default function ClientDashboard() {
             {/* Search Bar */}
             <TouchableOpacity
                 style={styles.searchBarContainer}
-                onPress={() => router.push('/(client)/search')}
+                onPress={() => router.push('/(client)/request-ride')}
                 activeOpacity={0.9}
             >
                 <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.primary + '40' }]}>

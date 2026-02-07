@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Clock, Edit2, MapPin, Plus, Trash2 } from 'lucide-react-native';
-import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
 import { Trip, useTripStore } from '../../store/useTripStore';
@@ -9,8 +10,20 @@ export default function RoutesScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { trips, removeTrip } = useTripStore();
+    const { trips, removeTrip, fetchTrips, isLoading } = useTripStore();
     const cars = useCarStore((state) => state.cars);
+
+    useEffect(() => {
+        fetchTrips();
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        try {
+            await removeTrip(id);
+        } catch (error) {
+            console.error('Failed to delete trip', error);
+        }
+    };
 
     const renderTripItem = ({ item }: { item: Trip }) => {
         const car = cars.find(c => c.id === item.carId);
@@ -34,7 +47,7 @@ export default function RoutesScreen() {
                         <TouchableOpacity style={styles.actionBtn}>
                             <Edit2 size={18} color={theme.icon} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionBtn} onPress={() => removeTrip(item.id)}>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item.id)}>
                             <Trash2 size={18} color={theme.accent} />
                         </TouchableOpacity>
                     </View>
@@ -49,10 +62,10 @@ export default function RoutesScreen() {
                     </View>
                     <View style={styles.locations}>
                         <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
-                            Start Point
+                            {item.startPoint.address || 'Pickup Point'}
                         </Text>
                         <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
-                            End Point
+                            {item.endPoint.address || 'Dropoff Point'}
                         </Text>
                     </View>
                 </View>
@@ -92,21 +105,27 @@ export default function RoutesScreen() {
                 </TouchableOpacity>
             </View>
 
-            <FlatList
-                data={trips}
-                keyExtractor={(item) => item.id}
-                renderItem={renderTripItem}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <View style={[styles.emptyIcon, { backgroundColor: theme.surface }]}>
-                            <MapPin size={32} color={theme.primary} />
+            {isLoading && !trips.length ? (
+                <View style={styles.emptyContainer}>
+                    <ActivityIndicator size="large" color={theme.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={trips}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderTripItem}
+                    contentContainerStyle={styles.listContent}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <View style={[styles.emptyIcon, { backgroundColor: theme.surface }]}>
+                                <MapPin size={32} color={theme.primary} />
+                            </View>
+                            <Text style={[styles.emptyTitle, { color: theme.text }]}>No Routes Yet</Text>
+                            <Text style={[styles.emptyText, { color: theme.icon }]}>Create a recurring route to start getting requests.</Text>
                         </View>
-                        <Text style={[styles.emptyTitle, { color: theme.text }]}>No Routes Yet</Text>
-                        <Text style={[styles.emptyText, { color: theme.icon }]}>Create a recurring route to start getting requests.</Text>
-                    </View>
-                }
-            />
+                    }
+                />
+            )}
         </View>
     );
 }

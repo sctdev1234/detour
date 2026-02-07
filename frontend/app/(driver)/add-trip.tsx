@@ -1,11 +1,12 @@
 import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
-import { Car, Check, ChevronLeft, Clock, MapPin, Route as RouteIcon } from 'lucide-react-native';
+import { Car, Check, ChevronLeft, Clock, MapPin, Route as RouteIcon, Star, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
 import { Colors } from '../../constants/theme';
 import { RouteService } from '../../services/RouteService';
+import { useAuthStore } from '../../store/useAuthStore';
 import { useCarStore } from '../../store/useCarStore';
 import { LatLng, useTripStore } from '../../store/useTripStore';
 
@@ -29,6 +30,7 @@ export default function AddTripScreen() {
     const [selectedCarId, setSelectedCarId] = useState(cars.find(c => c.isDefault)?.id || cars[0]?.id || '');
     const [routeMetrics, setRouteMetrics] = useState<{ distance: number; duration: number; geometry: string } | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
+    const [pointAddresses, setPointAddresses] = useState<string[]>([]);
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
@@ -59,8 +61,19 @@ export default function AddTripScreen() {
             } finally {
                 setIsCalculating(false);
             }
+
+            // Fetch addresses for each point
+            try {
+                const addresses = await Promise.all(
+                    newPoints.map(p => RouteService.reverseGeocode(p.latitude, p.longitude))
+                );
+                setPointAddresses(addresses);
+            } catch (error) {
+                console.error('Failed to fetch addresses', error);
+            }
         } else {
             setRouteMetrics(null);
+            setPointAddresses([]);
         }
     };
 
@@ -80,9 +93,9 @@ export default function AddTripScreen() {
 
         addTrip({
             carId: selectedCarId,
-            startPoint: points[0],
-            endPoint: points[points.length - 1],
-            waypoints: points.slice(1, -1),
+            startPoint: { ...points[0], address: pointAddresses[0] },
+            endPoint: { ...points[points.length - 1], address: pointAddresses[points.length - 1] },
+            waypoints: points.slice(1, -1).map((p, i) => ({ ...p, address: pointAddresses[i + 1] })),
             timeStart,
             timeArrival,
             days: selectedDays,
@@ -131,6 +144,55 @@ export default function AddTripScreen() {
                                 </View>
                             )}
                         </View>
+
+                        {points.length > 0 && (
+                            <View style={styles.pointNamesContainer}>
+                                {points.map((point, index) => (
+                                    <View key={index} style={styles.pointRow}>
+                                        <View style={[styles.pointBadge, { backgroundColor: index === 0 ? '#10b981' : index === points.length - 1 ? '#ef4444' : '#3b82f6' }]}>
+                                            <Text style={styles.pointBadgeText}>{index + 1}</Text>
+                                        </View>
+                                        <View style={styles.pointInfo}>
+                                            <Text style={[styles.pointName, { color: theme.text }]} numberOfLines={1}>
+                                                {pointAddresses[index] || `Point ${index + 1}`}
+                                            </Text>
+                                            <Text style={[styles.pointCoords, { color: theme.icon }]}>
+                                                {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
+                                            </Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <TouchableOpacity
+                                                style={styles.deletePointButton}
+                                                onPress={() => {
+                                                    useAuthStore.getState().addSavedPlace({
+                                                        label: `Saved Location ${index + 1}`,
+                                                        address: `Lat: ${point.latitude.toFixed(2)}, Lng: ${point.longitude.toFixed(2)}`,
+                                                        latitude: point.latitude,
+                                                        longitude: point.longitude,
+                                                        icon: 'map-pin'
+                                                    }).then(() => {
+                                                        alert('Location saved!');
+                                                    }).catch(err => {
+                                                        alert('Failed to save location');
+                                                    });
+                                                }}
+                                            >
+                                                <Star size={16} color={theme.primary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.deletePointButton}
+                                                onPress={() => {
+                                                    const newPoints = points.filter((_, i) => i !== index);
+                                                    handlePointsChange(newPoints);
+                                                }}
+                                            >
+                                                <X size={16} color={theme.icon} />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
 
                         {isCalculating && <Text style={{ color: theme.icon, textAlign: 'center', marginTop: 8 }}>Calculating best route...</Text>}
 
@@ -464,5 +526,47 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
     },
+    pointNamesContainer: {
+        marginTop: 16,
+        gap: 12,
+    },
+    pointRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: 'rgba(0,0,0,0.03)',
+        padding: 12,
+        borderRadius: 12,
+    },
+    pointBadge: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pointBadgeText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 12,
+    },
+    pointInfo: {
+        flex: 1,
+    },
+    pointName: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    pointCoords: {
+        fontSize: 11,
+    },
+    deletePointButton: {
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 16,
+    }
 });
 
