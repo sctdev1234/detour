@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { AlertCircle, ChevronLeft, Plus } from 'lucide-react-native';
 import React from 'react';
@@ -41,13 +42,18 @@ export default function ReclamationsListScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>Support & Reclamations</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <Text style={[styles.title, { color: '#fff' }]}>Support</Text>
+                <View style={{ width: 44 }} />
+            </LinearGradient>
 
             <FlatList
                 data={myReclamations}
@@ -66,7 +72,7 @@ export default function ReclamationsListScreen() {
                 style={[styles.fab, { backgroundColor: theme.primary }]}
                 onPress={() => router.push('/reclamations/new')}
             >
-                <Plus size={24} color="#fff" />
+                <Plus size={28} color="#fff" />
             </TouchableOpacity>
         </View>
     );
@@ -77,12 +83,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 24,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -90,11 +98,10 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 3,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
     },
     list: {
@@ -103,7 +110,7 @@ const styles = StyleSheet.create({
         paddingBottom: 100,
     },
     card: {
-        padding: 20,
+        padding: 24,
         borderRadius: 24,
         gap: 12,
         elevation: 2,
@@ -116,7 +123,7 @@ const styles = StyleSheet.create({
     },
     type: {
         fontSize: 13,
-        fontWeight: '700',
+        fontWeight: '800',
         opacity: 0.6,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -132,7 +139,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     badge: {
-        paddingHorizontal: 10,
+        paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 12,
     },

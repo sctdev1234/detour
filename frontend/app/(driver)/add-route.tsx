@@ -1,9 +1,11 @@
 import { useUIStore } from '@/store/useUIStore';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Car, Check, ChevronLeft, Clock, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
+import { Car, Check, ChevronLeft, Clock, DollarSign, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
+import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { RouteService } from '../../services/RouteService';
 import { useCarStore } from '../../store/useCarStore';
@@ -116,13 +118,18 @@ export default function AddRouteScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.surface }]}>
-                    <ChevronLeft size={24} color={theme.text} />
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>New Driver Route</Text>
+                <Text style={[styles.title, { color: '#fff' }]}>New Driver Route</Text>
                 <View style={{ width: 44 }} />
-            </View>
+            </LinearGradient>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -175,7 +182,7 @@ export default function AddRouteScreen() {
                             </View>
                         )}
 
-                        {isCalculating && <Text style={{ color: theme.icon, textAlign: 'center', marginTop: 8 }}>Calculating最佳 route...</Text>}
+                        {isCalculating && <Text style={{ color: theme.icon, textAlign: 'center', marginTop: 8 }}>Calculating route...</Text>}
 
                         {routeMetrics && (
                             <View style={[styles.metricsCard, { backgroundColor: theme.surface }]}>
@@ -202,27 +209,28 @@ export default function AddRouteScreen() {
                         </View>
 
                         <View style={styles.row}>
-                            <View style={styles.inputGroup}>
-                                <Text style={[styles.label, { color: theme.icon }]}>Departure</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+                            <View style={{ flex: 1 }}>
+                                <PremiumInput
+                                    label="Departure"
                                     value={timeStart}
                                     onChangeText={setTimeStart}
                                     placeholder="08:00"
+                                    icon={Clock}
                                 />
                             </View>
-                            <View style={styles.inputGroup}>
-                                <Text style={[styles.label, { color: theme.icon }]}>Arrival</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+                            <View style={{ width: 16 }} />
+                            <View style={{ flex: 1 }}>
+                                <PremiumInput
+                                    label="Arrival"
                                     value={timeArrival}
                                     onChangeText={setTimeArrival}
                                     placeholder="09:00"
+                                    icon={Clock}
                                 />
                             </View>
                         </View>
 
-                        <Text style={[styles.label, { color: theme.icon, marginTop: 16 }]}>Recurring Days</Text>
+                        <Text style={[styles.label, { color: theme.icon, marginTop: 8, marginBottom: 12 }]}>Recurring Days</Text>
                         <View style={styles.daysGrid}>
                             {DAYS.map(day => (
                                 <TouchableOpacity
@@ -248,7 +256,7 @@ export default function AddRouteScreen() {
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>Car & Pricing</Text>
                         </View>
 
-                        <Text style={[styles.label, { color: theme.icon }]}>Vehicle</Text>
+                        <Text style={[styles.label, { color: theme.icon, marginBottom: 12 }]}>Vehicle</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carsScroll}>
                             {cars.map(car => (
                                 <TouchableOpacity
@@ -269,17 +277,18 @@ export default function AddRouteScreen() {
                         </ScrollView>
 
                         <View style={[styles.row, { marginTop: 16 }]}>
-                            <View style={[styles.inputGroup, { flex: 1 }]}>
-                                <Text style={[styles.label, { color: theme.icon }]}>Price</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                                    keyboardType="numeric"
+                            <View style={{ flex: 1 }}>
+                                <PremiumInput
+                                    label="Price"
                                     value={price}
                                     onChangeText={setPrice}
+                                    keyboardType="numeric"
+                                    icon={DollarSign}
                                 />
                             </View>
-                            <View style={[styles.inputGroup, { flex: 1 }]}>
-                                <Text style={[styles.label, { color: theme.icon }]}>Type</Text>
+                            <View style={{ width: 16 }} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.label, { color: theme.icon, marginBottom: 8 }]}>Type</Text>
                                 <View style={[styles.toggleContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                                     <TouchableOpacity
                                         style={[styles.toggleBtn, priceType === 'fix' && { backgroundColor: theme.primary }]}
@@ -323,6 +332,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -330,7 +341,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 3,
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
         fontSize: 20,
@@ -415,7 +426,6 @@ const styles = StyleSheet.create({
     },
     row: {
         flexDirection: 'row',
-        gap: 16,
     },
     inputGroup: {
         flex: 1,

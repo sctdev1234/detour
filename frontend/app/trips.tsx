@@ -1,7 +1,9 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Calendar, ChevronLeft, Navigation, User } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 import { Trip, useTripStore } from '../store/useTripStore';
@@ -17,73 +19,82 @@ export default function TripsScreen() {
         fetchTrips();
     }, []);
 
-    const renderTripItem = ({ item }: { item: Trip }) => {
+    const renderTripItem = ({ item, index }: { item: Trip, index: number }) => {
         return (
-            <TouchableOpacity
-                style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                onPress={() => router.push({ pathname: '/modal', params: { type: 'trip_details', id: item.id } })}
+            <Animated.View
+                entering={FadeInDown.delay(index * 100).springify()}
             >
-                <View style={styles.tripHeader}>
-                    <View style={styles.statusBadge}>
-                        <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#10b981' : item.status === 'completed' ? '#3b82f6' : '#f59e0b' }]} />
-                        <Text style={[styles.statusText, { color: theme.text }]}>{item.status.toUpperCase()}</Text>
-                    </View>
-                    <Text style={[styles.dateText, { color: theme.icon }]}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-                </View>
-
-                <View style={styles.trajectory}>
-                    <View style={styles.routeIcon}>
-                        <Navigation size={20} color={theme.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.addr, { color: theme.text }]} numberOfLines={1}>{item.routeId?.startPoint?.address}</Text>
-                        <Text style={[styles.addr, { color: theme.text, marginTop: 4 }]} numberOfLines={1}>{item.routeId?.endPoint?.address}</Text>
-                    </View>
-                </View>
-
-                <View style={[styles.participants, { borderTopColor: theme.border }]}>
-                    <View style={styles.avatars}>
-                        <View style={[styles.avatarBox, { zIndex: 10 }]}>
-                            {item.driverId?.photoURL ? (
-                                <Image source={{ uri: item.driverId.photoURL }} style={styles.avatar} />
-                            ) : (
-                                <View style={[styles.avatar, { backgroundColor: theme.border }]}>
-                                    <User size={14} color={theme.icon} />
-                                </View>
-                            )}
-                            <View style={styles.driverLabel}>
-                                <Text style={styles.labelTxt}>D</Text>
-                            </View>
+                <TouchableOpacity
+                    style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                    onPress={() => router.push({ pathname: '/modal', params: { type: 'trip_details', id: item.id } })}
+                >
+                    <View style={styles.tripHeader}>
+                        <View style={styles.statusBadge}>
+                            <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#10b981' : item.status === 'completed' ? '#3b82f6' : '#f59e0b' }]} />
+                            <Text style={[styles.statusText, { color: theme.text }]}>{item.status.toUpperCase()}</Text>
                         </View>
-                        {item.clients.map((c: any, i: number) => (
-                            <View key={i} style={[styles.avatarBox, { marginLeft: -12, zIndex: 5 - i }]}>
-                                {c.userId?.photoURL ? (
-                                    <Image source={{ uri: c.userId.photoURL }} style={styles.avatar} />
+                        <Text style={[styles.dateText, { color: theme.icon }]}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                    </View>
+
+                    <View style={styles.trajectory}>
+                        <View style={styles.routeIcon}>
+                            <Navigation size={20} color={theme.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.addr, { color: theme.text }]} numberOfLines={1}>{item.routeId?.startPoint?.address}</Text>
+                            <Text style={[styles.addr, { color: theme.text, marginTop: 4 }]} numberOfLines={1}>{item.routeId?.endPoint?.address}</Text>
+                        </View>
+                    </View>
+
+                    <View style={[styles.participants, { borderTopColor: theme.border }]}>
+                        <View style={styles.avatars}>
+                            <View style={[styles.avatarBox, { zIndex: 10 }]}>
+                                {item.driverId?.photoURL ? (
+                                    <Image source={{ uri: item.driverId.photoURL }} style={styles.avatar} />
                                 ) : (
                                     <View style={[styles.avatar, { backgroundColor: theme.border }]}>
                                         <User size={14} color={theme.icon} />
                                     </View>
                                 )}
+                                <View style={styles.driverLabel}>
+                                    <Text style={styles.labelTxt}>D</Text>
+                                </View>
                             </View>
-                        ))}
+                            {item.clients.map((c: any, i: number) => (
+                                <View key={i} style={[styles.avatarBox, { marginLeft: -12, zIndex: 5 - i }]}>
+                                    {c.userId?.photoURL ? (
+                                        <Image source={{ uri: c.userId.photoURL }} style={styles.avatar} />
+                                    ) : (
+                                        <View style={[styles.avatar, { backgroundColor: theme.border }]}>
+                                            <User size={14} color={theme.icon} />
+                                        </View>
+                                    )}
+                                </View>
+                            ))}
+                        </View>
+                        <Text style={[styles.participantsCount, { color: theme.icon }]}>
+                            {1 + item.clients.length} Participants
+                        </Text>
                     </View>
-                    <Text style={[styles.participantsCount, { color: theme.icon }]}>
-                        {1 + item.clients.length} Participants
-                    </Text>
-                </View>
-            </TouchableOpacity>
+                </TouchableOpacity>
+            </Animated.View>
         );
     };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
+                <Text style={[styles.title, { color: '#fff' }]}>My Trips</Text>
                 <View style={{ width: 44 }} />
-            </View>
+            </LinearGradient>
 
             {isLoading && !trips.length ? (
                 <View style={styles.loading}>
@@ -93,7 +104,7 @@ export default function TripsScreen() {
                 <FlatList
                     data={trips}
                     keyExtractor={(item) => item.id}
-                    renderItem={renderTripItem}
+                    renderItem={({ item, index }) => renderTripItem({ item, index })}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
                         <View style={styles.empty}>
@@ -109,8 +120,24 @@ export default function TripsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+    header: {
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)'
+    },
     title: { fontSize: 24, fontWeight: '800' },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     list: { padding: 24, gap: 20 },

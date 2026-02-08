@@ -1,6 +1,7 @@
 import { useUIStore } from '@/store/useUIStore';
 import * as ImagePicker from 'expo-image-picker';
-import { Stack, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { ArrowLeft, Camera, Check, ChevronRight, Lock, Mail, User } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -11,11 +12,11 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     useColorScheme,
     View
 } from 'react-native';
+import { PremiumInput } from '../components/PremiumInput';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -105,16 +106,18 @@ export default function EditProfileScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <Stack.Screen options={{ headerShown: false }} />
-
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.surface }]}>
-                    <ArrowLeft size={24} color={theme.text} />
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <ArrowLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>Edit Profile</Text>
+                <Text style={[styles.title, { color: '#fff' }]}>Edit Profile</Text>
                 <View style={{ width: 44 }} />
-            </View>
+            </LinearGradient>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -123,49 +126,44 @@ export default function EditProfileScreen() {
                 <ScrollView contentContainerStyle={styles.content}>
                     {/* Image Upload */}
                     <View style={styles.avatarSection}>
-                        <TouchableOpacity onPress={pickImage} style={[styles.avatarContainer, { borderColor: theme.border }]}>
-                            {user?.photoURL ? (
-                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
-                            ) : (
-                                <User size={40} color={theme.icon} />
-                            )}
-                            {uploadingImage && (
-                                <View style={styles.loadingOverlay}>
-                                    <ActivityIndicator color="#fff" />
-                                </View>
-                            )}
-                            <View style={[styles.cameraBadge, { backgroundColor: theme.primary, borderColor: theme.background }]}>
-                                <Camera size={14} color="#fff" />
-                            </View>
+                        <LinearGradient
+                            colors={[theme.primary, theme.secondary]}
+                            style={styles.avatarBorder}
+                        >
+                            <TouchableOpacity onPress={pickImage} style={[styles.avatarContainer, { backgroundColor: theme.surface }]}>
+                                {user?.photoURL ? (
+                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                                ) : (
+                                    <User size={40} color={theme.icon} />
+                                )}
+                                {uploadingImage && (
+                                    <View style={styles.loadingOverlay}>
+                                        <ActivityIndicator color="#fff" />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </LinearGradient>
+                        <TouchableOpacity onPress={pickImage} style={[styles.cameraBadge, { backgroundColor: theme.primary, borderColor: theme.surface }]}>
+                            <Camera size={14} color="#fff" />
                         </TouchableOpacity>
                         <Text style={[styles.changePhotoText, { color: theme.primary }]}>Change Photo</Text>
                     </View>
 
-                    <View style={styles.formGroup}>
-                        <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <User size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                value={displayName}
-                                onChangeText={setDisplayName}
-                                placeholder="Enter your full name"
-                                placeholderTextColor={theme.icon}
-                            />
-                        </View>
-                    </View>
+                    <PremiumInput
+                        label="Full Name"
+                        value={displayName}
+                        onChangeText={setDisplayName}
+                        placeholder="Enter your full name"
+                        icon={User}
+                    />
 
-                    <View style={styles.formGroup}>
-                        <Text style={[styles.label, { color: theme.text }]}>Email Address</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border, opacity: 0.6 }]}>
-                            <Mail size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                value={user?.email || ''}
-                                editable={false}
-                            />
-                        </View>
-                    </View>
+                    <PremiumInput
+                        label="Email Address"
+                        value={user?.email || ''}
+                        editable={false}
+                        icon={Mail}
+                        style={{ opacity: 0.6 }}
+                    />
 
                     {/* Change Password Link */}
                     <TouchableOpacity
@@ -210,6 +208,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 60,
         paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -217,8 +217,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
-        elevation: 3,
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
         fontSize: 20,
@@ -226,21 +225,24 @@ const styles = StyleSheet.create({
     },
     content: {
         padding: 24,
-        paddingTop: 10,
+        gap: 16,
     },
     avatarSection: {
         alignItems: 'center',
         marginBottom: 32,
+        position: 'relative',
+    },
+    avatarBorder: {
+        padding: 4,
+        borderRadius: 60,
+        marginBottom: 12,
     },
     avatarContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 1,
+        width: 110,
+        height: 110,
+        borderRadius: 55,
         justifyContent: 'center',
         alignItems: 'center',
-        position: 'relative',
-        marginBottom: 12,
         overflow: 'hidden',
     },
     avatarImage: {
@@ -255,48 +257,25 @@ const styles = StyleSheet.create({
     },
     cameraBadge: {
         position: 'absolute',
-        bottom: 0,
-        right: 0,
+        bottom: 30, // Adjusted for larger avatar
+        right: '32%',
         width: 32,
         height: 32,
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
+        elevation: 4,
     },
     changePhotoText: {
         fontSize: 14,
-        fontWeight: '600',
-    },
-    formGroup: {
-        marginBottom: 28,
-    },
-    label: {
-        fontSize: 14,
         fontWeight: '700',
-        marginBottom: 8,
-        marginLeft: 4,
-        opacity: 0.8,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: 60,
-        borderRadius: 20,
-        borderWidth: 1,
-        paddingHorizontal: 20,
-        gap: 14,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '600',
-        height: '100%',
+        marginTop: -4,
     },
     saveButton: {
         flexDirection: 'row',
-        height: 60,
-        borderRadius: 30,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
         gap: 10,
@@ -306,17 +285,17 @@ const styles = StyleSheet.create({
     },
     saveButtonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
     },
     passwordLink: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
-        borderRadius: 16,
+        padding: 20,
+        borderRadius: 20,
         borderWidth: 1,
-        marginBottom: 12,
+        marginTop: 8,
     },
     passwordLinkContent: {
         flexDirection: 'row',

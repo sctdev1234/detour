@@ -1,8 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Camera, ChevronLeft, Plus, Upload, X } from 'lucide-react-native';
+import { Calendar, Camera, Car as CarIcon, ChevronLeft, Palette, Plus, Upload, Users, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
 
@@ -129,70 +131,71 @@ export default function AddCarScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>Add New Car</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <Text style={[styles.title, { color: '#fff' }]}>Add New Car</Text>
+                <View style={{ width: 44 }} />
+            </LinearGradient>
 
-            <ScrollView contentContainerStyle={styles.formContent}>
+            <ScrollView contentContainerStyle={styles.formContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.inputGroup}>
-                    <Text style={[styles.label, { color: theme.icon }]}>Brand (Marque)</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                        placeholder="e.g. Toyota"
-                        placeholderTextColor={theme.icon}
+                    <PremiumInput
+                        label="Brand (Marque)"
                         value={form.marque}
                         onChangeText={(text) => setForm({ ...form, marque: text })}
+                        placeholder="e.g. Toyota"
+                        icon={CarIcon}
                     />
                 </View>
 
                 <View style={styles.inputGroup}>
-                    <Text style={[styles.label, { color: theme.icon }]}>Model</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                        placeholder="e.g. Camry"
-                        placeholderTextColor={theme.icon}
+                    <PremiumInput
+                        label="Model"
                         value={form.model}
                         onChangeText={(text) => setForm({ ...form, model: text })}
+                        placeholder="e.g. Camry"
+                        icon={CarIcon}
                     />
                 </View>
 
                 <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={[styles.label, { color: theme.icon }]}>Year</Text>
-                        <TextInput
-                            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                            placeholder="2022"
-                            placeholderTextColor={theme.icon}
-                            keyboardType="numeric"
+                    <View style={{ flex: 1 }}>
+                        <PremiumInput
+                            label="Year"
                             value={form.year}
                             onChangeText={(text) => setForm({ ...form, year: text })}
+                            placeholder="2022"
+                            keyboardType="numeric"
+                            icon={Calendar}
                         />
                     </View>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={[styles.label, { color: theme.icon }]}>Places (Seats)</Text>
-                        <TextInput
-                            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                            placeholder="4"
-                            placeholderTextColor={theme.icon}
-                            keyboardType="numeric"
+                    <View style={{ width: 16 }} />
+                    <View style={{ flex: 1 }}>
+                        <PremiumInput
+                            label="Places"
                             value={form.places}
                             onChangeText={(text) => setForm({ ...form, places: text })}
+                            placeholder="4"
+                            keyboardType="numeric"
+                            icon={Users}
                         />
                     </View>
                 </View>
 
                 <View style={styles.inputGroup}>
-                    <Text style={[styles.label, { color: theme.icon }]}>Color</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                        placeholder="e.g. Black"
-                        placeholderTextColor={theme.icon}
+                    <PremiumInput
+                        label="Color"
                         value={form.color}
                         onChangeText={(text) => setForm({ ...form, color: text })}
+                        placeholder="e.g. Black"
+                        icon={Palette}
                     />
                 </View>
 
@@ -201,7 +204,7 @@ export default function AddCarScreen() {
                     <Text style={[styles.label, { color: theme.text }]}>Car Photos</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
                         {form.images.map((uri, index) => (
-                            <View key={index} style={styles.photoItem}>
+                            <View key={index} style={[styles.photoItem, { borderColor: theme.border }]}>
                                 <Image source={{ uri }} style={styles.photoThumb} />
                                 <TouchableOpacity
                                     style={styles.removePhoto}
@@ -226,22 +229,22 @@ export default function AddCarScreen() {
                     <Text style={[styles.label, { color: theme.text, marginBottom: 12 }]}>Documents</Text>
 
                     {[
-                        { key: 'registration', label: 'Car Registration (Carte Grise)' },
+                        { key: 'registration', label: 'Car Registration' },
                         { key: 'insurance', label: 'Insurance' },
                         { key: 'technicalVisit', label: 'Technical Visit' }
                     ].map((doc) => (
-                        <View key={doc.key} style={styles.docRow}>
+                        <View key={doc.key} style={[styles.docRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                             <View style={styles.docInfo}>
                                 <Text style={[styles.docLabel, { color: theme.text }]}>{doc.label}</Text>
-                                <Text style={[styles.docStatus, { color: form.documents[doc.key as keyof typeof form.documents] ? '#4CD964' : theme.icon }]}>
+                                <Text style={[styles.docStatus, { color: form.documents[doc.key as keyof typeof form.documents] ? '#10b981' : theme.icon }]}>
                                     {form.documents[doc.key as keyof typeof form.documents] ? 'Uploaded' : 'Required'}
                                 </Text>
                             </View>
                             <TouchableOpacity
-                                style={[styles.uploadButton, { backgroundColor: form.documents[doc.key as keyof typeof form.documents] ? '#4CD96420' : theme.surface }]}
+                                style={[styles.uploadButton, { backgroundColor: form.documents[doc.key as keyof typeof form.documents] ? 'rgba(16, 185, 129, 0.1)' : theme.surface, borderColor: theme.border }]}
                                 onPress={() => pickDocument(doc.key as any)}
                             >
-                                {form.documents[doc.key as keyof typeof form.documents] ? <Upload size={18} color="#4CD964" /> : <Plus size={18} color={theme.primary} />}
+                                {form.documents[doc.key as keyof typeof form.documents] ? <Upload size={18} color="#10b981" /> : <Plus size={18} color={theme.primary} />}
                             </TouchableOpacity>
                         </View>
                     ))}
@@ -276,11 +279,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: 24,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        paddingHorizontal: 24,
         paddingTop: 60,
+        paddingBottom: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -288,8 +294,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 3,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
         fontSize: 24,
@@ -297,11 +302,11 @@ const styles = StyleSheet.create({
     },
     formContent: {
         padding: 24,
-        gap: 24,
+        gap: 16,
         paddingBottom: 40,
     },
     inputGroup: {
-        gap: 10,
+        // Handled by PremiumInput
     },
     label: {
         fontSize: 13,
@@ -311,17 +316,8 @@ const styles = StyleSheet.create({
         opacity: 0.7,
         letterSpacing: 0.5,
     },
-    input: {
-        height: 56,
-        borderRadius: 16,
-        borderWidth: 1,
-        paddingHorizontal: 16,
-        fontSize: 16,
-        fontWeight: '600',
-    },
     row: {
         flexDirection: 'row',
-        gap: 16,
     },
     section: {
         gap: 12,
@@ -340,7 +336,6 @@ const styles = StyleSheet.create({
         marginRight: 12,
         position: 'relative',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
     },
     photoThumb: {
         width: '100%',
@@ -379,8 +374,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-        backgroundColor: 'rgba(0,0,0,0.01)',
     },
     docInfo: {
         flex: 1,
@@ -399,7 +392,6 @@ const styles = StyleSheet.create({
         height: 44,
         borderRadius: 22,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.1)',
         justifyContent: 'center',
         alignItems: 'center',
     },

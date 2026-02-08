@@ -1,9 +1,11 @@
 import { useUIStore } from '@/store/useUIStore';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Camera, ChevronLeft, X } from 'lucide-react-native';
+import { Camera, ChevronLeft, FileText, Type, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useReclamationStore } from '../../store/useReclamationStore';
@@ -79,90 +81,99 @@ export default function NewReclamationScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>New Reclamation</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <Text style={[styles.title, { color: '#fff' }]}>New Reclamation</Text>
+                <View style={{ width: 44 }} />
+            </LinearGradient>
 
-            <ScrollView contentContainerStyle={styles.form}>
-                <View style={styles.group}>
-                    <Text style={[styles.label, { color: theme.text }]}>Issue Type</Text>
-                    <View style={styles.typeRow}>
-                        {(['accident', 'behaving', 'lost_item', 'other'] as const).map((t) => (
-                            <TouchableOpacity
-                                key={t}
-                                style={[
-                                    styles.typeChip,
-                                    { backgroundColor: type === t ? theme.primary : theme.surface, borderColor: theme.border }
-                                ]}
-                                onPress={() => setType(t)}
-                            >
-                                <Text style={[
-                                    styles.typeText,
-                                    { color: type === t ? '#fff' : theme.text }
-                                ]}>
-                                    {t.toUpperCase().replace('_', ' ')}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={styles.group}>
-                    <Text style={[styles.label, { color: theme.text }]}>Subject</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                        placeholder="Brief summary of the issue"
-                        placeholderTextColor={theme.icon}
-                        value={subject}
-                        onChangeText={setSubject}
-                    />
-                </View>
-
-                <View style={styles.group}>
-                    <Text style={[styles.label, { color: theme.text }]}>Description</Text>
-                    <TextInput
-                        style={[styles.textArea, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
-                        placeholder="Provide detailed information..."
-                        placeholderTextColor={theme.icon}
-                        multiline
-                        numberOfLines={4}
-                        value={description}
-                        onChangeText={setDescription}
-                    />
-                </View>
-
-                <View style={styles.group}>
-                    <Text style={[styles.label, { color: theme.text }]}>Evidence (Optional)</Text>
-                    {image ? (
-                        <View style={styles.imagePreview}>
-                            <Image source={{ uri: image }} style={styles.thumb} />
-                            <TouchableOpacity style={styles.removeBtn} onPress={() => setImage(null)}>
-                                <X size={16} color="#fff" />
-                            </TouchableOpacity>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+            >
+                <ScrollView contentContainerStyle={styles.form}>
+                    <View style={styles.group}>
+                        <Text style={[styles.label, { color: theme.text }]}>Issue Type</Text>
+                        <View style={styles.typeRow}>
+                            {(['accident', 'behaving', 'lost_item', 'other'] as const).map((t) => (
+                                <TouchableOpacity
+                                    key={t}
+                                    style={[
+                                        styles.typeChip,
+                                        { backgroundColor: type === t ? theme.primary : theme.surface, borderColor: type === t ? theme.primary : theme.border }
+                                    ]}
+                                    onPress={() => setType(t)}
+                                >
+                                    <Text style={[
+                                        styles.typeText,
+                                        { color: type === t ? '#fff' : theme.text }
+                                    ]}>
+                                        {t.toUpperCase().replace('_', ' ')}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
-                    ) : (
-                        <TouchableOpacity
-                            style={[styles.uploadBox, { borderColor: theme.border, backgroundColor: theme.surface }]}
-                            onPress={pickImage}
-                        >
-                            <Camera size={24} color={theme.icon} />
-                            <Text style={[styles.uploadText, { color: theme.icon }]}>Add Photo</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
+                    </View>
 
-                <TouchableOpacity
-                    style={[styles.submitButton, { backgroundColor: theme.primary, opacity: uploading ? 0.7 : 1 }]}
-                    onPress={handleSubmit}
-                    disabled={uploading}
-                >
-                    <Text style={styles.submitText}>{uploading ? 'Submitting...' : 'Submit Reclamation'}</Text>
-                </TouchableOpacity>
-            </ScrollView>
+                    <View style={styles.group}>
+                        <PremiumInput
+                            label="Subject"
+                            value={subject}
+                            onChangeText={setSubject}
+                            placeholder="Brief summary of the issue"
+                            icon={Type}
+                        />
+                    </View>
+
+                    <View style={styles.group}>
+                        <PremiumInput
+                            label="Description"
+                            value={description}
+                            onChangeText={setDescription}
+                            placeholder="Provide detailed information..."
+                            icon={FileText}
+                            multiline
+                            numberOfLines={4}
+                            style={{ height: 120, textAlignVertical: 'top', paddingTop: 12 }}
+                        />
+                    </View>
+
+                    <View style={styles.group}>
+                        <Text style={[styles.label, { color: theme.text }]}>Evidence (Optional)</Text>
+                        {image ? (
+                            <View style={[styles.imagePreview, { borderColor: theme.border }]}>
+                                <Image source={{ uri: image }} style={styles.thumb} />
+                                <TouchableOpacity style={styles.removeBtn} onPress={() => setImage(null)}>
+                                    <X size={16} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.uploadBox, { borderColor: theme.border, backgroundColor: theme.surface }]}
+                                onPress={pickImage}
+                            >
+                                <Camera size={32} color={theme.primary} style={{ opacity: 0.8 }} />
+                                <Text style={[styles.uploadText, { color: theme.icon }]}>Tap to upload photo</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.submitButton, { backgroundColor: theme.primary, opacity: uploading ? 0.7 : 1 }]}
+                        onPress={handleSubmit}
+                        disabled={uploading}
+                    >
+                        <Text style={styles.submitText}>{uploading ? 'Submitting...' : 'Submit Reclamation'}</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </View>
     );
 }
@@ -172,12 +183,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 24,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -185,16 +198,15 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 3,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
     },
     form: {
         padding: 24,
-        gap: 28,
+        gap: 24,
         paddingBottom: 40,
     },
     group: {
@@ -218,31 +230,16 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderRadius: 20,
         borderWidth: 1,
+        elevation: 2,
+        boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     },
     typeText: {
         fontWeight: '700',
         fontSize: 13,
     },
-    input: {
-        height: 56,
-        borderRadius: 18,
-        borderWidth: 1,
-        paddingHorizontal: 20,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    textArea: {
-        height: 140,
-        borderRadius: 20,
-        borderWidth: 1,
-        padding: 20,
-        textAlignVertical: 'top',
-        fontSize: 16,
-        fontWeight: '500',
-    },
     uploadBox: {
-        height: 140,
-        borderRadius: 20,
+        height: 160,
+        borderRadius: 24,
         borderWidth: 2,
         borderStyle: 'dashed',
         justifyContent: 'center',
@@ -250,32 +247,33 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     uploadText: {
-        fontWeight: '700',
-        fontSize: 14,
+        fontWeight: '600',
+        fontSize: 15,
     },
     imagePreview: {
-        width: 140,
-        height: 140,
-        borderRadius: 20,
+        width: '100%',
+        height: 200,
+        borderRadius: 24,
         overflow: 'hidden',
         position: 'relative',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.1)',
     },
     thumb: {
         width: '100%',
         height: '100%',
+        resizeMode: 'cover',
     },
     removeBtn: {
         position: 'absolute',
-        top: 8,
-        right: 8,
+        top: 12,
+        right: 12,
         backgroundColor: 'rgba(0,0,0,0.6)',
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
+        backdropFilter: 'blur(10px)',
     },
     submitButton: {
         height: 64,

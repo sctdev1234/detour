@@ -1,6 +1,9 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Bell, Car, ChevronRight, DollarSign, MapPin, Power, Star } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 
 import { useRouter } from 'expo-router';
@@ -51,39 +54,44 @@ export default function DriverDashboard() {
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
             {/* Header */}
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <View style={styles.headerContent}>
                     <View>
-                        <Text style={[styles.welcomeText, { color: theme.icon }]}>Good Morning,</Text>
-                        <Text style={[styles.nameText, { color: theme.text }]}>{user?.fullName || 'Driver'}</Text>
+                        <Text style={[styles.welcomeText, { color: 'rgba(255,255,255,0.8)' }]}>Good Morning,</Text>
+                        <Text style={[styles.nameText, { color: '#fff' }]}>{user?.fullName || 'Driver'}</Text>
                         {avgRating > 0 && (
                             <View style={styles.ratingBadge}>
                                 <Star size={14} color="#FFCC00" fill="#FFCC00" />
-                                <Text style={[styles.ratingText, { color: theme.icon }]}>{avgRating.toFixed(1)} Rating</Text>
+                                <Text style={[styles.ratingText, { color: '#fff' }]}>{avgRating.toFixed(1)} Rating</Text>
                             </View>
                         )}
                     </View>
                 </View>
 
                 {/* Online Toggle */}
-                <View style={[styles.statusCard, { backgroundColor: isOnline ? '#22c55e15' : theme.surface, borderColor: isOnline ? '#22c55e' : theme.border }]}>
+                <BlurView intensity={20} tint="light" style={styles.statusCard}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <View style={[styles.statusIcon, { backgroundColor: isOnline ? '#22c55e' : theme.icon }]}>
+                        <View style={[styles.statusIcon, { backgroundColor: isOnline ? '#22c55e' : 'rgba(255,255,255,0.2)' }]}>
                             <Power size={18} color="#fff" />
                         </View>
                         <View>
-                            <Text style={[styles.statusTitle, { color: theme.text }]}>{isOnline ? 'You are Online' : 'You are Offline'}</Text>
-                            <Text style={[styles.statusSubtitle, { color: theme.icon }]}>{isOnline ? 'Receiving new requests' : 'Go online to start'}</Text>
+                            <Text style={[styles.statusTitle, { color: '#fff' }]}>{isOnline ? 'You are Online' : 'You are Offline'}</Text>
+                            <Text style={[styles.statusSubtitle, { color: 'rgba(255,255,255,0.7)' }]}>{isOnline ? 'Receiving new requests' : 'Go online to start'}</Text>
                         </View>
                     </View>
                     <Switch
                         value={isOnline}
                         onValueChange={setIsOnline}
-                        trackColor={{ false: theme.border, true: '#22c55e' }}
+                        trackColor={{ false: 'rgba(255,255,255,0.2)', true: '#22c55e' }}
                         thumbColor="#fff"
                     />
-                </View>
-            </View>
+                </BlurView>
+            </LinearGradient>
 
             {/* Notification Banner */}
             {pendingRequestsCount > 0 && (
@@ -103,17 +111,17 @@ export default function DriverDashboard() {
             )}
 
             {/* Stats Grid */}
-            <View style={styles.statsContainer}>
+            <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.statsContainer}>
                 {stats.map((stat, index) => (
                     <View key={index} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                        <View style={[styles.iconCircle, { backgroundColor: stat.color + '20' }]}>
+                        <View style={[styles.iconCircle, { backgroundColor: stat.color + '15' }]}>
                             <stat.icon size={20} color={stat.color} />
                         </View>
                         <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
                         <Text style={[styles.statLabel, { color: theme.icon }]}>{stat.label}</Text>
                     </View>
                 ))}
-            </View>
+            </Animated.View>
 
             {/* Upcoming Routes */}
             <View style={styles.section}>
@@ -199,8 +207,10 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: 24,
-        paddingTop: 60,
+        paddingTop: 80,
         gap: 24,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     headerContent: {
         flexDirection: 'row',
@@ -211,7 +221,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         marginBottom: 4,
-        opacity: 0.7,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
@@ -225,7 +234,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 6,
         marginTop: 6,
-        backgroundColor: '#FFCC0015',
+        backgroundColor: 'rgba(255,255,255,0.2)',
         alignSelf: 'flex-start',
         paddingHorizontal: 10,
         paddingVertical: 6,
@@ -249,8 +258,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: 18,
         borderRadius: 24,
+        overflow: 'hidden',
         borderWidth: 1,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.04)',
+        borderColor: 'rgba(255,255,255,0.2)',
     },
     statusIcon: {
         width: 36,

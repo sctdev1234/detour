@@ -1,8 +1,10 @@
 import { useUIStore } from '@/store/useUIStore';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Eye, EyeOff, Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
+import { Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -16,7 +18,6 @@ export default function LoginScreen() {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
@@ -37,126 +38,115 @@ export default function LoginScreen() {
     };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={[styles.container, { backgroundColor: theme.background }]}
+        <LinearGradient
+            colors={[theme.background, theme.surface]}
+            style={styles.container}
         >
-            <View style={styles.contentContainer}>
-                <View style={styles.header}>
-                    <View style={[styles.logoContainer, { backgroundColor: theme.surface }]}>
-                        <Image
-                            source={require('../../assets/images/logo.png')}
-                            style={styles.logo}
-                            resizeMode="contain"
-                        />
-                    </View>
-                    <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
-                    <Text style={[styles.subtitle, { color: theme.icon }]}>Sign in to continue to Detour</Text>
-                </View>
-
-                <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.text }]}>Email</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <Mail size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="name@email.com"
-                                placeholderTextColor={theme.icon}
-                                value={email}
-                                onChangeText={setEmail}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.keyboardView}
+            >
+                <View style={styles.contentContainer}>
+                    <View style={styles.header}>
+                        <View style={[styles.logoContainer, { backgroundColor: theme.surface }]}>
+                            <Image
+                                source={require('../../assets/images/logo.png')}
+                                style={styles.logo}
+                                resizeMode="contain"
                             />
                         </View>
+                        <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
+                        <Text style={[styles.subtitle, { color: theme.icon }]}>Sign in to continue to Detour</Text>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.text }]}>Password</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <Lock size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="••••••••"
-                                placeholderTextColor={theme.icon}
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry={!showPassword}
-                            />
-                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                {showPassword ? (
-                                    <EyeOff size={20} color={theme.icon} />
-                                ) : (
-                                    <Eye size={20} color={theme.icon} />
-                                )}
+                    <View style={styles.form}>
+                        <PremiumInput
+                            label="Email"
+                            value={email}
+                            onChangeText={setEmail}
+                            placeholder="name@email.com"
+                            icon={Mail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
+
+                        <PremiumInput
+                            label="Password"
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder="••••••••"
+                            icon={Lock}
+                            secureTextEntry
+                        />
+
+                        <TouchableOpacity
+                            style={styles.forgotPassword}
+                            onPress={() => router.push('/(auth)/forgot-password')}
+                        >
+                            <Text style={{ color: theme.primary, fontWeight: '600' }}>Forgot Password?</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.loginButton, { backgroundColor: theme.primary }]}
+                            onPress={handleLogin}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <>
+                                    <LogIn size={20} color="#fff" />
+                                    <Text style={styles.loginButtonText}>Sign In</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={[styles.quickLoginContainer, { borderTopColor: theme.border }]}>
+                        <Text style={[styles.quickLoginTitle, { color: theme.icon }]}>Quick Login (Dev)</Text>
+                        <View style={styles.quickLoginRow}>
+                            <TouchableOpacity
+                                style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                                onPress={() => {
+                                    setEmail('client@gmail.com');
+                                    setPassword('12345678');
+                                }}
+                            >
+                                <User size={16} color={theme.primary} />
+                                <Text style={[styles.quickLoginText, { color: theme.primary }]}>Client</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                                onPress={() => {
+                                    setEmail('driver@gmail.com');
+                                    setPassword('12345678');
+                                }}
+                            >
+                                <ShieldCheck size={16} color={theme.secondary} />
+                                <Text style={[styles.quickLoginText, { color: theme.secondary }]}>Driver</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    <TouchableOpacity
-                        style={styles.forgotPassword}
-                        onPress={() => router.push('/(auth)/forgot-password')}
-                    >
-                        <Text style={{ color: theme.primary, fontWeight: '600' }}>Forgot Password?</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.loginButton, { backgroundColor: theme.primary }]}
-                        onPress={handleLogin}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <>
-                                <LogIn size={20} color="#fff" />
-                                <Text style={styles.loginButtonText}>Sign In</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                </View>
-
-                <View style={[styles.quickLoginContainer, { borderTopColor: theme.border }]}>
-                    <Text style={[styles.quickLoginTitle, { color: theme.icon }]}>Quick Login (Dev)</Text>
-                    <View style={styles.quickLoginRow}>
-                        <TouchableOpacity
-                            style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                            onPress={() => {
-                                setEmail('client@gmail.com');
-                                setPassword('12345678');
-                            }}
-                        >
-                            <User size={16} color={theme.primary} />
-                            <Text style={[styles.quickLoginText, { color: theme.primary }]}>Client</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                            onPress={() => {
-                                setEmail('driver@gmail.com');
-                                setPassword('12345678');
-                            }}
-                        >
-                            <ShieldCheck size={16} color={theme.secondary} />
-                            <Text style={[styles.quickLoginText, { color: theme.secondary }]}>Driver</Text>
+                    <View style={styles.footer}>
+                        <Text style={{ color: theme.icon }}>Don't have an account? </Text>
+                        <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
 
-                <View style={styles.footer}>
-                    <Text style={{ color: theme.icon }}>Don't have an account? </Text>
-                    <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                        <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
-                    </TouchableOpacity>
                 </View>
-
-            </View>
-        </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+    },
+    keyboardView: {
         flex: 1,
     },
     contentContainer: {
@@ -194,37 +184,12 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     form: {
-        gap: 24,
-    },
-    inputGroup: {
-        gap: 10,
-    },
-    label: {
-        fontSize: 13,
-        fontWeight: '700',
-        marginLeft: 4,
-        textTransform: 'uppercase',
-        opacity: 0.7,
-        letterSpacing: 0.5,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: 56,
-        borderRadius: 20,
-        borderWidth: 1,
-        paddingHorizontal: 20,
-        gap: 14,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '600',
-        height: '100%',
+        gap: 8,
     },
     forgotPassword: {
         alignSelf: 'flex-end',
         paddingVertical: 4,
+        marginBottom: 24,
     },
     loginButton: {
         height: 60,
@@ -233,7 +198,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
-        marginTop: 12,
         elevation: 6,
         boxShadow: '0px 8px 20px rgba(0,0,0,0.2)',
     },

@@ -1,4 +1,5 @@
 import { useUIStore } from '@/store/useUIStore';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowDownLeft, ArrowUpRight, ChevronLeft, CreditCard, DollarSign, History } from 'lucide-react-native';
 import React from 'react';
@@ -63,19 +64,24 @@ export default function WalletScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <Text style={[styles.title, { color: '#fff' }]}>My Wallet</Text>
+                <View style={{ width: 44 }} />
+            </LinearGradient>
 
             <View style={styles.balanceCard}>
                 <Text style={styles.balanceLabel}>Total Balance</Text>
                 <Text style={styles.balanceAmount}>{wallet.balance.toFixed(2)} DZD</Text>
-                <View style={[styles.statusBadge, { backgroundColor: wallet.subscriptionStatus === 'pro' ? '#FFD700' : '#E0E0E0' }]}>
-                    <Text style={[styles.statusText, { color: wallet.subscriptionStatus === 'pro' ? '#000' : '#666' }]}>
+                <View style={[styles.statusBadge, { backgroundColor: wallet.subscriptionStatus === 'pro' ? '#FFD700' : 'rgba(255,255,255,0.2)' }]}>
+                    <Text style={[styles.statusText, { color: wallet.subscriptionStatus === 'pro' ? '#000' : '#fff' }]}>
                         {wallet.subscriptionStatus === 'pro' ? 'PRO MEMBER' : 'FREE PLAN'}
                     </Text>
                 </View>
@@ -124,12 +130,15 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 24,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        marginBottom: 20,
     },
     backButton: {
         width: 44,
@@ -137,15 +146,14 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 3,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '800',
     },
     balanceCard: {
-        backgroundColor: '#2A2D3E', // Dark card
+        backgroundColor: '#2A2D3E', // Keep dark card for contrast
         marginHorizontal: 24,
         borderRadius: 32,
         padding: 32,

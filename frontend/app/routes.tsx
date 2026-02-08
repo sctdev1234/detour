@@ -1,7 +1,9 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Clock, MapPin, Plus, Search, Trash2 } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 import { Route, useTripStore } from '../store/useTripStore';
@@ -26,9 +28,12 @@ export default function RoutesScreen() {
         }
     };
 
-    const renderRouteItem = ({ item }: { item: Route }) => {
+    const renderRouteItem = ({ item, index }: { item: Route, index: number }) => {
         return (
-            <View style={[styles.routeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Animated.View
+                entering={FadeInDown.delay(index * 100).springify()}
+                style={[styles.routeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            >
                 <View style={styles.routeHeader}>
                     <View style={styles.timeContainer}>
                         <View style={[styles.timeBox, { backgroundColor: theme.primary + '15' }]}>
@@ -55,7 +60,7 @@ export default function RoutesScreen() {
                             </TouchableOpacity>
                         )}
                         <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item.id)}>
-                            <Trash2 size={18} color={theme.accent} />
+                            <Trash2 size={18} color={'#ef4444'} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -90,21 +95,26 @@ export default function RoutesScreen() {
                         </Text>
                     )}
                 </View>
-            </View>
+            </Animated.View>
         );
     };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>My Routes</Text>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
+                <Text style={[styles.title, { color: '#fff' }]}>My Routes</Text>
                 <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.primary }]}
+                    style={styles.addButton}
                     onPress={() => router.push(user?.role === 'driver' ? '/(driver)/add-route' : '/(client)/add-route')}
                 >
-                    <Plus size={24} color="#fff" />
+                    <Plus size={24} color={theme.primary} />
                 </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
             {isLoading && !routes.length ? (
                 <View style={styles.emptyContainer}>
@@ -114,7 +124,7 @@ export default function RoutesScreen() {
                 <FlatList
                     data={routes}
                     keyExtractor={(item) => item.id}
-                    renderItem={renderRouteItem}
+                    renderItem={({ item, index }) => renderRouteItem({ item, index })}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
@@ -140,6 +150,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 60,
         paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     title: {
         fontSize: 32,
@@ -152,6 +164,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#fff',
         elevation: 4,
         boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
     },

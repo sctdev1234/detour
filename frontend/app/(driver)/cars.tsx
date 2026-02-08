@@ -1,7 +1,10 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Car as CarIcon, Plus, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useEffect } from 'react'; // Added import
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore'; // Added import
 import { Car, useCarStore } from '../../store/useCarStore';
@@ -19,8 +22,11 @@ export default function CarsScreen() {
         }
     }, [user, fetchCars]);
 
-    const renderCarItem = ({ item }: { item: Car }) => (
-        <View style={[styles.carCard, { backgroundColor: theme.surface, borderColor: item.isDefault ? theme.primary : theme.border }]}>
+    const renderCarItem = ({ item, index }: { item: Car, index: number }) => (
+        <Animated.View
+            entering={FadeInDown.delay(index * 100).springify()}
+            style={[styles.carCard, { backgroundColor: theme.surface, borderColor: item.isDefault ? theme.primary : theme.border }]}
+        >
             {/* Image / Icon Header */}
             <View style={styles.imageContainer}>
                 {item.images && item.images.length > 0 ? (
@@ -31,10 +37,10 @@ export default function CarsScreen() {
                     </View>
                 )}
                 {item.isDefault && (
-                    <View style={[styles.defaultBadge, { backgroundColor: theme.primary }]}>
+                    <BlurView intensity={20} tint="light" style={styles.defaultBadge}>
                         <ShieldCheck size={12} color="#fff" />
                         <Text style={styles.defaultText}>Active</Text>
-                    </View>
+                    </BlurView>
                 )}
             </View>
 
@@ -73,32 +79,37 @@ export default function CarsScreen() {
                     </View>
                     <View style={{ flex: 1 }} />
                     <TouchableOpacity onPress={() => removeCar(item.id)} style={styles.deleteBtn}>
-                        <Trash2 size={18} color={theme.accent} />
+                        <Trash2 size={18} color={'#ef4444'} />
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </Animated.View>
     );
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.surface }]}>
-                    <CarIcon size={24} color={theme.text} />
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <CarIcon size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>My Garage</Text>
+                <Text style={[styles.title, { color: '#fff' }]}>My Garage</Text>
                 <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.primary }]}
+                    style={styles.addButton}
                     onPress={() => router.push('/(driver)/add-car')}
                 >
-                    <Plus size={24} color="#fff" />
+                    <Plus size={24} color={theme.primary} />
                 </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
             <FlatList
                 data={cars}
                 keyExtractor={(item) => item.id}
-                renderItem={renderCarItem}
+                renderItem={({ item, index }) => renderCarItem({ item, index })}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
@@ -125,6 +136,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -132,8 +145,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 3,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.2)'
     },
     title: {
         fontSize: 24,
@@ -145,6 +157,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#fff',
         elevation: 4,
         boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
     },
@@ -180,13 +193,13 @@ const styles = StyleSheet.create({
         top: 16,
         right: 16,
         flexDirection: 'row',
-        paddingVertical: 8,
+        paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 16,
         alignItems: 'center',
         gap: 6,
-        elevation: 2,
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.2)',
+        backgroundColor: 'rgba(59, 130, 246, 0.8)', // Fallback
+        overflow: 'hidden',
     },
     defaultText: {
         color: '#fff',
@@ -248,7 +261,7 @@ const styles = StyleSheet.create({
     },
     deleteBtn: {
         padding: 10,
-        backgroundColor: 'rgba(0,0,0,0.03)',
+        backgroundColor: '#ef444410',
         borderRadius: 12,
     },
     emptyContainer: {

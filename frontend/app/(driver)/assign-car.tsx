@@ -1,8 +1,10 @@
 import { useUIStore } from '@/store/useUIStore';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Percent, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
 
@@ -21,8 +23,11 @@ export default function AssignCarScreen() {
 
     if (!car) {
         return (
-            <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
                 <Text style={{ color: theme.text }}>Car not found</Text>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Text style={{ color: theme.primary, marginTop: 16, fontWeight: '600' }}>Go Back</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -58,63 +63,63 @@ export default function AssignCarScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>Assign Car</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <Text style={[styles.title, { color: '#fff' }]}>Assign Car</Text>
+                <View style={{ width: 44 }} />
+            </LinearGradient>
 
-            <View style={styles.content}>
-                <View style={[styles.carInfo, { backgroundColor: theme.surface }]}>
-                    <Text style={[styles.carName, { color: theme.text }]}>{car.marque} {car.model}</Text>
-                    <Text style={[styles.carDetail, { color: theme.icon }]}>{car.year} • {car.color}</Text>
-                </View>
-
-                <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.text }]}>Driver Email</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <UserPlus size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="driver@example.com"
-                                placeholderTextColor={theme.icon}
-                                value={email}
-                                onChangeText={setEmail}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                            />
-                        </View>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+            >
+                <ScrollView contentContainerStyle={styles.content}>
+                    <View style={[styles.carInfo, { backgroundColor: theme.surface }]}>
+                        <Text style={[styles.carName, { color: theme.text }]}>{car.marque} {car.model}</Text>
+                        <Text style={[styles.carDetail, { color: theme.icon }]}>{car.year} • {car.color}</Text>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.text }]}>Profit Split (Your Share %)</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                            <Percent size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="50"
-                                placeholderTextColor={theme.icon}
+                    <View style={styles.form}>
+                        <PremiumInput
+                            label="Driver Email"
+                            value={email}
+                            onChangeText={setEmail}
+                            placeholder="driver@example.com"
+                            icon={UserPlus}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+
+                        <View>
+                            <PremiumInput
+                                label="Profit Split (Your Share %)"
                                 value={split}
                                 onChangeText={setSplit}
+                                placeholder="50"
+                                icon={Percent}
                                 keyboardType="numeric"
                             />
+                            <Text style={[styles.helper, { color: theme.icon }]}>
+                                You keep {split}%, driver gets {100 - (parseFloat(split) || 0)}%.
+                            </Text>
                         </View>
-                        <Text style={[styles.helper, { color: theme.icon }]}>
-                            You keep {split}%, driver gets {100 - (parseFloat(split) || 0)}%.
-                        </Text>
-                    </View>
 
-                    <TouchableOpacity
-                        style={[styles.submitButton, { backgroundColor: theme.primary }]}
-                        onPress={handleAssign}
-                    >
-                        <Text style={styles.submitButtonText}>Confirm Assignment</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+                        <TouchableOpacity
+                            style={[styles.submitButton, { backgroundColor: theme.primary }]}
+                            onPress={handleAssign}
+                        >
+                            <Text style={styles.submitButtonText}>Confirm Assignment</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </View>
     );
 }
@@ -124,108 +129,69 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: 24,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 32,
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
         fontSize: 20,
-        fontWeight: '700',
+        fontWeight: '800',
     },
     content: {
         padding: 24,
     },
     carInfo: {
-        padding: 16,
-        borderRadius: 16,
+        padding: 20,
+        borderRadius: 24,
         marginBottom: 32,
         alignItems: 'center',
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.05)',
+        elevation: 2,
     },
     carName: {
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: 4,
+        fontSize: 20,
+        fontWeight: '800',
+        marginBottom: 6,
     },
     carDetail: {
-        fontSize: 14,
+        fontSize: 15,
+        fontWeight: '500',
+        opacity: 0.8,
     },
     form: {
-        gap: 24,
-    },
-    inputGroup: {
-        gap: 8,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: 56,
-        borderRadius: 16,
-        borderWidth: 1,
-        paddingHorizontal: 16,
-        gap: 12,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-        height: '100%',
+        gap: 20,
     },
     helper: {
-        fontSize: 12,
-        marginLeft: 4,
+        fontSize: 13,
+        marginLeft: 8,
+        marginTop: 6,
+        opacity: 0.8,
     },
     submitButton: {
-        height: 56,
-        borderRadius: 28,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
         marginTop: 16,
+        elevation: 6,
+        boxShadow: '0px 8px 16px rgba(0,0,0,0.15)',
     },
     submitButtonText: {
         color: '#fff',
         fontSize: 18,
-        fontWeight: '700',
-    },
-    assignmentCard: {
-        padding: 24,
-        borderRadius: 20,
-        borderWidth: 1,
-    },
-    assignmentLabel: {
-        fontSize: 14,
-        marginBottom: 4,
-    },
-    assignmentValue: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 16,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#eee', // or theme border
-        marginVertical: 12,
-    },
-    revokeButton: {
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#FF3B30',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 24,
-    },
-    revokeButtonText: {
-        color: '#fff',
-        fontSize: 16,
         fontWeight: '700',
     },
 });

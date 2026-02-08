@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Check, Clock, MapPin } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -5,25 +6,25 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     useColorScheme,
     View
 } from 'react-native';
+import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
-import { useTripStore } from '../../store/useTripStore';
+import { useClientRequestStore } from '../../store/useClientRequestStore';
 import { useUIStore } from '../../store/useUIStore';
 
 export default function RequestRideScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { createRequest, isLoading } = useTripStore();
+    const { addRequest } = useClientRequestStore();
     const { showToast } = useUIStore();
+    const [isLoading, setIsLoading] = useState(false);
 
     const [pickup, setPickup] = useState('');
     const [destination, setDestination] = useState('');
@@ -46,81 +47,79 @@ export default function RequestRideScreen() {
             return;
         }
 
+        setIsLoading(true);
+
         // Mock coordinates for V1 - in real app would use Google Places Autocomplete
-        const mockPickupCoords = { lat: 34.020882, lng: -6.841650, address: pickup };
-        const mockDestCoords = { lat: 33.573110, lng: -7.589843, address: destination };
+        const mockPickupCoords = { latitude: 34.020882, longitude: -6.841650, address: pickup };
+        const mockDestCoords = { latitude: 33.573110, longitude: -7.589843, address: destination };
 
         try {
-            await createRequest({
-                pickup: mockPickupCoords,
-                destination: mockDestCoords,
-                schedule: { days: selectedDays, time }
+            addRequest({
+                startPoint: mockPickupCoords,
+                endPoint: mockDestCoords,
+                preferredTime: time,
+                days: selectedDays,
+                proposedPrice: 0, // Default or prompt user
             });
             showToast('Request created successfully!', 'success');
             // Navigate to finding match screen or home
             router.back();
         } catch (error: any) {
             showToast(error.message || 'Failed to create request', 'error');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.surface }]}>
-                    <ArrowLeft size={24} color={theme.text} />
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <ArrowLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: theme.text }]}>Request a Ride</Text>
+                <Text style={[styles.headerTitle, { color: '#fff' }]}>Request a Ride</Text>
                 <View style={{ width: 44 }} />
-            </View>
+            </LinearGradient>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
-                <ScrollView contentContainerStyle={styles.content}>
+                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                     <Text style={[styles.sectionLabel, { color: theme.icon }]}>ROUTE</Text>
 
-                    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                        <View style={styles.inputRow}>
-                            <MapPin size={20} color={theme.primary} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="Pickup Location"
-                                placeholderTextColor={theme.icon}
-                                value={pickup}
-                                onChangeText={setPickup}
-                            />
-                        </View>
-                        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                        <View style={styles.inputRow}>
-                            <MapPin size={20} color={theme.secondary} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="Destination"
-                                placeholderTextColor={theme.icon}
-                                value={destination}
-                                onChangeText={setDestination}
-                            />
-                        </View>
-                    </View>
+                    <PremiumInput
+                        label="Pickup Location"
+                        value={pickup}
+                        onChangeText={setPickup}
+                        placeholder="e.g. Home"
+                        icon={MapPin}
+                    />
 
-                    <Text style={[styles.sectionLabel, { color: theme.icon, marginTop: 32 }]}>SCHEDULE</Text>
+                    <PremiumInput
+                        label="Destination"
+                        value={destination}
+                        onChangeText={setDestination}
+                        placeholder="e.g. Office"
+                        icon={MapPin}
+                    />
 
-                    <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                        <View style={styles.inputRow}>
-                            <Clock size={20} color={theme.icon} />
-                            <TextInput
-                                style={[styles.input, { color: theme.text }]}
-                                placeholder="Time (e.g. 08:30)"
-                                placeholderTextColor={theme.icon}
-                                value={time}
-                                onChangeText={setTime}
-                            />
-                        </View>
-                    </View>
+                    <Text style={[styles.sectionLabel, { color: theme.icon, marginTop: 24 }]}>SCHEDULE</Text>
 
-                    <Text style={[styles.label, { color: theme.text, marginTop: 24, marginBottom: 12 }]}>Days of the week</Text>
+                    <PremiumInput
+                        label="Departure Time"
+                        value={time}
+                        onChangeText={setTime}
+                        placeholder="08:00"
+                        icon={Clock}
+                    />
+
+                    <Text style={[styles.label, { color: theme.text, marginTop: 16, marginBottom: 12 }]}>Days of the week</Text>
                     <View style={styles.daysContainer}>
                         {daysOfWeek.map((day) => {
                             const isSelected = selectedDays.includes(day);
@@ -159,7 +158,7 @@ export default function RequestRideScreen() {
 
                 </ScrollView>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -169,8 +168,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -178,13 +180,15 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20,
+        fontWeight: '800',
     },
     content: {
         padding: 24,
+        gap: 8,
     },
     sectionLabel: {
         fontSize: 12,
@@ -192,26 +196,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         marginLeft: 4,
         letterSpacing: 1,
-    },
-    card: {
-        borderRadius: 16,
-        borderWidth: 1,
-        overflow: 'hidden',
-    },
-    inputRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        gap: 12,
-    },
-    input: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    divider: {
-        height: 1,
-        marginLeft: 48,
+        marginTop: 8,
     },
     label: {
         fontSize: 14,
@@ -238,18 +223,19 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         flexDirection: 'row',
-        height: 60,
-        borderRadius: 30,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
-        boxShadow: '0px 8px 16px rgba(0,0,0,0.15)',
+        boxShadow: '0px 8px 20px rgba(0,0,0,0.2)',
         elevation: 6,
         marginTop: 20,
+        marginBottom: 40,
     },
     submitButtonText: {
         color: '#fff',
         fontSize: 18,
-        fontWeight: '700',
+        fontWeight: '800',
     }
 });

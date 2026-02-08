@@ -1,7 +1,10 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Send, User } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useTripStore } from '../../store/useTripStore';
 
@@ -15,39 +18,49 @@ export default function ClientRequestsScreen() {
         fetchClientRequests();
     }, []);
 
-    const renderRequestItem = ({ item }: { item: any }) => {
+    const renderRequestItem = ({ item, index }: { item: any, index: number }) => {
         const driver = item.tripId?.driverId;
         return (
-            <View style={[styles.reqCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <View style={styles.driverInfo}>
-                    {driver?.photoURL ? (
-                        <Image source={{ uri: driver.photoURL }} style={styles.avatar} />
-                    ) : (
-                        <View style={[styles.avatar, { backgroundColor: theme.border, justifyContent: 'center', alignItems: 'center' }]}>
-                            <User size={24} color={theme.icon} />
-                        </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.driverName, { color: theme.text }]}>{driver?.fullName || 'Anonymous Driver'}</Text>
-                        <View style={styles.statusRow}>
-                            <View style={[styles.statusDot, { backgroundColor: item.status === 'pending' ? '#f59e0b' : item.status === 'accepted' ? '#10b981' : '#ef4444' }]} />
-                            <Text style={[styles.statusText, { color: theme.icon }]}>{item.status.toUpperCase()}</Text>
+            <Animated.View
+                entering={FadeInDown.delay(index * 100).springify()}
+                style={styles.reqCardWrapper}
+            >
+                <BlurView intensity={20} tint="light" style={styles.reqCard}>
+                    <View style={styles.driverInfo}>
+                        {driver?.photoURL ? (
+                            <Image source={{ uri: driver.photoURL }} style={styles.avatar} />
+                        ) : (
+                            <View style={[styles.avatar, { backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' }]}>
+                                <User size={24} color={theme.icon} />
+                            </View>
+                        )}
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.driverName, { color: theme.text }]}>{driver?.fullName || 'Anonymous Driver'}</Text>
+                            <View style={styles.statusRow}>
+                                <View style={[styles.statusDot, { backgroundColor: item.status === 'pending' ? '#f59e0b' : item.status === 'accepted' ? '#10b981' : '#ef4444' }]} />
+                                <Text style={[styles.statusText, { color: theme.icon }]}>{item.status.toUpperCase()}</Text>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </View>
+                </BlurView>
+            </Animated.View>
         );
     };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>My Requests</Text>
+                <Text style={[styles.title, { color: '#fff' }]}>My Requests</Text>
                 <View style={{ width: 44 }} />
-            </View>
+            </LinearGradient>
 
             {isLoading && !clientRequests.length ? (
                 <View style={styles.loading}>
@@ -57,7 +70,7 @@ export default function ClientRequestsScreen() {
                 <FlatList
                     data={clientRequests}
                     keyExtractor={(item) => item.id}
-                    renderItem={renderRequestItem}
+                    renderItem={({ item, index }) => renderRequestItem({ item, index })}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
                         <View style={styles.empty}>
@@ -73,12 +86,38 @@ export default function ClientRequestsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+    header: {
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)'
+    },
     title: { fontSize: 20, fontWeight: '800' },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     list: { padding: 24, gap: 16 },
-    reqCard: { borderRadius: 20, borderWidth: 1, padding: 16, gap: 12 },
+    reqCardWrapper: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: 'rgba(255,255,255,0.5)',
+    },
+    reqCard: {
+        padding: 16,
+        gap: 12
+    },
     driverInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     avatar: { width: 40, height: 40, borderRadius: 20 },
     driverName: { fontSize: 16, fontWeight: '700' },

@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Send } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
@@ -60,15 +61,20 @@ export default function ChatScreen() {
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={[styles.container, { backgroundColor: theme.background }]}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
+            <LinearGradient
+                colors={[theme.primary, theme.secondary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ChevronLeft size={24} color="#fff" />
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>{recipientName || 'Chat'}</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <Text style={[styles.title, { color: '#fff' }]}>{recipientName || 'Chat'}</Text>
+                <View style={{ width: 44 }} />
+            </LinearGradient>
 
             <FlatList
                 ref={flatListRef}
@@ -108,15 +114,17 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        height: 100,
-        paddingTop: 40,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 24,
-        borderBottomWidth: 1,
-        elevation: 2,
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
+        paddingTop: 60,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
+        zIndex: 10,
     },
     backButton: {
         width: 44,
@@ -124,11 +132,11 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.03)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20,
+        fontWeight: '800',
     },
     listContent: {
         padding: 20,

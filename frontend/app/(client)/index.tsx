@@ -1,3 +1,5 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
     Briefcase,
@@ -18,6 +20,7 @@ import {
     useColorScheme,
     View
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCarStore } from '../../store/useCarStore';
@@ -107,54 +110,60 @@ export default function ClientDashboard() {
             style={[styles.container, { backgroundColor: theme.background }]}
             showsVerticalScrollIndicator={false}
         >
-            {/* Header */}
-            <View style={styles.header}>
+            {/* Header with Gradient */}
+            <LinearGradient
+                colors={[theme.primary, theme.secondary || theme.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <View>
-                    <Text style={[styles.welcomeText, { color: theme.icon }]}>{greeting},</Text>
-                    <Text style={[styles.nameText, { color: theme.text }]}>{user?.fullName || 'Traveler'}</Text>
+                    <Text style={[styles.welcomeText, { color: 'rgba(255,255,255,0.8)' }]}>{greeting},</Text>
+                    <Text style={[styles.nameText, { color: '#fff' }]}>{user?.fullName || 'Traveler'}</Text>
                     {avgRating > 0 && (
-                        <View style={[styles.ratingBadge, { backgroundColor: '#FFCC0020' }]}>
-                            <Star size={12} color="#EBAC00" fill="#EBAC00" />
-                            <Text style={[styles.ratingText, { color: '#EBAC00' }]}>{avgRating.toFixed(1)}</Text>
+                        <View style={[styles.ratingBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                            <Star size={12} color="#FFD700" fill="#FFD700" />
+                            <Text style={[styles.ratingText, { color: '#fff' }]}>{avgRating.toFixed(1)}</Text>
                         </View>
                     )}
                 </View>
+            </LinearGradient>
 
-            </View>
+            {/* Search Bar & Quick Actions Container */}
+            <View style={{ marginTop: -30, paddingHorizontal: 24 }}>
+                {/* Search Bar */}
+                <TouchableOpacity
+                    onPress={() => router.push('/(client)/request-ride')}
+                    activeOpacity={0.9}
+                >
+                    <BlurView intensity={30} tint="default" style={styles.searchBar}>
+                        <Search size={22} color={theme.primary} />
+                        <Text style={[styles.searchPlaceholder, { color: theme.icon }]}>Where to next?</Text>
+                    </BlurView>
+                </TouchableOpacity>
 
-            {/* Search Bar */}
-            <TouchableOpacity
-                style={styles.searchBarContainer}
-                onPress={() => router.push('/(client)/request-ride')}
-                activeOpacity={0.9}
-            >
-                <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.primary + '40' }]}>
-                    <Search size={22} color={theme.primary} />
-                    <Text style={[styles.searchPlaceholder, { color: theme.icon }]}>Where to next?</Text>
+                {/* Quick Actions */}
+                <View style={styles.quickActionsContainer}>
+                    <QuickAction icon={Home} label="Home" onPress={() => handleQuickAction('Home')} />
+                    <QuickAction icon={Briefcase} label="Work" onPress={() => handleQuickAction('Work')} />
+                    <QuickAction icon={Clock} label="History" onPress={() => router.push('/(client)/trips')} />
                 </View>
-            </TouchableOpacity>
-
-            {/* Quick Actions */}
-            <View style={styles.quickActionsContainer}>
-                <QuickAction icon={Home} label="Home" onPress={() => handleQuickAction('Home')} />
-                <QuickAction icon={Briefcase} label="Work" onPress={() => handleQuickAction('Work')} />
-                <QuickAction icon={Clock} label="History" onPress={() => router.push('/(client)/trips')} />
             </View>
 
             {/* Recent Trips Section */}
             {recentTrips.length > 0 && (
-                <View style={styles.section}>
+                <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Trips</Text>
                     </View>
                     <View style={{ gap: 12 }}>
                         {recentTrips.map(renderRecentTrip)}
                     </View>
-                </View>
+                </Animated.View>
             )}
 
             {/* Recommended Drivers Section */}
-            <View style={styles.section}>
+            <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Top Routes</Text>
                     <TouchableOpacity onPress={() => router.push('/(client)/search')}>
@@ -199,7 +208,7 @@ export default function ClientDashboard() {
                         <Text style={{ color: theme.icon }}>No active routes available right now.</Text>
                     </View>
                 )}
-            </View>
+            </Animated.View>
             <View style={{ height: 100 }} />
         </ScrollView>
     );
@@ -214,14 +223,17 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 20,
+        paddingTop: 80,
+        paddingBottom: 40,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     welcomeText: {
         fontSize: 16,
         marginBottom: 4,
         fontWeight: '600',
-        opacity: 0.7,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     nameText: {
         fontSize: 32,
@@ -243,18 +255,19 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     searchBarContainer: {
-        paddingHorizontal: 24,
-        marginBottom: 28,
+        // paddingHorizontal: 24, // Handled in container
+        // marginBottom: 28,
     },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 18,
         borderRadius: 24,
-        borderWidth: 1,
         gap: 14,
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.06)',
-        elevation: 4,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.5)',
+        backgroundColor: 'rgba(255,255,255,0.8)', // Fallback opacity
     },
     searchPlaceholder: {
         fontSize: 16,
@@ -262,8 +275,8 @@ const styles = StyleSheet.create({
     },
     quickActionsContainer: {
         flexDirection: 'row',
-        paddingHorizontal: 24,
         gap: 16,
+        marginTop: 24,
         marginBottom: 36,
     },
     quickAction: {
