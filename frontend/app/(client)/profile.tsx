@@ -1,4 +1,6 @@
 import { useUIStore } from '@/store/useUIStore';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
     AlertCircle,
@@ -17,6 +19,7 @@ import {
 } from 'lucide-react-native';
 import {
     Image,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -24,6 +27,7 @@ import {
     useColorScheme,
     View
 } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -87,151 +91,197 @@ export default function ProfileScreen() {
         };
 
         return (
-            <View style={[styles.badge, { backgroundColor: getStatusColor() + '15', borderColor: getStatusColor() }]}>
+            <Animated.View
+                entering={FadeInDown.delay(200).springify()}
+                style={[styles.badge, { backgroundColor: getStatusColor() + '20', borderColor: getStatusColor() }]}
+            >
                 {verificationStatus === 'verified' && <ShieldCheck size={12} color={getStatusColor()} style={{ marginRight: 4 }} />}
                 <Text style={[styles.badgeText, { color: getStatusColor() }]}>
                     {verificationStatus ? verificationStatus.charAt(0).toUpperCase() + verificationStatus.slice(1) : 'Unverified'}
                 </Text>
-            </View>
+            </Animated.View>
         );
     };
 
-    const StatBox = ({ label, value, icon: Icon }: { label: string, value: string, icon: any }) => (
-        <View style={[styles.statBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={[styles.statIcon, { backgroundColor: theme.primary + '15' }]}>
-                <Icon size={16} color={theme.primary} />
+    const StatBox = ({ label, value, icon: Icon, index }: { label: string, value: string, icon: any, index: number }) => (
+        <Animated.View
+            entering={FadeInUp.delay(300 + (index * 100)).springify()}
+            style={{ flex: 1 }}
+        >
+            <View style={[styles.statBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                {Platform.OS === 'ios' && (
+                    <BlurView intensity={20} tint={colorScheme} style={StyleSheet.absoluteFill} />
+                )}
+                <View style={[styles.statIcon, { backgroundColor: theme.primary + '15' }]}>
+                    <Icon size={16} color={theme.primary} />
+                </View>
+                <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
+                <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
             </View>
-            <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
-            <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
-        </View>
+        </Animated.View>
     );
 
-    const MenuItem = ({ icon: Icon, title, subtitle, onPress, destructive = false, showChevron = true }: {
+    const MenuItem = ({ icon: Icon, title, subtitle, onPress, destructive = false, showChevron = true, index }: {
         icon: any;
         title: string;
         subtitle?: string;
         onPress: () => void;
         destructive?: boolean;
         showChevron?: boolean;
+        index: number;
     }) => (
-        <TouchableOpacity
-            style={[styles.menuItem, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={onPress}
-            activeOpacity={0.7}
-        >
-            <View style={[styles.menuIconContainer, { backgroundColor: destructive ? '#ef444415' : theme.background }]}>
-                <Icon size={20} color={destructive ? '#ef4444' : theme.primary} />
-            </View>
-            <View style={styles.menuContent}>
-                <Text style={[styles.menuTitle, { color: destructive ? '#ef4444' : theme.text }]}>{title}</Text>
-                {subtitle && <Text style={[styles.menuSubtitle, { color: theme.icon }]}>{subtitle}</Text>}
-            </View>
-            {showChevron && <ChevronRight size={18} color={theme.icon} />}
-        </TouchableOpacity>
+        <Animated.View entering={FadeInDown.delay(400 + (index * 50)).springify()}>
+            <TouchableOpacity
+                style={[styles.menuItem, { borderBottomColor: theme.border + '40' }]}
+                onPress={onPress}
+                activeOpacity={0.7}
+            >
+                <View style={[styles.menuIconContainer, { backgroundColor: destructive ? '#ef444410' : theme.background }]}>
+                    <Icon size={20} color={destructive ? '#ef4444' : theme.primary} />
+                </View>
+                <View style={styles.menuContent}>
+                    <Text style={[styles.menuTitle, { color: destructive ? '#ef4444' : theme.text }]}>{title}</Text>
+                    {subtitle && <Text style={[styles.menuSubtitle, { color: theme.icon }]}>{subtitle}</Text>}
+                </View>
+                {showChevron && <ChevronRight size={18} color={theme.icon} style={{ opacity: 0.5 }} />}
+            </TouchableOpacity>
+        </Animated.View>
     );
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
             {/* Header / User Info */}
-            <View style={styles.header}>
-                <View style={styles.avatarContainer}>
-                    <View style={[styles.avatar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                        {user?.photoURL ? (
-                            <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
-                        ) : (
-                            <User size={40} color={theme.icon} />
-                        )}
+            <LinearGradient
+                colors={[theme.primary + '20', theme.background]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.headerGradient}
+            >
+                <View style={styles.headerContent}>
+                    <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.avatarContainer, { shadowColor: theme.primary }]}>
+                        <LinearGradient
+                            colors={[theme.primary, theme.secondary || theme.primary]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.avatarBorder}
+                        >
+                            <View style={[styles.avatar, { backgroundColor: theme.surface }]}>
+                                {user?.photoURL ? (
+                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                                ) : (
+                                    <Text style={[styles.avatarInitials, { color: theme.primary }]}>
+                                        {user?.fullName
+                                            ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                                            : 'U'}
+                                    </Text>
+                                )}
+                            </View>
+                        </LinearGradient>
+                        <TouchableOpacity
+                            style={[styles.editBadge, { backgroundColor: theme.primary, borderColor: theme.surface }]}
+                            onPress={() => router.push('/edit-profile')}
+                        >
+                            <UserCog size={14} color="#fff" />
+                        </TouchableOpacity>
+                    </Animated.View>
+
+                    <Animated.Text entering={FadeInDown.delay(150).springify()} style={[styles.userName, { color: theme.text }]}>
+                        {user?.fullName || 'Traveler'}
+                    </Animated.Text>
+                    <Animated.Text entering={FadeInDown.delay(180).springify()} style={[styles.userEmail, { color: theme.icon }]}>
+                        {user?.email || 'user@example.com'}
+                    </Animated.Text>
+
+                    <View style={{ marginTop: 8 }}>
+                        <StatusBadge />
                     </View>
-                    <TouchableOpacity
-                        style={[styles.editBadge, { backgroundColor: theme.primary, borderColor: theme.background }]}
-                        onPress={() => router.push('/edit-profile')}
-                    >
-                        <UserCog size={14} color="#fff" />
-                    </TouchableOpacity>
                 </View>
-
-                <Text style={[styles.userName, { color: theme.text }]}>
-                    {user?.fullName || 'Traveler'}
-                </Text>
-                <Text style={[styles.userEmail, { color: theme.icon }]}>
-                    {user?.email || 'user@example.com'}
-                </Text>
-
-                <View style={{ marginTop: 8 }}>
-                    <StatusBadge />
-                </View>
-            </View>
+            </LinearGradient>
 
             {/* Stats Row */}
             <View style={styles.statsRow}>
-                <StatBox label="Trips" value="12" icon={Car} />
-                <StatBox label="Rating" value="4.9" icon={Star} />
-                <StatBox label="Hours" value="48" icon={Clock} />
+                <StatBox label="Trips" value="12" icon={Car} index={0} />
+                <StatBox label="Rating" value="4.9" icon={Star} index={1} />
+                <StatBox label="Hours" value="48" icon={Clock} index={2} />
             </View>
 
             {/* Menu Groups */}
-            <View style={styles.section}>
+            <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.icon }]}>Account</Text>
-                <MenuItem
-                    icon={User}
-                    title="Edit Profile"
-                    icon={User}
-                    title="Edit Profile"
-                    subtitle="Personal details"
-                    onPress={() => router.push('/edit-profile')}
-                />
-                <MenuItem
-                    icon={Lock}
-                    title="Change Password"
-                    subtitle="Update your security"
-                    onPress={() => router.push('/change-password')}
-                />
-                <MenuItem
-                    icon={CreditCard}
-                    title="My Wallet"
-                    subtitle="Payment methods & history"
-                    onPress={() => showToast('Wallet feature is under development', 'info')}
-                />
-            </View>
+                <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
+                    <MenuItem
+                        icon={User}
+                        title="Edit Profile"
+                        subtitle="Personal details"
+                        onPress={() => router.push('/edit-profile')}
+                        index={0}
+                    />
+                    <MenuItem
+                        icon={Lock}
+                        title="Change Password"
+                        subtitle="Update your security"
+                        onPress={() => router.push('/change-password')}
+                        index={1}
+                    />
+                    <MenuItem
+                        icon={CreditCard}
+                        title="My Wallet"
+                        subtitle="Payment methods & history"
+                        onPress={() => showToast('Wallet feature is under development', 'info')}
+                        showChevron={true}
+                        index={2}
+                    />
+                </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.icon }]}>Support</Text>
-                <MenuItem
-                    icon={AlertCircle}
-                    title="Support & Reclamations"
-                    subtitle="Get help with your trips"
-                    onPress={() => showToast('Contact support@detour.app', 'info')}
-                />
-                <MenuItem
-                    icon={FileText}
-                    title="Terms of Service"
-                    onPress={() => showToast('Terms of Service content goes here', 'info')}
-                />
-            </View>
+                <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
+                    <MenuItem
+                        icon={AlertCircle}
+                        title="Support & Reclamations"
+                        subtitle="Get help with your trips"
+                        onPress={() => showToast('Contact support@detour.app', 'info')}
+                        index={0}
+                    />
+                    <MenuItem
+                        icon={FileText}
+                        title="Terms of Service"
+                        onPress={() => showToast('Terms of Service content goes here', 'info')}
+                        showChevron={true}
+                        index={1}
+                    />
+                </View>
+            </Animated.View>
 
-            <View style={styles.section}>
+            <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.icon }]}>App</Text>
-                <MenuItem
-                    icon={Car}
-                    title="Switch to Driver Mode"
-                    subtitle="Start earning today"
-                    onPress={() => setRole(null)} // Reset role to force selection or switch
-                />
-                <MenuItem
-                    icon={LogOut}
-                    title="Sign Out"
-                    destructive
-                    onPress={handleSignOut}
-                    showChevron={false}
-                />
-                <MenuItem
-                    icon={Trash2}
-                    title="Delete Account"
-                    destructive
-                    onPress={handleDeleteAccount}
-                    showChevron={false}
-                />
-            </View>
+                <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
+                    <MenuItem
+                        icon={Car}
+                        title="Switch to Driver Mode"
+                        subtitle="Start earning today"
+                        onPress={() => setRole(null)}
+                        index={0}
+                    />
+                    <MenuItem
+                        icon={LogOut}
+                        title="Sign Out"
+                        destructive
+                        onPress={handleSignOut}
+                        showChevron={false}
+                        index={1}
+                    />
+                    <MenuItem
+                        icon={Trash2}
+                        title="Delete Account"
+                        destructive
+                        onPress={handleDeleteAccount}
+                        showChevron={false}
+                        index={2}
+                    />
+                </View>
+            </Animated.View>
 
             <View style={{ height: 100 }} />
         </ScrollView>
@@ -242,142 +292,180 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    header: {
+    headerGradient: {
+        paddingTop: 80,
+        paddingBottom: 40,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+        marginBottom: 20,
+    },
+    headerContent: {
         alignItems: 'center',
-        paddingVertical: 50,
         paddingHorizontal: 24,
     },
     avatarContainer: {
         position: 'relative',
-        marginBottom: 20,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    avatarBorder: {
+        padding: 4,
+        borderRadius: 60,
     },
     avatar: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 110,
+        height: 110,
+        borderRadius: 55,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 4,
-        boxShadow: '0px 8px 20px rgba(0,0,0,0.1)',
-        elevation: 8,
+        overflow: 'hidden',
     },
     avatarImage: {
         width: '100%',
         height: '100%',
     },
+    avatarInitials: {
+        fontSize: 40,
+        fontWeight: 'bold',
+    },
     editBadge: {
         position: 'absolute',
         bottom: 0,
         right: 0,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 4,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
+        borderWidth: 3,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
         elevation: 5,
     },
     userName: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: '800',
         marginBottom: 4,
         textAlign: 'center',
+        letterSpacing: -0.5,
     },
     userEmail: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '500',
         marginBottom: 16,
-        opacity: 0.6,
+        opacity: 0.7,
     },
     badge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
         borderWidth: 1,
     },
     badgeText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '700',
+        letterSpacing: 0.3,
     },
     statsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingHorizontal: 24,
-        gap: 16,
-        marginBottom: 40,
+        paddingHorizontal: 20,
+        gap: 12,
+        marginBottom: 32,
     },
     statBox: {
         flex: 1,
         alignItems: 'center',
-        padding: 20,
-        borderRadius: 24,
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        borderRadius: 20,
         borderWidth: 1,
-        gap: 10,
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.03)',
+        gap: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        overflow: 'hidden',
     },
     statIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 36,
+        height: 36,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     statValue: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '800',
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
+        opacity: 0.6,
     },
     section: {
-        marginBottom: 32,
-        paddingHorizontal: 24,
+        marginBottom: 28,
+        paddingHorizontal: 20,
     },
     sectionTitle: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '700',
-        marginBottom: 16,
+        marginBottom: 12,
         textTransform: 'uppercase',
-        letterSpacing: 1.2,
-        marginLeft: 4,
-        opacity: 0.6,
+        letterSpacing: 1,
+        marginLeft: 12,
+        opacity: 0.5,
+    },
+    menuGroup: {
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        borderRadius: 20,
-        marginBottom: 12,
-        borderWidth: 1,
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.02)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
     },
     menuIconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
+        width: 38,
+        height: 38,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 14,
     },
     menuContent: {
         flex: 1,
     },
     menuTitle: {
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '600',
         marginBottom: 2,
     },
     menuSubtitle: {
         fontSize: 12,
         fontWeight: '500',
-        opacity: 0.7,
+        opacity: 0.6,
     },
 });
 

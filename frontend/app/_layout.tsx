@@ -13,14 +13,14 @@ import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
 import '../global.css';
 import { useAuthStore } from '../store/useAuthStore';
-if (Platform.OS === 'web') {
-  require('leaflet/dist/leaflet.css');
-}
 
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
+if (Platform.OS === 'web') {
+  require('leaflet/dist/leaflet.css');
+}
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
