@@ -35,3 +35,29 @@ export const formatDuration = (minutes: number): string => {
     const m = minutes % 60;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
 };
+
+export const getRegionForCoordinates = (points: LatLng[], padding = 1.1) => {
+    if (!points.length) return undefined;
+
+    let minLat: number | undefined, maxLat: number | undefined, minLng: number | undefined, maxLng: number | undefined;
+    points.forEach((point) => {
+        minLat = minLat === undefined ? point.latitude : Math.min(minLat, point.latitude);
+        maxLat = maxLat === undefined ? point.latitude : Math.max(maxLat, point.latitude);
+        minLng = minLng === undefined ? point.longitude : Math.min(minLng, point.longitude);
+        maxLng = maxLng === undefined ? point.longitude : Math.max(maxLng, point.longitude);
+    });
+
+    if (minLat === undefined || maxLat === undefined || minLng === undefined || maxLng === undefined) return undefined;
+
+    const midLat = (minLat + maxLat) / 2;
+    const midLng = (minLng + maxLng) / 2;
+    const deltaLat = (maxLat - minLat);
+    const deltaLng = (maxLng - minLng);
+
+    return {
+        latitude: midLat,
+        longitude: midLng,
+        latitudeDelta: Math.max(deltaLat * padding, 0.05),
+        longitudeDelta: Math.max(deltaLng * padding, 0.05),
+    };
+};

@@ -23,7 +23,7 @@ export default function EditProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user, updateProfile, uploadProfileImage } = useAuthStore();
+    const { user, updateProfile } = useAuthStore();
     const { showToast, showConfirm } = useUIStore();
 
     const [displayName, setDisplayName] = useState(user?.fullName || '');
@@ -37,28 +37,42 @@ export default function EditProfileScreen() {
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.5,
+                base64: true, // Request base64 directly
             });
 
             if (!result.canceled) {
                 setUploadingImage(true);
                 const asset = result.assets[0];
 
-                // Create FormData
-                const formData = new FormData();
-                formData.append('image', {
-                    uri: asset.uri,
-                    name: asset.fileName || 'profile.jpg',
-                    type: asset.mimeType || 'image/jpeg',
-                } as any);
+                let base64Img = asset.base64;
+                if (!base64Img) {
+                    // Fallback for web if base64 not returned automatically (though expo-image-picker usually does if requested)
+                    if (Platform.OS === 'web') {
+                        const response = await fetch(asset.uri);
+                        const blob = await response.blob();
+                        base64Img = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result as string);
+                            reader.readAsDataURL(blob);
+                        });
+                    } else {
+                        throw new Error('Could not get image data');
+                    }
+                } else {
+                    // Ensure data URI prefix
+                    if (!base64Img.startsWith('data:image')) {
+                        base64Img = `data:${asset.mimeType || 'image/jpeg'};base64,${base64Img}`;
+                    }
+                }
 
-                const url = await uploadProfileImage(formData);
-                await updateProfile({ photoURL: url });
+                // Directly update profile with base64 string
+                await updateProfile({ photoURL: base64Img as string });
 
                 showToast('Profile photo updated', 'success');
             }
         } catch (error: any) {
             console.error('Image upload failed:', error);
-            showToast(error.message || 'Failed to upload image', 'error');
+            showToast(error.message || 'Failed to update image', 'error');
         } finally {
             setUploadingImage(false);
         }

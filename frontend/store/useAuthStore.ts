@@ -48,7 +48,6 @@ interface AuthState {
     updateDocuments: (docs: Partial<AuthState['documents']>) => void;
     updateProfile: (data: Partial<User>) => Promise<void>;
     changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
-    uploadProfileImage: (formData: FormData) => Promise<string>;
     setUser: (user: User | null) => void;
     setRole: (role: Role) => void;
     setLoading: (loading: boolean) => void;
@@ -337,32 +336,6 @@ export const useAuthStore = create<AuthState>()(
                         throw new Error(errorMsg);
                     }
                     set({ isLoading: false });
-                } catch (error) {
-                    set({ isLoading: false });
-                    throw error;
-                }
-            },
-
-            uploadProfileImage: async (formData) => {
-                set({ isLoading: true });
-                try {
-                    const res = await fetch(`${API_URL}/upload/profile`, {
-                        method: 'POST',
-                        headers: {
-                            'x-auth-token': get().token || '',
-                            // 'Content-Type': 'multipart/form-data', // Do NOT set this manually with FormData
-                        },
-                        body: formData
-                    });
-
-                    if (!res.ok) {
-                        const text = await res.text();
-                        throw new Error(text || 'Image upload failed');
-                    }
-
-                    const data = await res.json();
-                    set({ isLoading: false });
-                    return data.url;
                 } catch (error) {
                     set({ isLoading: false });
                     throw error;

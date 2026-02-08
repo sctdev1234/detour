@@ -1,8 +1,9 @@
 import { Car, MapPin, User } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import { Trip } from '../store/useTripStore';
+import { LatLng, Trip } from '../store/useTripStore';
+import { getRegionForCoordinates } from '../utils/location';
 
 interface TripMapProps {
     trip: Trip;
@@ -15,8 +16,10 @@ export default function TripMap({ trip, theme }: TripMapProps) {
     const driverRoute = trip.routeId;
     const clients = trip.clients || [];
 
+    // ...
+
     // Extract all relevant points to fit camera
-    const allPoints = [];
+    const allPoints: LatLng[] = [];
     if (driverRoute?.startPoint?.latitude) allPoints.push(driverRoute.startPoint);
     if (driverRoute?.endPoint?.latitude) allPoints.push(driverRoute.endPoint);
     clients.forEach(c => {
@@ -24,8 +27,15 @@ export default function TripMap({ trip, theme }: TripMapProps) {
         if (c.routeId?.endPoint?.latitude) allPoints.push(c.routeId.endPoint);
     });
 
+    const initialRegion = getRegionForCoordinates(allPoints) || {
+        latitude: driverRoute?.startPoint?.latitude || 33.5731,
+        longitude: driverRoute?.startPoint?.longitude || -7.5898,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+    };
+
     useEffect(() => {
-        if (mapRef.current && allPoints.length > 0) {
+        if (Platform.OS !== 'web' && mapRef.current && allPoints.length > 0) {
             mapRef.current.fitToCoordinates(allPoints, {
                 edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
                 animated: true,
@@ -40,12 +50,8 @@ export default function TripMap({ trip, theme }: TripMapProps) {
             <MapView
                 ref={mapRef}
                 style={styles.map}
-                initialRegion={{
-                    latitude: driverRoute.startPoint.latitude || 33.5731,
-                    longitude: driverRoute.startPoint.longitude || -7.5898,
-                    latitudeDelta: 0.0922,
-                    longitudeDelta: 0.0421,
-                }}
+                initialRegion={initialRegion}
+                region={Platform.OS === 'web' ? initialRegion : undefined}
             >
                 {/* Driver Route Line */}
                 {/* We need coordinate objects {latitude, longitude} */}

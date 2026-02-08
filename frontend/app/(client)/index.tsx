@@ -165,7 +165,7 @@ export default function ClientDashboard() {
                 {recommendedTrips.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.driversScroll}>
                         {recommendedTrips.map((info) => {
-                            const car = cars.find(c => c.id === info.carId);
+                            const car = cars.find(c => c.id === info.routeId?.carId);
                             return (
                                 <TouchableOpacity
                                     key={info.id}
@@ -179,7 +179,7 @@ export default function ClientDashboard() {
                                         <User size={24} color={theme.icon} />
                                     </View>
                                     <View style={{ alignItems: 'center' }}>
-                                        <Text style={[styles.driverName, { color: theme.text }]} numberOfLines={1}>Driver</Text>
+                                        <Text style={[styles.driverName, { color: theme.text }]} numberOfLines={1}>{info.driverId?.fullName || 'Driver'}</Text>
                                         <Text style={{ fontSize: 10, color: theme.icon }}>{car?.model || 'Car'}</Text>
                                     </View>
 
@@ -188,7 +188,7 @@ export default function ClientDashboard() {
                                         <Text style={[styles.ratingValue, { color: theme.text }]}>5.0</Text>
                                     </View>
                                     <View style={[styles.priceBadge, { backgroundColor: theme.primary + '10', marginTop: 8 }]}>
-                                        <Text style={[styles.driverPrice, { color: theme.primary }]}>${info.price}</Text>
+                                        <Text style={[styles.driverPrice, { color: theme.primary }]}>${info.routeId?.price}</Text>
                                     </View>
                                 </TouchableOpacity>
                             );

@@ -325,7 +325,62 @@ export const useTripStore = create<TripState>((set) => ({
         set({ isLoading: true });
         try {
             const res = await api.get('/trip/all');
-            set({ trips: res.data, isLoading: false });
+            const formattedTrips: Trip[] = res.data.map((t: any) => ({
+                id: t._id,
+                driverId: t.driverId,
+                status: t.status,
+                createdAt: t.createdAt,
+                routeId: {
+                    id: t.routeId?._id,
+                    userId: t.routeId?.userId,
+                    role: t.routeId?.role,
+                    carId: t.routeId?.carId,
+                    startPoint: {
+                        latitude: t.routeId?.startPoint?.coordinates?.[1],
+                        longitude: t.routeId?.startPoint?.coordinates?.[0],
+                        address: t.routeId?.startPoint?.address
+                    },
+                    endPoint: {
+                        latitude: t.routeId?.endPoint?.coordinates?.[1],
+                        longitude: t.routeId?.endPoint?.coordinates?.[0],
+                        address: t.routeId?.endPoint?.address
+                    },
+                    waypoints: (t.routeId?.waypoints || []).map((wp: any) => ({
+                        latitude: wp.coordinates?.[1],
+                        longitude: wp.coordinates?.[0],
+                        address: wp.address
+                    })),
+                    timeStart: t.routeId?.schedule?.time || '',
+                    timeArrival: t.routeId?.schedule?.timeArrival || '',
+                    days: t.routeId?.schedule?.days || [],
+                    price: t.routeId?.price?.amount || 0,
+                    priceType: t.routeId?.price?.type || 'fix',
+                    distanceKm: t.routeId?.distanceKm,
+                    estimatedDurationMin: t.routeId?.estimatedDurationMin,
+                    routeGeometry: t.routeId?.routeGeometry,
+                    status: t.routeId?.status
+                },
+                clients: (t.clients || []).map((c: any) => ({
+                    userId: c.userId,
+                    routeId: {
+                        // Minimal route mapping for client route if needed, or full
+                        id: c.routeId?._id,
+                        userId: c.routeId?.userId, // usually same as client userId
+                        startPoint: c.routeId?.startPoint ? {
+                            latitude: c.routeId.startPoint.coordinates[1],
+                            longitude: c.routeId.startPoint.coordinates[0],
+                            address: c.routeId.startPoint.address
+                        } : undefined,
+                        endPoint: c.routeId?.endPoint ? {
+                            latitude: c.routeId.endPoint.coordinates[1],
+                            longitude: c.routeId.endPoint.coordinates[0],
+                            address: c.routeId.endPoint.address
+                        } : undefined,
+                        // Add other fields if necessary
+                    }
+                }))
+            }));
+            set({ trips: formattedTrips, isLoading: false });
         } catch (error) {
             set({ isLoading: false });
         }

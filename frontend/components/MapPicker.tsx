@@ -14,6 +14,9 @@ interface MapPickerProps {
     readOnly?: boolean;
 }
 
+import { Platform } from 'react-native';
+import { getRegionForCoordinates } from '../utils/location';
+
 export default function MapPicker({ onPointsChange, initialPoints = [], theme, driverLocation, readOnly = false }: MapPickerProps) {
     const mapRef = useRef<MapView>(null);
     const { location } = useLocationStore();
@@ -27,7 +30,23 @@ export default function MapPicker({ onPointsChange, initialPoints = [], theme, d
     }, [initialPoints]);
 
     useEffect(() => {
-        if (driverLocation && mapRef.current) {
+        if (Platform.OS !== 'web' && mapRef.current && points.length > 0) {
+            mapRef.current.fitToCoordinates(points, {
+                edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                animated: true,
+            });
+        }
+    }, [points]);
+
+    const initialRegion = getRegionForCoordinates(points) || {
+        latitude: 33.5731, // Casablanca
+        longitude: -7.5898,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+    };
+
+    useEffect(() => {
+        if (driverLocation && mapRef.current && Platform.OS !== 'web') {
             // Optional: Animate to driver if tracking? Or just show marker.
             // mapRef.current.animateCamera({ center: driverLocation, heading: driverLocation.heading });
         }
@@ -64,12 +83,8 @@ export default function MapPicker({ onPointsChange, initialPoints = [], theme, d
             <MapView
                 ref={mapRef}
                 style={styles.map}
-                initialRegion={{
-                    latitude: 33.5731, // Casablanca
-                    longitude: -7.5898,
-                    latitudeDelta: 0.0922,
-                    longitudeDelta: 0.0421,
-                }}
+                initialRegion={initialRegion}
+                region={Platform.OS === 'web' ? initialRegion : undefined}
                 onPress={handlePress}
                 showsUserLocation={true}
             >

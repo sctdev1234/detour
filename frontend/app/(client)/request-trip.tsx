@@ -22,9 +22,9 @@ export default function RequestTripScreen() {
     const addRequest = useClientRequestStore((state) => state.addRequest);
     const { showToast, showConfirm } = useUIStore();
 
-    const [proposedPrice, setProposedPrice] = useState(driverTrip?.price.toString() || '0');
-    const [preferredTime, setPreferredTime] = useState(driverTrip?.timeStart || '08:00');
-    const [selectedDays, setSelectedDays] = useState<string[]>(driverTrip?.days || []);
+    const [proposedPrice, setProposedPrice] = useState(driverTrip?.routeId?.price?.toString() ?? '0');
+    const [preferredTime, setPreferredTime] = useState(driverTrip?.routeId?.timeStart ?? '08:00');
+    const [selectedDays, setSelectedDays] = useState<string[]>(driverTrip?.routeId?.days ?? []);
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
@@ -48,8 +48,8 @@ export default function RequestTripScreen() {
 
         addRequest({
             driverTripId,
-            startPoint: driverTrip.startPoint,
-            endPoint: driverTrip.endPoint,
+            startPoint: driverTrip.routeId.startPoint,
+            endPoint: driverTrip.routeId.endPoint,
             preferredTime,
             days: selectedDays,
             proposedPrice: price,
@@ -112,11 +112,11 @@ export default function RequestTripScreen() {
                             placeholder="0.00"
                         />
                         <Text style={{ color: theme.icon, fontSize: 16 }}>
-                            {driverTrip.priceType === 'fix' ? 'Flat' : '/km'}
+                            {driverTrip.routeId.priceType === 'fix' ? 'Flat' : '/km'}
                         </Text>
                     </View>
                     <View style={styles.helperRow}>
-                        <Text style={{ color: theme.icon, fontSize: 12 }}>Driver asks: ${driverTrip.price}</Text>
+                        <Text style={{ color: theme.icon, fontSize: 12 }}>Driver asks: ${driverTrip.routeId.price}</Text>
                     </View>
                 </View>
 

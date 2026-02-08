@@ -26,10 +26,11 @@ export default function DriverDashboard() {
     const trips = useTripStore((state) => state.trips.filter(t => t.driverId === user?.id || t.driverId === 'me'));
 
     // Calculate Stats
-    const activeRoutes = trips.length; // Assuming all in list are active for now, or filter by status
-    const totalDistance = trips.reduce((acc, t) => acc + (t.distanceKm || 0), 0);
+    // Calculate Stats
+    const activeRoutes = trips.length;
+    const totalDistance = trips.reduce((acc, t) => acc + (t.routeId?.distanceKm || 0), 0);
     // Weekly potential: Sum of (price * days per week)
-    const weeklyPotential = trips.reduce((acc, t) => acc + (t.price * t.days.length), 0);
+    const weeklyPotential = trips.reduce((acc, t) => acc + ((t.routeId?.price || 0) * (t.routeId?.days?.length || 0)), 0);
 
     const stats = [
         { label: 'Weekly Potential', value: `$${weeklyPotential.toFixed(0)}`, icon: DollarSign, color: '#4CD964' },
@@ -42,10 +43,10 @@ export default function DriverDashboard() {
     const todayIndex = new Date().getDay();
     const todayName = daysMap[todayIndex];
 
-    const todaysTrips = trips.filter(t => t.days.includes(todayName));
+    const todaysTrips = trips.filter(t => t.routeId?.days?.includes(todayName));
 
     // Sort by time
-    todaysTrips.sort((a, b) => a.timeStart.localeCompare(b.timeStart));
+    todaysTrips.sort((a, b) => (a.routeId?.timeStart || '').localeCompare(b.routeId?.timeStart || ''));
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
@@ -137,17 +138,17 @@ export default function DriverDashboard() {
                             </View>
                             <View style={styles.tripInfo}>
                                 <View style={styles.tripHeader}>
-                                    <Text style={[styles.tripTime, { color: theme.text }]}>{trip.timeStart}</Text>
+                                    <Text style={[styles.tripTime, { color: theme.text }]}>{trip.routeId?.timeStart}</Text>
                                     <View style={[styles.priceTag, { backgroundColor: '#4CD96420' }]}>
                                         <Text style={{ color: '#4CD964', fontSize: 12, fontWeight: '700' }}>
-                                            ${trip.price} {trip.priceType === 'km' ? '/km' : ''}
+                                            ${trip.routeId?.price} {trip.routeId?.priceType === 'km' ? '/km' : ''}
                                         </Text>
                                     </View>
                                 </View>
-                                <Text style={[styles.routeLoc, { color: theme.text }]}>From: {trip.startPoint.latitude.toFixed(3)}...</Text>
-                                <Text style={[styles.routeLoc, { color: theme.text, marginTop: 12 }]}>To: {trip.endPoint.latitude.toFixed(3)}...</Text>
+                                <Text style={[styles.routeLoc, { color: theme.text }]}>From: {trip.routeId?.startPoint?.latitude.toFixed(3)}...</Text>
+                                <Text style={[styles.routeLoc, { color: theme.text, marginTop: 12 }]}>To: {trip.routeId?.endPoint?.latitude.toFixed(3)}...</Text>
                                 <View style={styles.participantsRow}>
-                                    <Text style={{ fontSize: 12, color: theme.icon }}>{trip.passengers?.length || 0} Passengers</Text>
+                                    <Text style={{ fontSize: 12, color: theme.icon }}>{trip.clients?.length || 0} Passengers</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
