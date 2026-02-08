@@ -445,19 +445,56 @@ export default function TripMapLeaflet({ trip, theme, customStopOrder }: TripMap
                                     icon={createClientPickupIcon(client.userId?.photoURL)}
                                 >
                                     <Popup>
-                                        <div style={{ minWidth: 180 }}>
-                                            <strong style={{ color: '#10b981' }}>⬆️ Pick up</strong>
-                                            <p style={{ margin: '8px 0 4px 0', fontSize: '14px', fontWeight: 600 }}>
-                                                {client.userId?.name || client.userId?.firstName || `Passenger ${index + 1}`}
-                                            </p>
-                                            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
-                                                {client.routeId.startPoint.address || 'Pickup location'}
-                                            </p>
-                                            {client.userId?.phone && (
-                                                <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>
-                                                    📞 {client.userId.phone}
+                                        <div style={{ minWidth: 220 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                                {client.userId?.photoURL ? (
+                                                    <img
+                                                        src={client.userId.photoURL}
+                                                        style={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: 20,
+                                                            objectFit: 'cover',
+                                                            border: '2px solid #10b981'
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div style={{
+                                                        width: 40,
+                                                        height: 40,
+                                                        borderRadius: 20,
+                                                        backgroundColor: '#6366f1',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#fff',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {(client.userId?.name || client.userId?.firstName || 'P')[0].toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <strong style={{ color: '#10b981', fontSize: '12px' }}>⬆️ PICK UP</strong>
+                                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
+                                                        {client.userId?.name || client.userId?.firstName || `Passenger ${index + 1}`}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div style={{ borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                                                <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>
+                                                    📍 {client.routeId.startPoint.address || 'Pickup location'}
                                                 </p>
-                                            )}
+                                                {client.userId?.email && (
+                                                    <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>
+                                                        ✉️ {client.userId.email}
+                                                    </p>
+                                                )}
+                                                {client.userId?.phone && (
+                                                    <p style={{ margin: 0, fontSize: '12px' }}>
+                                                        📞 <a href={`tel:${client.userId.phone}`} style={{ color: '#007AFF' }}>{client.userId.phone}</a>
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </Popup>
                                 </Marker>
@@ -469,14 +506,56 @@ export default function TripMapLeaflet({ trip, theme, customStopOrder }: TripMap
                                     icon={createClientDropoffIcon(client.userId?.photoURL)}
                                 >
                                     <Popup>
-                                        <div style={{ minWidth: 180 }}>
-                                            <strong style={{ color: '#ef4444' }}>⬇️ Drop off</strong>
-                                            <p style={{ margin: '8px 0 4px 0', fontSize: '14px', fontWeight: 600 }}>
-                                                {client.userId?.name || client.userId?.firstName || `Passenger ${index + 1}`}
-                                            </p>
-                                            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
-                                                {client.routeId.endPoint.address || 'Dropoff location'}
-                                            </p>
+                                        <div style={{ minWidth: 220 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                                {client.userId?.photoURL ? (
+                                                    <img
+                                                        src={client.userId.photoURL}
+                                                        style={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: 20,
+                                                            objectFit: 'cover',
+                                                            border: '2px solid #ef4444'
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div style={{
+                                                        width: 40,
+                                                        height: 40,
+                                                        borderRadius: 20,
+                                                        backgroundColor: '#6366f1',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#fff',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {(client.userId?.name || client.userId?.firstName || 'P')[0].toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <strong style={{ color: '#ef4444', fontSize: '12px' }}>⬇️ DROP OFF</strong>
+                                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
+                                                        {client.userId?.name || client.userId?.firstName || `Passenger ${index + 1}`}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div style={{ borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                                                <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>
+                                                    📍 {client.routeId.endPoint.address || 'Dropoff location'}
+                                                </p>
+                                                {client.userId?.email && (
+                                                    <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>
+                                                        ✉️ {client.userId.email}
+                                                    </p>
+                                                )}
+                                                {client.userId?.phone && (
+                                                    <p style={{ margin: 0, fontSize: '12px' }}>
+                                                        📞 <a href={`tel:${client.userId.phone}`} style={{ color: '#007AFF' }}>{client.userId.phone}</a>
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </Popup>
                                 </Marker>
@@ -484,8 +563,8 @@ export default function TripMapLeaflet({ trip, theme, customStopOrder }: TripMap
                         </React.Fragment>
                     ))}
                 </MapContainer>
-            </div>
-        </View>
+            </div >
+        </View >
     );
 }
 
