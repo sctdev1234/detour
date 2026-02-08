@@ -45,7 +45,7 @@ export default function DriverRequestsScreen() {
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.clientName, { color: theme.text }]}>{item.clientId?.fullName}</Text>
                             <Text style={[styles.routeInfo, { color: theme.icon }]}>
-                                {item.clientRouteId?.startPoint?.address.split(',')[0]} → {item.clientRouteId?.endPoint?.address.split(',')[0]}
+                                {item.clientRouteId?.startPoint?.address?.split(',')[0] || 'Start'} → {item.clientRouteId?.endPoint?.address?.split(',')[0] || 'End'}
                             </Text>
                         </View>
                     </View>
