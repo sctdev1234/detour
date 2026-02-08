@@ -2,8 +2,11 @@
 [X] - allow user (client & driver) to update password
 [ ] - trips management (the trip becomes trip if the places are great for both the client and the driver)
 [ ] - coupon logic
+[ ] - rating system for client and driver, (client rate driver, driver rate client)
 [ ] - credits and withdraw money logic
 [ ] - saved places for client and driver (home, work, school, etc)
+[ ] - allow the user to create (aller et retour) trips (the return trip should be created automatically)
+
 
 [ ] - allow the driver to be [EMERGENCY-DRIVER] in offtime like inDrive (earn extra money)
 [ ] - allow the client to be [EMERGENCY-CLIENT] in offtime like inDrive (extra payment) 

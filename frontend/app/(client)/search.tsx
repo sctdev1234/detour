@@ -100,7 +100,7 @@ export default function ClientSearchScreen() {
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             {!showResults ? (
                 <View style={styles.flexContainer}>
-                    <View style={styles.header}>
+                    <View style={[styles.header, { paddingTop: 100 }]}>
                         <Text style={[styles.title, { color: theme.text }]}>Find a Ride</Text>
                         <Text style={{ fontSize: 16, color: theme.icon, marginTop: 4 }}>Where are we going today?</Text>
                     </View>
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
     },
     title: {
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
         borderBottomWidth: 1,
     },

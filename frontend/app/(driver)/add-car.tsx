@@ -1,7 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Calendar, Camera, Car as CarIcon, ChevronLeft, Palette, Plus, Upload, Users, X } from 'lucide-react-native';
+import { Calendar, Camera, Car as CarIcon, Palette, Plus, Upload, Users, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { PremiumInput } from '../../components/PremiumInput';
@@ -131,18 +130,9 @@ export default function AddCarScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>Add New Car</Text>
-                <View style={{ width: 44 }} />
-            </LinearGradient>
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Add New Car</Text>
+            </View>
 
             <ScrollView contentContainerStyle={styles.formContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.inputGroup}>
@@ -280,7 +270,7 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
         flexDirection: 'row',
         alignItems: 'center',

@@ -1,9 +1,8 @@
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Send, User } from 'lucide-react-native';
+import { Send, User } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useTripStore } from '../../store/useTripStore';
@@ -49,18 +48,9 @@ export default function ClientRequestsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>My Requests</Text>
-                <View style={{ width: 44 }} />
-            </LinearGradient>
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>My Requests</Text>
+            </View>
 
             {isLoading && !clientRequests.length ? (
                 <View style={styles.loading}>
@@ -88,8 +78,8 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 24,
+        paddingTop: 20,
+        paddingBottom: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',

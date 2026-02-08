@@ -2,7 +2,7 @@ import { useUIStore } from '@/store/useUIStore';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Camera, Check, ChevronRight, Lock, Mail, User } from 'lucide-react-native';
+import { Camera, Check, ChevronRight, Lock, Mail, User } from 'lucide-react-native';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -106,18 +106,9 @@ export default function EditProfileScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>Edit Profile</Text>
-                <View style={{ width: 44 }} />
-            </LinearGradient>
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Edit Profile</Text>
+            </View>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -206,7 +197,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,

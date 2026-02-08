@@ -1,7 +1,6 @@
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Check, ChevronLeft, User, X } from 'lucide-react-native';
+import { Check, User, X } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -74,19 +73,6 @@ export default function DriverRequestsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>Join Requests</Text>
-                <View style={{ width: 44 }} />
-            </LinearGradient>
-
             {isLoading && !driverRequests.length ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
@@ -96,7 +82,7 @@ export default function DriverRequestsScreen() {
                     data={driverRequests}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item, index }) => renderRequestItem({ item, index })}
-                    contentContainerStyle={styles.list}
+                    contentContainerStyle={[styles.list, { paddingTop: 84 }]}
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <User size={48} color={theme.icon} />
@@ -113,8 +99,8 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 24,
+        paddingTop: 20,
+        paddingBottom: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',

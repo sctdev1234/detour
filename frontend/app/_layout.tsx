@@ -7,7 +7,7 @@ import 'react-native-reanimated';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ConfirmationModal from '../components/ConfirmationModal';
-import GlobalHeader from '../components/GlobalHeader';
+import Header from '../components/Header';
 import LocationTracker from '../components/LocationTracker';
 import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
@@ -116,8 +116,8 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={theme}>
-      <SafeAreaProvider>
-        <GlobalHeader />
+      <SafeAreaProvider style={{ paddingTop: 60 }}>
+        <Header />
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(driver)" options={{ headerShown: false }} />

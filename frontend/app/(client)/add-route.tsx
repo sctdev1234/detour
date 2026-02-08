@@ -1,6 +1,6 @@
 import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
-import { Check, ChevronLeft } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
@@ -76,12 +76,8 @@ export default function AddClientRouteScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.surface }]}>
-                    <ChevronLeft size={24} color={theme.text} />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>New Trajectory</Text>
-                <View style={{ width: 44 }} />
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>New Client Route</Text>
             </View>
 
             <KeyboardAvoidingView

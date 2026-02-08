@@ -1,7 +1,6 @@
 import { useUIStore } from '@/store/useUIStore';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Car, Check, ChevronLeft, Clock, DollarSign, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
+import { Car, Check, Clock, DollarSign, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
@@ -118,18 +117,9 @@ export default function AddRouteScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>New Driver Route</Text>
-                <View style={{ width: 44 }} />
-            </LinearGradient>
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>New Driver Route</Text>
+            </View>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -143,7 +133,7 @@ export default function AddRouteScreen() {
                             <View style={[styles.stepBadge, { backgroundColor: theme.primary }]}>
                                 <Text style={styles.stepText}>1</Text>
                             </View>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Define Trajectory</Text>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Select Points</Text>
                         </View>
 
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
@@ -327,7 +317,7 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
         flexDirection: 'row',
         alignItems: 'center',

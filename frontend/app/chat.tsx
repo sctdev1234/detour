@@ -1,6 +1,5 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Send } from 'lucide-react-native';
+import { Send } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../constants/theme';
@@ -63,18 +62,9 @@ export default function ChatScreen() {
             style={[styles.container, { backgroundColor: theme.background }]}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>{recipientName || 'Chat'}</Text>
-                <View style={{ width: 44 }} />
-            </LinearGradient>
+            <View style={[styles.header, { backgroundColor: theme.surface, paddingTop: 80, paddingBottom: 10, elevation: 0, shadowOpacity: 0 }]}>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center', flex: 1 }]}>{recipientName || 'Chat'}</Text>
+            </View>
 
             <FlatList
                 ref={flatListRef}
@@ -118,7 +108,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,

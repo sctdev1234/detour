@@ -39,6 +39,13 @@ export default function DriverLayout() {
                 }}
             />
             <SwipeableTabs.Screen
+                name="cars"
+                options={{
+                    title: 'My Cars',
+                    tabBarIcon: ({ color }) => <Car size={24} color={color} />,
+                }}
+            />
+            <SwipeableTabs.Screen
                 name="requests"
                 options={{
                     title: 'Requests',
@@ -50,13 +57,6 @@ export default function DriverLayout() {
                 options={{
                     title: 'Routes',
                     tabBarIcon: ({ color }) => <MapPin size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="cars"
-                options={{
-                    title: 'My Cars',
-                    tabBarIcon: ({ color }) => <Car size={24} color={color} />,
                 }}
             />
             <SwipeableTabs.Screen

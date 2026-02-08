@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Clock, MapPin, Plus, Search, Trash2 } from 'lucide-react-native';
 import { useEffect } from 'react';
@@ -101,20 +100,15 @@ export default function RoutesScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <Text style={[styles.title, { color: '#fff' }]}>My Routes</Text>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 80, paddingBottom: 10 }]}>
+                <Text style={[styles.title, { color: theme.text }]}>My Routes</Text>
                 <TouchableOpacity
                     style={styles.addButton}
                     onPress={() => router.push(user?.role === 'driver' ? '/(driver)/add-route' : '/(client)/add-route')}
                 >
                     <Plus size={24} color={theme.primary} />
                 </TouchableOpacity>
-            </LinearGradient>
+            </View>
 
             {isLoading && !routes.length ? (
                 <View style={styles.emptyContainer}>
@@ -148,7 +142,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,

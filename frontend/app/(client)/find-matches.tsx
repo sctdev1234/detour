@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Info, MapPin, Send, User } from 'lucide-react-native';
+import { Info, MapPin, Send, User } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
@@ -79,12 +79,8 @@ export default function FindMatchesScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={theme.text} />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: theme.text }]}>Proposed Drivers</Text>
-                <View style={{ width: 44 }} />
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 60 }]}>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Proposed Drivers</Text>
             </View>
 
             {isLoading ? (

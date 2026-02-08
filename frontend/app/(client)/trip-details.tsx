@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Maximize2, MessageCircle, Phone, Share2 } from 'lucide-react-native';
+import { Maximize2, MessageCircle, Phone, Share2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import MapPicker from '../../components/MapPicker';
@@ -27,7 +27,7 @@ export default function TripDetailsScreen() {
 
     useEffect(() => {
         if (driverTrip?.driverId) {
-            subscribeToDriver(driverTrip.driverId);
+            subscribeToDriver(driverTrip.driverId._id);
         }
         return () => unsubscribe();
     }, [driverTrip?.driverId]);
@@ -91,13 +91,9 @@ export default function TripDetailsScreen() {
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             {/* Header */}
-            <View style={[styles.header, { backgroundColor: isExpandedMap ? 'transparent' : theme.background }]}>
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={[styles.backButton, { backgroundColor: theme.surface }]}
-                >
-                    <ArrowLeft size={24} color={theme.text} />
-                </TouchableOpacity>
+            <View style={[styles.header, { backgroundColor: isExpandedMap ? 'transparent' : theme.background, paddingTop: 80, paddingLeft: 20 }]}>
+                {/* Space for Global Back Button */}
+                <View style={{ width: 44 }} />
                 {!isExpandedMap && <Text style={[styles.title, { color: theme.text }]}>Trip Details</Text>}
                 <TouchableOpacity
                     onPress={() => setIsExpandedMap(!isExpandedMap)}
@@ -235,7 +231,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
     },
     backButton: {

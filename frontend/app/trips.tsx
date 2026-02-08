@@ -1,6 +1,5 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Calendar, ChevronLeft, Navigation, User } from 'lucide-react-native';
+import { Calendar, Navigation, User } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -83,19 +82,6 @@ export default function TripsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>My Trips</Text>
-                <View style={{ width: 44 }} />
-            </LinearGradient>
-
             {isLoading && !trips.length ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
@@ -105,7 +91,7 @@ export default function TripsScreen() {
                     data={trips}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item, index }) => renderTripItem({ item, index })}
-                    contentContainerStyle={styles.list}
+                    contentContainerStyle={[styles.list, { paddingTop: 84 }]}
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <Calendar size={48} color={theme.icon} />
@@ -122,7 +108,7 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 60,
+        paddingTop: 20,
         paddingBottom: 20,
         flexDirection: 'row',
         alignItems: 'center',

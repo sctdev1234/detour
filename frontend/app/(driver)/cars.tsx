@@ -1,5 +1,4 @@
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Car as CarIcon, Plus, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useEffect } from 'react'; // Added import
@@ -88,23 +87,15 @@ export default function CarsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={[theme.primary, theme.secondary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <CarIcon size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: '#fff' }]}>My Garage</Text>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 80, paddingBottom: 10 }]}>
+                <Text style={[styles.title, { color: theme.text }]}>My Garage</Text>
                 <TouchableOpacity
                     style={styles.addButton}
                     onPress={() => router.push('/(driver)/add-car')}
                 >
                     <Plus size={24} color={theme.primary} />
                 </TouchableOpacity>
-            </LinearGradient>
+            </View>
 
             <FlatList
                 data={cars}
@@ -131,8 +122,8 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 24,
+        paddingTop: 20,
+        paddingBottom: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
