@@ -5,6 +5,7 @@ import {
     Briefcase,
     Calendar,
     ChevronRight,
+    Circle,
     Clock,
     Home,
     MapPin,
@@ -15,9 +16,10 @@ import {
     Star,
     X
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -25,12 +27,15 @@ import {
     useColorScheme,
     View
 } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import Animated, { FadeInDown, SlideInUp } from 'react-native-reanimated';
+import RouteMapView from '../../components/RouteMapView';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ClientRequest, useClientRequestStore } from '../../store/useClientRequestStore';
 import { useRatingStore } from '../../store/useRatingStore';
-import { Route, useTripStore } from '../../store/useTripStore';
+import { LatLng, Route, useTripStore } from '../../store/useTripStore';
+import { getRegionForCoordinates } from '../../utils/location';
 
 export default function ClientDashboard() {
     const router = useRouter();
@@ -161,126 +166,269 @@ export default function ClientDashboard() {
         </Animated.View>
     );
 
-    const RouteDetailsModal = () => (
-        <Modal
-            visible={showRouteDetails}
-            animationType="slide"
-            transparent
-            onRequestClose={() => setShowRouteDetails(false)}
-        >
-            <View style={styles.modalOverlay}>
-                <Animated.View
-                    entering={SlideInUp.springify()}
-                    style={[styles.modalContent, { backgroundColor: theme.background }]}
-                >
-                    {/* Modal Header */}
-                    <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, { color: theme.text }]}>Route Details</Text>
-                        <TouchableOpacity
-                            onPress={() => setShowRouteDetails(false)}
-                            style={[styles.closeButton, { backgroundColor: theme.surface }]}
-                        >
-                            <X size={20} color={theme.icon} />
-                        </TouchableOpacity>
-                    </View>
+    const RouteDetailsModal = () => {
+        const mapRef = useRef<MapView>(null);
 
-                    {selectedRoute && (
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            {/* Route Trajectory */}
-                            <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                                <View style={styles.trajectorySection}>
-                                    <View style={styles.trajectoryTimeline}>
-                                        <View style={[styles.trajectoryDot, { backgroundColor: theme.primary }]} />
-                                        <View style={[styles.trajectoryLine, { backgroundColor: theme.border }]} />
-                                        <View style={[styles.trajectorySquare, { borderColor: theme.text }]} />
-                                    </View>
-                                    <View style={styles.trajectoryAddresses}>
-                                        <View style={styles.addressItem}>
-                                            <Text style={[styles.addressLabel, { color: theme.icon }]}>From</Text>
-                                            <Text style={[styles.addressText, { color: theme.text }]}>
-                                                {selectedRoute.startPoint.address || 'Start Location'}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.addressItem}>
-                                            <Text style={[styles.addressLabel, { color: theme.icon }]}>To</Text>
-                                            <Text style={[styles.addressText, { color: theme.text }]}>
-                                                {selectedRoute.endPoint.address || 'End Location'}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
+        // Collect all route points for the map
+        const getRoutePoints = (): LatLng[] => {
+            if (!selectedRoute) return [];
+            const points: LatLng[] = [];
+            if (selectedRoute.startPoint?.latitude) points.push(selectedRoute.startPoint);
+            if (selectedRoute.waypoints?.length) {
+                selectedRoute.waypoints.forEach(wp => {
+                    if (wp.latitude) points.push(wp);
+                });
+            }
+            if (selectedRoute.endPoint?.latitude) points.push(selectedRoute.endPoint);
+            return points;
+        };
 
-                            {/* Schedule */}
-                            <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                                <View style={styles.detailRow}>
-                                    <View style={[styles.detailIconBox, { backgroundColor: theme.primary + '15' }]}>
-                                        <Clock size={18} color={theme.primary} />
-                                    </View>
-                                    <View>
-                                        <Text style={[styles.detailLabel, { color: theme.icon }]}>Departure Time</Text>
-                                        <Text style={[styles.detailValue, { color: theme.text }]}>{selectedRoute.timeStart}</Text>
-                                    </View>
-                                </View>
-                            </View>
+        const routePoints = selectedRoute ? getRoutePoints() : [];
+        const initialRegion = getRegionForCoordinates(routePoints) || {
+            latitude: selectedRoute?.startPoint?.latitude || 33.5731,
+            longitude: selectedRoute?.startPoint?.longitude || -7.5898,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+        };
 
-                            {/* Days */}
-                            <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                                <View style={styles.detailRow}>
-                                    <View style={[styles.detailIconBox, { backgroundColor: theme.primary + '15' }]}>
-                                        <Calendar size={18} color={theme.primary} />
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[styles.detailLabel, { color: theme.icon }]}>Schedule Days</Text>
-                                        <View style={styles.daysContainer}>
-                                            {selectedRoute.days.map((day) => (
-                                                <View key={day} style={[styles.dayChip, { backgroundColor: theme.primary + '20' }]}>
-                                                    <Text style={[styles.dayChipText, { color: theme.primary }]}>{day}</Text>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
+        useEffect(() => {
+            if (showRouteDetails && Platform.OS !== 'web' && mapRef.current && routePoints.length > 0) {
+                setTimeout(() => {
+                    mapRef.current?.fitToCoordinates(routePoints, {
+                        edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+                        animated: true,
+                    });
+                }, 300);
+            }
+        }, [showRouteDetails, selectedRoute]);
 
-                            {/* Distance & Duration */}
-                            {(selectedRoute.distanceKm || selectedRoute.estimatedDurationMin) && (
-                                <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                                    <View style={styles.statsRow}>
-                                        {selectedRoute.distanceKm && (
-                                            <View style={styles.statItem}>
-                                                <Navigation size={18} color={theme.primary} />
-                                                <Text style={[styles.statValue, { color: theme.text }]}>
-                                                    {selectedRoute.distanceKm.toFixed(1)} km
-                                                </Text>
-                                            </View>
-                                        )}
-                                        {selectedRoute.estimatedDurationMin && (
-                                            <View style={styles.statItem}>
-                                                <Clock size={18} color={theme.primary} />
-                                                <Text style={[styles.statValue, { color: theme.text }]}>
-                                                    {selectedRoute.estimatedDurationMin} min
-                                                </Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                            )}
-
-                            {/* Find Matches Button */}
+        return (
+            <Modal
+                visible={showRouteDetails}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setShowRouteDetails(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <Animated.View
+                        entering={SlideInUp.springify()}
+                        style={[styles.modalContent, { backgroundColor: theme.background }]}
+                    >
+                        {/* Modal Header */}
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.text }]}>Route Details</Text>
                             <TouchableOpacity
-                                style={[styles.findMatchesBtn, { backgroundColor: theme.primary }]}
-                                onPress={() => handleFindMatches(selectedRoute.id)}
+                                onPress={() => setShowRouteDetails(false)}
+                                style={[styles.closeButton, { backgroundColor: theme.surface }]}
                             >
-                                <Search size={20} color="#fff" />
-                                <Text style={styles.findMatchesBtnText}>Find Matching Drivers</Text>
+                                <X size={20} color={theme.icon} />
                             </TouchableOpacity>
-                        </ScrollView>
-                    )}
-                </Animated.View>
-            </View>
-        </Modal>
-    );
+                        </View>
+
+                        {selectedRoute && (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {/* Map View - Uses Leaflet on Web */}
+                                <View style={[styles.mapContainer, { borderColor: theme.border }]}>
+                                    {Platform.OS === 'web' ? (
+                                        <RouteMapView
+                                            startPoint={selectedRoute.startPoint}
+                                            endPoint={selectedRoute.endPoint}
+                                            waypoints={selectedRoute.waypoints}
+                                            theme={theme}
+                                            height={200}
+                                        />
+                                    ) : (
+                                        <MapView
+                                            ref={mapRef}
+                                            style={styles.map}
+                                            initialRegion={initialRegion}
+                                        >
+                                            {/* Route Polyline */}
+                                            {routePoints.length > 1 && (
+                                                <Polyline
+                                                    coordinates={routePoints}
+                                                    strokeColor={theme.primary}
+                                                    strokeWidth={4}
+                                                />
+                                            )}
+
+                                            {/* Start Point Marker */}
+                                            {selectedRoute.startPoint?.latitude && (
+                                                <Marker coordinate={selectedRoute.startPoint}>
+                                                    <View style={[styles.mapMarker, styles.startMarker]}>
+                                                        <Navigation size={14} color="#fff" />
+                                                    </View>
+                                                </Marker>
+                                            )}
+
+                                            {/* Waypoint Markers */}
+                                            {selectedRoute.waypoints?.map((waypoint, index) => (
+                                                waypoint.latitude && (
+                                                    <Marker key={`waypoint-${index}`} coordinate={waypoint}>
+                                                        <View style={[styles.mapMarker, styles.waypointMarker]}>
+                                                            <Circle size={10} color="#fff" fill="#fff" />
+                                                        </View>
+                                                    </Marker>
+                                                )
+                                            ))}
+
+                                            {/* End Point Marker */}
+                                            {selectedRoute.endPoint?.latitude && (
+                                                <Marker coordinate={selectedRoute.endPoint}>
+                                                    <View style={[styles.mapMarker, styles.endMarker]}>
+                                                        <MapPin size={14} color="#fff" />
+                                                    </View>
+                                                </Marker>
+                                            )}
+                                        </MapView>
+                                    )}
+                                </View>
+
+                                {/* Full Route Trajectory with Waypoints */}
+                                <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                    <Text style={[styles.cardTitle, { color: theme.text }]}>Route Trajectory</Text>
+                                    <View style={styles.fullTrajectory}>
+                                        {/* Start Point */}
+                                        <View style={styles.trajectoryItem}>
+                                            <View style={styles.trajectoryItemLeft}>
+                                                <View style={[styles.trajectoryDot, { backgroundColor: '#10b981' }]} />
+                                                {(selectedRoute.waypoints?.length > 0 || selectedRoute.endPoint) && (
+                                                    <View style={[styles.trajectoryConnector, { backgroundColor: theme.border }]} />
+                                                )}
+                                            </View>
+                                            <View style={styles.trajectoryItemContent}>
+                                                <Text style={[styles.trajectoryLabel, { color: theme.icon }]}>Start</Text>
+                                                <Text style={[styles.trajectoryAddress, { color: theme.text }]}>
+                                                    {selectedRoute.startPoint.address || 'Start Location'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Waypoints */}
+                                        {selectedRoute.waypoints?.map((waypoint, index) => (
+                                            <View key={`wp-${index}`} style={styles.trajectoryItem}>
+                                                <View style={styles.trajectoryItemLeft}>
+                                                    <View style={[styles.waypointDot, { borderColor: theme.primary }]} />
+                                                    {(index < (selectedRoute.waypoints?.length || 0) - 1 || selectedRoute.endPoint) && (
+                                                        <View style={[styles.trajectoryConnector, { backgroundColor: theme.border }]} />
+                                                    )}
+                                                </View>
+                                                <View style={styles.trajectoryItemContent}>
+                                                    <Text style={[styles.trajectoryLabel, { color: theme.icon }]}>Stop {index + 1}</Text>
+                                                    <Text style={[styles.trajectoryAddress, { color: theme.text }]}>
+                                                        {waypoint.address || `Waypoint ${index + 1}`}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        ))}
+
+                                        {/* End Point */}
+                                        <View style={styles.trajectoryItem}>
+                                            <View style={styles.trajectoryItemLeft}>
+                                                <View style={[styles.trajectorySquare, { borderColor: '#ef4444', backgroundColor: '#ef4444' }]} />
+                                            </View>
+                                            <View style={styles.trajectoryItemContent}>
+                                                <Text style={[styles.trajectoryLabel, { color: theme.icon }]}>Destination</Text>
+                                                <Text style={[styles.trajectoryAddress, { color: theme.text }]}>
+                                                    {selectedRoute.endPoint.address || 'End Location'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Schedule Info */}
+                                <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                    <View style={styles.scheduleRow}>
+                                        <View style={styles.scheduleItem}>
+                                            <View style={[styles.detailIconBox, { backgroundColor: theme.primary + '15' }]}>
+                                                <Clock size={18} color={theme.primary} />
+                                            </View>
+                                            <View>
+                                                <Text style={[styles.detailLabel, { color: theme.icon }]}>Departure</Text>
+                                                <Text style={[styles.detailValue, { color: theme.text }]}>{selectedRoute.timeStart}</Text>
+                                            </View>
+                                        </View>
+                                        {selectedRoute.timeArrival && (
+                                            <View style={styles.scheduleItem}>
+                                                <View style={[styles.detailIconBox, { backgroundColor: theme.primary + '15' }]}>
+                                                    <Clock size={18} color={theme.primary} />
+                                                </View>
+                                                <View>
+                                                    <Text style={[styles.detailLabel, { color: theme.icon }]}>Arrival</Text>
+                                                    <Text style={[styles.detailValue, { color: theme.text }]}>{selectedRoute.timeArrival}</Text>
+                                                </View>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+
+                                {/* Days */}
+                                {selectedRoute.days?.length > 0 && (
+                                    <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                        <View style={styles.detailRow}>
+                                            <View style={[styles.detailIconBox, { backgroundColor: theme.primary + '15' }]}>
+                                                <Calendar size={18} color={theme.primary} />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.detailLabel, { color: theme.icon }]}>Schedule Days</Text>
+                                                <View style={styles.daysContainer}>
+                                                    {selectedRoute.days.map((day) => (
+                                                        <View key={day} style={[styles.dayChip, { backgroundColor: theme.primary + '20' }]}>
+                                                            <Text style={[styles.dayChipText, { color: theme.primary }]}>{day}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* Distance & Duration Stats */}
+                                {(selectedRoute.distanceKm || selectedRoute.estimatedDurationMin) && (
+                                    <View style={[styles.detailCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                        <View style={styles.statsRow}>
+                                            {selectedRoute.distanceKm && (
+                                                <View style={styles.statItem}>
+                                                    <View style={[styles.statIconBox, { backgroundColor: theme.primary + '15' }]}>
+                                                        <Navigation size={20} color={theme.primary} />
+                                                    </View>
+                                                    <Text style={[styles.statValue, { color: theme.text }]}>
+                                                        {selectedRoute.distanceKm.toFixed(1)} km
+                                                    </Text>
+                                                    <Text style={[styles.statLabel, { color: theme.icon }]}>Distance</Text>
+                                                </View>
+                                            )}
+                                            {selectedRoute.estimatedDurationMin && (
+                                                <View style={styles.statItem}>
+                                                    <View style={[styles.statIconBox, { backgroundColor: theme.primary + '15' }]}>
+                                                        <Clock size={20} color={theme.primary} />
+                                                    </View>
+                                                    <Text style={[styles.statValue, { color: theme.text }]}>
+                                                        {selectedRoute.estimatedDurationMin} min
+                                                    </Text>
+                                                    <Text style={[styles.statLabel, { color: theme.icon }]}>Duration</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* Find Matches Button */}
+                                <TouchableOpacity
+                                    style={[styles.findMatchesBtn, { backgroundColor: theme.primary }]}
+                                    onPress={() => handleFindMatches(selectedRoute.id)}
+                                >
+                                    <Search size={20} color="#fff" />
+                                    <Text style={styles.findMatchesBtnText}>Find Matching Drivers</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        )}
+                    </Animated.View>
+                </View>
+            </Modal>
+        );
+    };
 
     return (
         <ScrollView
@@ -646,6 +794,90 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         marginBottom: 16,
     },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 16,
+    },
+
+    // Map Styles
+    mapContainer: {
+        height: 220,
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        marginBottom: 16,
+    },
+    map: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    mapMarker: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+        elevation: 4,
+        boxShadow: '0px 2px 8px rgba(0,0,0,0.2)',
+    },
+    startMarker: {
+        backgroundColor: '#10b981',
+    },
+    waypointMarker: {
+        backgroundColor: '#f59e0b',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+    },
+    endMarker: {
+        backgroundColor: '#ef4444',
+    },
+
+    // Full Trajectory Styles
+    fullTrajectory: {
+        gap: 0,
+    },
+    trajectoryItem: {
+        flexDirection: 'row',
+        minHeight: 60,
+    },
+    trajectoryItemLeft: {
+        width: 24,
+        alignItems: 'center',
+    },
+    trajectoryItemContent: {
+        flex: 1,
+        paddingLeft: 12,
+        paddingBottom: 16,
+    },
+    trajectoryConnector: {
+        width: 2,
+        flex: 1,
+        marginTop: 4,
+    },
+    waypointDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 3,
+        backgroundColor: 'transparent',
+    },
+    trajectoryLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    trajectoryAddress: {
+        fontSize: 14,
+        fontWeight: '600',
+        lineHeight: 20,
+    },
+
+    // Legacy trajectory (keeping for compatibility)
     trajectorySection: {
         flexDirection: 'row',
         gap: 16,
@@ -688,6 +920,21 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
     },
+
+    // Schedule Row
+    scheduleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 16,
+    },
+    scheduleItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+
+    // Detail Row
     detailRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
@@ -726,20 +973,34 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '700',
     },
+
+    // Stats
     statsRow: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'center',
     },
     statItem: {
-        flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
     },
-    statValue: {
-        fontSize: 16,
-        fontWeight: '700',
+    statIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
+    statValue: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    statLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+
+    // Find Matches Button
     findMatchesBtn: {
         flexDirection: 'row',
         alignItems: 'center',
