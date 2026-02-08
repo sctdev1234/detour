@@ -133,7 +133,7 @@ export default function ClientDashboard() {
             <View style={{ marginTop: -30, paddingHorizontal: 24 }}>
                 {/* Search Bar */}
                 <TouchableOpacity
-                    onPress={() => router.push('/(client)/request-ride')}
+                    onPress={() => router.push('/(client)/add-route')}
                     activeOpacity={0.9}
                 >
                     <BlurView intensity={30} tint="default" style={styles.searchBar}>

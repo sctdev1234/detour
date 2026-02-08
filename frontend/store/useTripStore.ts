@@ -68,7 +68,7 @@ interface TripState {
     isLoading: boolean;
 
     // Route Actions
-    addRoute: (data: RouteData) => Promise<void>;
+    addRoute: (data: RouteData) => Promise<Route>;
     fetchRoutes: () => Promise<void>;
     removeRoute: (routeId: string) => Promise<void>;
 
@@ -110,6 +110,7 @@ export const useTripStore = create<TripState>((set) => ({
                 routes: [newRoute, ...state.routes],
                 isLoading: false
             }));
+            return newRoute;
         } catch (error) {
             set({ isLoading: false });
             throw error;

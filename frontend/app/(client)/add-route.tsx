@@ -55,7 +55,7 @@ export default function AddClientRouteScreen() {
         }
 
         try {
-            await addRoute({
+            const newRoute = await addRoute({
                 role: 'client',
                 startPoint: { ...points[0], address: pointAddresses[0] },
                 endPoint: { ...points[points.length - 1], address: pointAddresses[points.length - 1] },
@@ -67,8 +67,8 @@ export default function AddClientRouteScreen() {
                 priceType: 'fix',
                 status: 'pending',
             });
-            showToast('Route created! We will matching you with drivers.', 'success');
-            router.back();
+            showToast('Route created! finding matches...', 'success');
+            router.push({ pathname: '/(client)/find-matches', params: { routeId: newRoute.id } });
         } catch (error) {
             showToast('Failed to create route', 'error');
         }
@@ -77,7 +77,7 @@ export default function AddClientRouteScreen() {
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
-                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>New Client Route</Text>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Request a Ride</Text>
             </View>
 
             <KeyboardAvoidingView
