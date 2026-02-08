@@ -2,7 +2,7 @@ import L from 'leaflet';
 import { Car, MapPin, User } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import { StyleSheet, View } from 'react-native';
 import { LatLng, Trip } from '../store/useTripStore';
 
@@ -362,7 +362,16 @@ export default function TripMapLeaflet({ trip, theme, customStopOrder }: TripMap
                         <Marker
                             position={[driverRoute.startPoint.latitude, driverRoute.startPoint.longitude]}
                             icon={createDriverStartIcon()}
-                        />
+                        >
+                            <Popup>
+                                <div style={{ minWidth: 150 }}>
+                                    <strong style={{ color: '#10b981' }}>🚗 Departure</strong>
+                                    <p style={{ margin: '8px 0 0 0', fontSize: '12px' }}>
+                                        {driverRoute.startPoint.address || 'Starting point'}
+                                    </p>
+                                </div>
+                            </Popup>
+                        </Marker>
                     )}
 
                     {/* Driver End Marker */}
@@ -370,7 +379,16 @@ export default function TripMapLeaflet({ trip, theme, customStopOrder }: TripMap
                         <Marker
                             position={[driverRoute.endPoint.latitude, driverRoute.endPoint.longitude]}
                             icon={createDriverEndIcon()}
-                        />
+                        >
+                            <Popup>
+                                <div style={{ minWidth: 150 }}>
+                                    <strong style={{ color: '#ef4444' }}>📍 Destination</strong>
+                                    <p style={{ margin: '8px 0 0 0', fontSize: '12px' }}>
+                                        {driverRoute.endPoint.address || 'End point'}
+                                    </p>
+                                </div>
+                            </Popup>
+                        </Marker>
                     )}
 
                     {/* Driver Waypoint Markers */}
@@ -404,7 +422,16 @@ export default function TripMapLeaflet({ trip, theme, customStopOrder }: TripMap
                                         iconAnchor: [11, 11],
                                     });
                                 })()}
-                            />
+                            >
+                                <Popup>
+                                    <div style={{ minWidth: 150 }}>
+                                        <strong style={{ color: theme.primary || '#007AFF' }}>📌 Waypoint {index + 1}</strong>
+                                        <p style={{ margin: '8px 0 0 0', fontSize: '12px' }}>
+                                            {waypoint.address || 'Intermediate stop'}
+                                        </p>
+                                    </div>
+                                </Popup>
+                            </Marker>
                         )
                     ))}
 
@@ -416,14 +443,43 @@ export default function TripMapLeaflet({ trip, theme, customStopOrder }: TripMap
                                 <Marker
                                     position={[client.routeId.startPoint.latitude, client.routeId.startPoint.longitude]}
                                     icon={createClientPickupIcon(client.userId?.photoURL)}
-                                />
+                                >
+                                    <Popup>
+                                        <div style={{ minWidth: 180 }}>
+                                            <strong style={{ color: '#10b981' }}>⬆️ Pick up</strong>
+                                            <p style={{ margin: '8px 0 4px 0', fontSize: '14px', fontWeight: 600 }}>
+                                                {client.userId?.name || client.userId?.firstName || `Passenger ${index + 1}`}
+                                            </p>
+                                            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
+                                                {client.routeId.startPoint.address || 'Pickup location'}
+                                            </p>
+                                            {client.userId?.phone && (
+                                                <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>
+                                                    📞 {client.userId.phone}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </Popup>
+                                </Marker>
                             )}
                             {/* Client Dropoff */}
                             {client.routeId?.endPoint?.latitude && (
                                 <Marker
                                     position={[client.routeId.endPoint.latitude, client.routeId.endPoint.longitude]}
                                     icon={createClientDropoffIcon(client.userId?.photoURL)}
-                                />
+                                >
+                                    <Popup>
+                                        <div style={{ minWidth: 180 }}>
+                                            <strong style={{ color: '#ef4444' }}>⬇️ Drop off</strong>
+                                            <p style={{ margin: '8px 0 4px 0', fontSize: '14px', fontWeight: 600 }}>
+                                                {client.userId?.name || client.userId?.firstName || `Passenger ${index + 1}`}
+                                            </p>
+                                            <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
+                                                {client.routeId.endPoint.address || 'Dropoff location'}
+                                            </p>
+                                        </div>
+                                    </Popup>
+                                </Marker>
                             )}
                         </React.Fragment>
                     ))}
