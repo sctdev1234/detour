@@ -8,7 +8,7 @@ export function DriverTabBar({ state, descriptors, navigation }: MaterialTopTabB
     const theme = Colors[colorScheme];
 
     // Define which routes to show and their order if needed (or just filter)
-    const visibleRoutes = ['index', 'requests', 'routes', 'cars', 'profile'];
+    const visibleRoutes = ['index', 'requests', 'routes', 'trips', 'cars', 'profile'];
 
     // Filter state routes that are in the visible list
     const routesToShow = state.routes.filter(route => visibleRoutes.includes(route.name));
