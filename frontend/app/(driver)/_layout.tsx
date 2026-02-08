@@ -1,4 +1,3 @@
-import { Stack } from 'expo-router';
 import { Bell, Car, LayoutDashboard, MapPin, User } from 'lucide-react-native';
 import { useColorScheme } from 'react-native';
 import { DriverTabBar } from '../../components/DriverTabBar';
@@ -13,20 +12,19 @@ export default function DriverLayout() {
     const { user } = useAuthStore();
 
     // If driver is not verified, restrict access
+    // If driver is not verified, restrict access
+    // Verification check temporarily disabled for debugging
+    /* 
     if (user?.role === 'driver' && user?.verificationStatus !== 'verified') {
-        // Redirect if on a restricted route
-        // This is a safety catch, but the Stack below limits accessible screens visually
-        // Note: Expo Router might still match other files, so we could add a listener or effect here if strictly needed.
-        // For now, by only exposing a Stack with 'verification' and 'profile', we visually restrict them.
         return (
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="verification" />
                 <Stack.Screen name="profile" />
                 <Stack.Screen name="index" redirect={true} />
-                {/* Redirect any other attempts to 'verification' effectively */}
             </Stack>
         );
     }
+    */
 
     return (
         <SwipeableTabs

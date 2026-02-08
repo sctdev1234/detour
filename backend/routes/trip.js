@@ -19,5 +19,7 @@ router.get('/requests/client', auth, tripController.getClientRequests);
 
 // Trips (Instances of Driver Routes with joined Clients)
 router.get('/all', auth, tripController.getTrips);
+router.patch('/:id/start', auth, tripController.startTrip);
+router.patch('/:id/complete', auth, tripController.completeTrip);
 
 module.exports = router;

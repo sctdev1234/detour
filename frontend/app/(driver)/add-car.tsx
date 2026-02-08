@@ -70,7 +70,9 @@ export default function AddCarScreen() {
     const [uploading, setUploading] = useState(false);
 
     const handleSave = async () => {
+        console.log('Saving car with form:', form);
         if (!form.marque || !form.model || !form.year || !form.color) {
+            console.log('Validation failed:', { marque: !!form.marque, model: !!form.model, year: !!form.year, color: !!form.color });
             showToast('Please fill in all fields', 'warning');
             return;
         }

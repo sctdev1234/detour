@@ -13,6 +13,9 @@ exports.createRoute = async (req, res) => {
             timeStart, timeArrival, distanceKm, estimatedDurationMin
         } = req.body;
 
+        console.log('createRoute called for user:', req.user.id, 'role:', role);
+        console.log('Body:', JSON.stringify(req.body, null, 2));
+
         if (!role || !['driver', 'client'].includes(role)) {
             return res.status(400).json({ msg: 'Valid role (driver/client) is required' });
         }
@@ -118,7 +121,7 @@ exports.searchMatches = async (req, res) => {
         const clientRoute = await Route.findById(routeId);
         if (!clientRoute) return res.status(404).json({ msg: 'Client route not found' });
 
-        const maxDistance = 5000; // 5km
+        const maxDistance = 500000; // 500km for testing
         const pickup = clientRoute.startPoint.coordinates;
         const destination = clientRoute.endPoint.coordinates;
 
@@ -191,10 +194,15 @@ exports.sendJoinRequest = async (req, res) => {
 // @access  Private (Driver)
 exports.handleJoinRequest = async (req, res) => {
     try {
+        console.log('handleJoinRequest called');
         const { requestId, status } = req.body; // 'accepted' or 'rejected'
         const joinRequest = await JoinRequest.findById(requestId).populate('tripId');
 
-        if (!joinRequest) return res.status(404).json({ msg: 'Request not found' });
+        if (!joinRequest) {
+            console.log('Request not found');
+            return res.status(404).json({ msg: 'Request not found' });
+        }
+        console.log('Request found, Trip Driver:', joinRequest.tripId.driverId);
 
         // Check if the current user is the driver of the trip
         if (joinRequest.tripId.driverId.toString() !== req.user.id) {
@@ -280,6 +288,60 @@ exports.getClientRequests = async (req, res) => {
         res.json(requests);
     } catch (err) {
         console.error("Error in getClientRequests:", err.message);
+        res.status(500).send('Server Error');
+    }
+};
+// @desc    Start a trip (Driver)
+// @access  Private (Driver)
+exports.startTrip = async (req, res) => {
+    try {
+        console.log('startTrip called with ID:', req.params.id);
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) {
+            console.log('Trip not found in startTrip');
+            return res.status(404).json({ msg: 'Trip not found' });
+        }
+        console.log('Trip found, Driver:', trip.driverId);
+
+        if (trip.driverId.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'Not authorized' });
+        }
+
+        if (trip.status !== 'pending' && trip.status !== 'active') { // Allow re-start if needed or strict?
+            // strict: if (trip.status !== 'pending') return res.status(400).json({ msg: 'Trip cannot be started' });
+            // Let's allow idempotent start for now
+        }
+
+        trip.status = 'active';
+        await trip.save();
+
+        // Also update the underlying route status?
+        // await Route.findByIdAndUpdate(trip.routeId, { status: 'active' });
+
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in startTrip:", err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Complete a trip (Driver)
+// @access  Private (Driver)
+exports.completeTrip = async (req, res) => {
+    try {
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ msg: 'Trip not found' });
+
+        if (trip.driverId.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'Not authorized' });
+        }
+
+        trip.status = 'completed';
+        await trip.save();
+
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in completeTrip:", err.message);
         res.status(500).send('Server Error');
     }
 };

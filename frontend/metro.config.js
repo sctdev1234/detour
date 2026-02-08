@@ -8,6 +8,9 @@ config.resolver.unstable_enablePackageExports = false;
 
 // Force axios to resolve to the browser build (no node core modules)
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+    if (platform === 'web' && moduleName === 'react-native-maps') {
+        return context.resolveRequest(context, '@teovilla/react-native-web-maps', platform);
+    }
     if (moduleName === "axios") {
         return context.resolveRequest(context, "axios/dist/browser/axios.cjs", platform);
     }

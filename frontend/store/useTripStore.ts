@@ -63,7 +63,8 @@ interface TripState {
     trips: Trip[];
     driverRequests: JoinRequest[];
     clientRequests: JoinRequest[];
-    matches: Array<{ route: Route, trip: Trip }>;
+    searchResults: any[]; // Flattened structure for UI: { id, driverName, price, ... }
+    matches: Array<{ route: Route, trip: Trip }>; // Keep raw matches if needed, or remove? Let's keep for now but search.tsx uses searchResults.
     isLoading: boolean;
 
     // Route Actions
@@ -73,6 +74,7 @@ interface TripState {
 
     // Matching Actions
     findMatches: (routeId: string) => Promise<void>;
+    searchTrips: (criteria: { pickup: LatLng, destination: LatLng }) => Promise<void>;
 
     // Request Actions
     sendJoinRequest: (clientRouteId: string, tripId: string) => Promise<void>;
@@ -82,6 +84,8 @@ interface TripState {
 
     // Trip Actions
     fetchTrips: () => Promise<void>;
+    startTrip: (tripId: string) => Promise<void>;
+    completeTrip: (tripId: string) => Promise<void>;
 }
 
 export const useTripStore = create<TripState>((set) => ({
@@ -89,6 +93,7 @@ export const useTripStore = create<TripState>((set) => ({
     trips: [],
     driverRequests: [],
     clientRequests: [],
+    searchResults: [],
     matches: [],
     isLoading: false,
 
@@ -203,6 +208,54 @@ export const useTripStore = create<TripState>((set) => ({
         }
     },
 
+    searchTrips: async ({ pickup, destination }: { pickup: LatLng, destination: LatLng }) => {
+        set({ isLoading: true });
+        try {
+            // 1. Create a temporary Client Route
+            const routeData = {
+                role: 'client',
+                startPoint: pickup,
+                endPoint: destination,
+                days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], // Default to weekdays or get from UI
+                timeStart: '08:00', // Default or get from UI
+                // Add dummy values for required fields
+                waypoints: [],
+                timeArrival: '09:00',
+                price: 0,
+                priceType: 'fix'
+            };
+
+            // @ts-ignore
+            const resRoute = await api.post('/trip/route', routeData);
+            const clientRouteId = resRoute.data._id;
+
+            // 2. Find Matches
+            const resMatches = await api.get(`/trip/matches/${clientRouteId}`);
+
+            // 3. Format as searchResults (Flattened for UI)
+            const results = resMatches.data.map((m: any) => ({
+                id: m.trip?._id || 'no-trip-id', // Use Trip ID for joining
+                driverName: m.route.userId?.fullName || 'Unknown Driver',
+                profilePhoto: m.route.userId?.photoURL,
+                carId: m.route.carId,
+                price: m.route.price?.amount || 0,
+                priceType: m.route.price?.type || 'fix',
+                timeStart: m.route.schedule?.time || '',
+                startPoint: m.route.startPoint,
+                endPoint: m.route.endPoint,
+                routeId: m.route._id, // Keep route ID ref
+                distanceKm: m.route.distanceKm
+            }));
+
+            set({ searchResults: results, isLoading: false });
+
+        } catch (error) {
+            set({ isLoading: false });
+            console.error('Search trips failed:', error);
+            throw error;
+        }
+    },
+
     sendJoinRequest: async (clientRouteId: string, tripId: string) => {
         set({ isLoading: true });
         try {
@@ -275,6 +328,34 @@ export const useTripStore = create<TripState>((set) => ({
             set({ trips: res.data, isLoading: false });
         } catch (error) {
             set({ isLoading: false });
+        }
+    },
+
+    startTrip: async (tripId: string) => {
+        set({ isLoading: true });
+        try {
+            const res = await api.patch(`/trip/${tripId}/start`);
+            set((state) => ({
+                trips: state.trips.map(t => t.id === tripId ? { ...t, status: 'active' } : t),
+                isLoading: false
+            }));
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
+        }
+    },
+
+    completeTrip: async (tripId: string) => {
+        set({ isLoading: true });
+        try {
+            const res = await api.patch(`/trip/${tripId}/complete`);
+            set((state) => ({
+                trips: state.trips.map(t => t.id === tripId ? { ...t, status: 'completed' } : t),
+                isLoading: false
+            }));
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
         }
     },
 }));

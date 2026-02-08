@@ -11,6 +11,8 @@
 [ ] - history of driver cashout
 [ ] - history of client payments
 
+[ ] - currency logic
+
 ---------------------------------------------------------
 
 
@@ -48,11 +50,14 @@ currently there is a bigg misstake in the project, the "Trip" is not the same as
 ---- rename app/(driver)/add-trip to app/(driver)/add-route
 --- after creating a "Route" the status is pending in database
 --- show the [Driver] the [Clients] that joined to his "Route", and the updated trajet on map with all the clients points and the driver points, with all the trajets informations.
---- when the Trip is full (requested clients), both of the [Client] and [Driver] can see it in his app/trips page (status active) and the full trajet on map with all the trajet informations.
+--- the [DRIVER] can get infinite requests (not only the requested places) 
+but can only the requested places in the trip. the system show him 3 shortest trips by selecting the closest [CLIENTS] to the [DRIVER]'s trip route.
+--- when the Trip is full (requested clients), [Driver] can see it in his app/trips page (status pending) and the full trajets on map with all the trajets informations.
+--- when the [DRIVER] accept the best proposed trip, then the trip will be (status active) and the [CLIENT] will see it in his app/trips page (status active) and the full trajet on map with all the trajet informations.
+
 --- when Trip is full, (the requested places are completed), the [Clients] and [Driver] will see it in his app/trips page (status completed) 
 
 
 - the [Client] can't create a "Trip", he can only create a "Route"
 - the [Driver] can't create a "Trip", he can only create a "Route"
 - the system will create an empty "Trip" when the [Driver] create a "Route"
-

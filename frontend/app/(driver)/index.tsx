@@ -156,7 +156,7 @@ export default function DriverDashboard() {
                     <View style={[styles.emptyContainer, { borderColor: theme.border, backgroundColor: theme.surface }]}>
                         <Car size={32} color={theme.icon} />
                         <Text style={[styles.emptyText, { color: theme.icon }]}>No scheduled routes for today.</Text>
-                        <TouchableOpacity onPress={() => router.push('/(driver)/add-trip')}>
+                        <TouchableOpacity onPress={() => router.push('/(driver)/add-route')}>
                             <Text style={{ color: theme.primary, fontWeight: '600', marginTop: 8 }}>+ Add Route</Text>
                         </TouchableOpacity>
                     </View>
@@ -169,7 +169,7 @@ export default function DriverDashboard() {
                 <View style={styles.actionsGrid}>
                     <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: theme.primary }]}
-                        onPress={() => router.push('/(driver)/add-trip')}
+                        onPress={() => router.push('/(driver)/add-route')}
                     >
                         <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                             <MapPin size={24} color="#fff" />

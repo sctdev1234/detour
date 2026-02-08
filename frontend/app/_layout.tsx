@@ -13,6 +13,9 @@ import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
 import '../global.css';
 import { useAuthStore } from '../store/useAuthStore';
+if (Platform.OS === 'web') {
+  require('leaflet/dist/leaflet.css');
+}
 
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';

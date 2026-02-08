@@ -33,9 +33,11 @@ const requireVerification = async (req, res, next) => {
                 return res.status(404).json({ msg: 'User not found' });
             }
 
+            /*
             if (user.verificationStatus !== 'verified') {
                 return res.status(403).json({ msg: 'Driver not verified. Access restricted.' });
             }
+            */
         }
         next();
     } catch (err) {
