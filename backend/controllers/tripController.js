@@ -83,7 +83,10 @@ exports.createRoute = async (req, res) => {
 // @access  Private
 exports.getRoutes = async (req, res) => {
     try {
-        const routes = await Route.find({ userId: req.user.id }).sort({ createdAt: -1 });
+        const routes = await Route.find({
+            userId: req.user.id,
+            status: { $ne: 'inactive' }
+        }).sort({ createdAt: -1 });
         res.json(routes);
     } catch (err) {
         console.error("Error in getRoutes:", err.message);
@@ -218,6 +221,9 @@ exports.handleJoinRequest = async (req, res) => {
                 $push: { clients: { userId: joinRequest.clientId, routeId: joinRequest.clientRouteId } }
             });
 
+            // Mark the client route as inactive so it disappears from their Routes list
+            await Route.findByIdAndUpdate(joinRequest.clientRouteId, { status: 'inactive' });
+
             // If the trip reaches capacity (could add a car capacity check here), set status to 'active'
             // For now, let's just keep it 'pending' or move to 'active' if at least 1 client joined?
             // User said: "when Trip is full (requested clients), both of the Client and Driver can see it in his app/trips page (status active)"
@@ -342,6 +348,57 @@ exports.completeTrip = async (req, res) => {
         res.json(trip);
     } catch (err) {
         console.error("Error in completeTrip:", err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Remove a client from a trip (Driver)
+// @access  Private (Driver)
+exports.removeClient = async (req, res) => {
+    try {
+        console.log('removeClient called with tripId:', req.params.tripId, 'clientId:', req.params.clientId);
+        const { tripId, clientId } = req.params;
+
+        const trip = await Trip.findById(tripId);
+        if (!trip) return res.status(404).json({ msg: 'Trip not found' });
+
+        // Verify driver ownership
+        if (trip.driverId.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'Not authorized' });
+        }
+
+        // Find the client in the trip
+        const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
+        if (clientIndex === -1) {
+            return res.status(404).json({ msg: 'Client not found in trip' });
+        }
+
+        // Get the client's route ID to update its status
+        const clientRouteId = trip.clients[clientIndex].routeId;
+
+        // Remove client from trip
+        trip.clients.splice(clientIndex, 1);
+
+        // If no clients left and status was active, maybe revert to pending?
+        // Let's keep status as is for now unless requirements specify otherwise.
+
+        await trip.save();
+
+        // Update Client Route status back to 'pending' so they can search again
+        if (clientRouteId) {
+            await Route.findByIdAndUpdate(clientRouteId, { status: 'pending' });
+        }
+
+        // Also update any JoinRequest to 'rejected' or 'removed'?
+        // Let's mark it as 'rejected' so it's clear history
+        await JoinRequest.findOneAndUpdate(
+            { tripId, clientId, status: 'accepted' },
+            { status: 'rejected' }
+        );
+
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in removeClient:", err.message);
         res.status(500).send('Server Error');
     }
 };

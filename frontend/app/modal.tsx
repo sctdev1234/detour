@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, Clock, Edit3, Navigation, Save, User, X } from 'lucide-react-native';
+import { Check, Clock, Edit3, Navigation, Save, Trash2, User, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
 import TripMap from '../components/TripMap';
 import { Colors } from '../constants/theme';
@@ -14,7 +14,7 @@ export default function ModalScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { user } = useAuthStore();
-  const { trips, startTrip, completeTrip, isLoading } = useTripStore();
+  const { trips, startTrip, completeTrip, removeClient, isLoading } = useTripStore();
 
   // Find the trip
   const trip = trips.find(t => t.id === id); // id from params is string
@@ -137,6 +137,31 @@ export default function ModalScreen() {
       setActionLoading(false);
     }
   }
+
+  const handleRemoveClient = (clientId: string, clientName: string) => {
+    Alert.alert(
+      "Remove Passenger",
+      `Are you sure you want to remove ${clientName} from this trip?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              await removeClient(trip.id, clientId);
+            } catch (e) {
+              console.error(e);
+              Alert.alert("Error", "Failed to remove passenger");
+            } finally {
+              setActionLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -295,10 +320,18 @@ export default function ModalScreen() {
                   <User size={20} color={theme.icon} />
                 </View>
               )}
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.userName, { color: theme.text }]}>{client.userId?.fullName}</Text>
                 <Text style={[styles.userRole, { color: theme.icon }]}>Passenger</Text>
               </View>
+              {isDriver && (
+                <TouchableOpacity
+                  onPress={() => handleRemoveClient(client.userId._id, client.userId.fullName)}
+                  style={styles.removeBtn}
+                >
+                  <Trash2 size={18} color="#ef4444" />
+                </TouchableOpacity>
+              )}
             </View>
           ))
         )}
@@ -370,6 +403,7 @@ const styles = StyleSheet.create({
   footer: { padding: 20, paddingBottom: 40, borderTopWidth: 1, position: 'absolute', bottom: 0, left: 0, right: 0 },
   actionBtn: { height: 56, borderRadius: 28, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, elevation: 4 },
   btnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  removeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(239, 68, 68, 0.1)', justifyContent: 'center', alignItems: 'center' },
   editRouteBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, flex: 1 },
   editRouteBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
   cancelBtn: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },

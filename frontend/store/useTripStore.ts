@@ -86,6 +86,7 @@ interface TripState {
     fetchTrips: () => Promise<void>;
     startTrip: (tripId: string) => Promise<void>;
     completeTrip: (tripId: string) => Promise<void>;
+    removeClient: (tripId: string, clientId: string) => Promise<void>;
 }
 
 export const useTripStore = create<TripState>((set) => ({
@@ -414,4 +415,26 @@ export const useTripStore = create<TripState>((set) => ({
             throw error;
         }
     },
+
+    removeClient: async (tripId: string, clientId: string) => {
+        set({ isLoading: true });
+        try {
+            await api.delete(`/trip/${tripId}/client/${clientId}`);
+            set((state) => ({
+                trips: state.trips.map(t => {
+                    if (t.id === tripId) {
+                        return {
+                            ...t,
+                            clients: t.clients.filter(c => c.userId._id !== clientId)
+                        };
+                    }
+                    return t;
+                }),
+                isLoading: false
+            }));
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
+        }
+    }
 }));

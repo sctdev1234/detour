@@ -6,6 +6,7 @@
 [ ] - credits and withdraw money logic
 [ ] - saved places for client and driver (home, work, school, etc)
 [ ] - allow the user to create (aller et retour) trips (the return trip should be created automatically)
+[ ] - the client cant send request to the same trip more then one time
 
 
 [ ] - allow the driver to be [EMERGENCY-DRIVER] in offtime like inDrive (earn extra money)

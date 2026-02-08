@@ -21,5 +21,6 @@ router.get('/requests/client', auth, tripController.getClientRequests);
 router.get('/all', auth, tripController.getTrips);
 router.patch('/:id/start', auth, tripController.startTrip);
 router.patch('/:id/complete', auth, tripController.completeTrip);
+router.delete('/:tripId/client/:clientId', auth, tripController.removeClient);
 
 module.exports = router;
