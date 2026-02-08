@@ -1,7 +1,8 @@
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { User } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
@@ -16,8 +17,13 @@ export default function GlobalHeader() {
     // Determine profile route based on role
     const profileRoute = role === 'driver' ? '/(driver)/profile' : '/(client)/profile';
 
+    const Container = Platform.OS === 'ios' ? BlurView : View;
+    const containerStyle = Platform.OS === 'ios'
+        ? [styles.container, { paddingTop: insets.top, backgroundColor: 'transparent' }]
+        : [styles.container, { paddingTop: insets.top, backgroundColor: theme.surface, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }];
+
     return (
-        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+        <Container intensity={80} tint={colorScheme} style={containerStyle}>
             <View style={styles.content}>
                 {/* Brand / Logo */}
                 <View style={styles.brandContainer}>
@@ -46,16 +52,19 @@ export default function GlobalHeader() {
                     null
                 )}
             </View>
-        </View>
+        </Container>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        borderBottomWidth: 1,
-        elevation: 4,
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.05)',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
         zIndex: 100,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
     },
     content: {
         height: 60,
@@ -84,8 +93,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 2,
-        boxShadow: '0px 2px 6px rgba(0,0,0,0.05)',
     },
     roleBadge: {
         paddingHorizontal: 8,
