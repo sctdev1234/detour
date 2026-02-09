@@ -170,7 +170,7 @@ exports.sendJoinRequest = async (req, res) => {
 
         const existingRequest = await JoinRequest.findOne({
             clientId: req.user.id,
-            clientRouteId,
+            // clientRouteId,
             tripId
         });
 
@@ -379,8 +379,8 @@ exports.removeClient = async (req, res) => {
         // Remove client from trip
         trip.clients.splice(clientIndex, 1);
 
-        // If no clients left and status was active, maybe revert to pending?
-        // Let's keep status as is for now unless requirements specify otherwise.
+        // Reset trip status to 'pending' as requested by the user
+        trip.status = 'pending';
 
         await trip.save();
 

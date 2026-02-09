@@ -1,3 +1,4 @@
+import { useUIStore } from '@/store/useUIStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Clock, Edit3, Navigation, Save, Trash2, User, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
@@ -138,28 +139,26 @@ export default function ModalScreen() {
     }
   }
 
+  const { showConfirm } = useUIStore();
+
   const handleRemoveClient = (clientId: string, clientName: string) => {
-    Alert.alert(
+    showConfirm(
       "Remove Passenger",
       `Are you sure you want to remove ${clientName} from this trip?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              await removeClient(trip.id, clientId);
-            } catch (e) {
-              console.error(e);
-              Alert.alert("Error", "Failed to remove passenger");
-            } finally {
-              setActionLoading(false);
-            }
-          }
+      async () => {
+        setActionLoading(true);
+        try {
+          await removeClient(trip.id, clientId);
+        } catch (e) {
+          console.error(e);
+          Alert.alert("Error", "Failed to remove passenger");
+        } finally {
+          setActionLoading(false);
         }
-      ]
+      },
+      undefined,
+      "Remove",
+      "Cancel"
     );
   };
 
