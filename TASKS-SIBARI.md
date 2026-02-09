@@ -76,12 +76,3 @@
 - if the [CLIENT] didn't pay the [DRIVER] monthly, the [DRIVER] should cancel the trip and the [CLIENT] should be banned
 - if the [DRIVER] didn't show up for 3 consecutive days, the [DRIVER] should be banned and the [CLIENT] should be notified and find a new driver for the [CLIENT] imergencly
 
------------------------------------------------------
-Admin Panel Tasks:
-[ ] make the pending aprovals clickable and show the details of the driver and approve or reject the driver
-[ ] make the active users clickable and show the details of the driver and ban the driver
-[ ] add places pages that show all the places thenfor the clients and the drivers
-[ ] abonnement management
-[ ] coupon management
-[ ] credits and withdraw money management
-[ ] currency logic
