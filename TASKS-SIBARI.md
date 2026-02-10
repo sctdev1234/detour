@@ -1,3 +1,24 @@
+# tasks page is the first thing to see after signup or login the user can't do anything alse.
+- if the user didn't complited the tasks, show him only the tasks page (no home page, no other pages ...) can't do anything alse.
+
+- the client tasks:
+-- add two places in /places page (optional can skip)
+-- create a trip (Pickup Point and Destination Point) (optional can skip)
+
+- the driver tasks:
+-- upload the Documents (required)
+-- Add a Car or Receive it from another driver (required)
+-- wait for admin approval
+-- create a trip (Pickup Point and Destination Point) (optional)
+
+
+- if the user complited the tasks, show him the home page
+
+
+===========================================================
+
+
+
 [X] - allow user (client & driver) to update profile image
 [X] - allow user (client & driver) to update password
 
