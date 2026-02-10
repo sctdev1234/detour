@@ -1,6 +1,6 @@
 
 // Mock implementation of a Route Service
-// In production, this would call OSRM, Google Directions API, or Mapbox
+// In production, this would call OSRM
 
 interface RouteResult {
     distanceKm: number;

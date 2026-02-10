@@ -163,7 +163,7 @@ class AuthController {
 
     async getMe(req, res) {
         try {
-            const user = await User.findById(req.user.id).select('-password');
+            const user = await authService.getUser(req.user.id);
             res.json(user);
         } catch (err) {
             console.error(err.message);

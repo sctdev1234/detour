@@ -56,7 +56,7 @@ export default function Header() {
         if (pathname === '/(client)' || pathname === '/(client)/' || pathname === '/(client)/index') return true;
         if (pathname.includes('/(client)/requests')) return true;
         if (pathname.includes('/(client)/profile')) return true;
-        if (pathname.includes('/(client)/search')) return true;
+        // if (pathname.includes('/(client)/search')) return true;
         if (pathname.includes('/(client)/trips')) return true;
 
         // Auth

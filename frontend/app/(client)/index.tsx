@@ -2,11 +2,9 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
-    Briefcase,
     Calendar,
     ChevronRight,
     Clock,
-    Home,
     MapPin,
     Navigation,
     Plus,
@@ -387,11 +385,24 @@ export default function ClientDashboard() {
                     </BlurView>
                 </TouchableOpacity>
 
-                {/* Quick Actions */}
-                <View style={styles.quickActionsContainer}>
-                    <QuickAction icon={Home} label="Home" onPress={() => handleQuickAction('Home')} />
-                    <QuickAction icon={Briefcase} label="Work" onPress={() => handleQuickAction('Work')} />
-                    <QuickAction icon={Clock} label="History" onPress={() => router.push('/(client)/trips')} />
+                {/* Saved Places Map */}
+                <View style={styles.mapSection}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 18, marginBottom: 12 }]}>Saved Places</Text>
+                        <TouchableOpacity onPress={() => router.push('/(client)/places')}>
+                            <Text style={[styles.seeAllText, { color: theme.primary }]}>Manage</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={[styles.dashboardMapContainer, { borderColor: theme.border }]}>
+                        <DetourMap
+                            mode="picker"
+                            readOnly={true}
+                            theme={theme}
+                            height={180}
+                            savedPlaces={user?.savedPlaces}
+                            initialPoints={[]}
+                        />
+                    </View>
                 </View>
             </View>
 
@@ -502,6 +513,18 @@ const styles = StyleSheet.create({
     searchPlaceholder: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    mapSection: {
+        marginTop: 24,
+        marginBottom: 36,
+    },
+    dashboardMapContainer: {
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        height: 180,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.05)',
+        elevation: 4,
     },
     quickActionsContainer: {
         flexDirection: 'row',

@@ -32,7 +32,7 @@ const MapBoundsUpdater = ({ points }: { points: LatLng[] }) => {
     useEffect(() => {
         if (points.length > 0) {
             const bounds = L.latLngBounds(points.map(p => [p.latitude, p.longitude]));
-            map.fitBounds(bounds, { padding: [50, 50] });
+            map.fitBounds(bounds, { padding: [60, 60] });
         }
     }, [points, map]);
 
@@ -71,7 +71,8 @@ export default function MapLeaflet({
     endPoint: propEndPoint,
     waypoints: propWaypoints = [],
     driverLocation,
-    maxPoints
+    maxPoints,
+    savedPlaces = [] // Default to empty array if not provided
 }: MapProps) {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
@@ -121,28 +122,51 @@ export default function MapLeaflet({
         }
     }, [mode, trip, customStopOrder, propStartPoint, propEndPoint, propWaypoints]);
 
-    // Calculate Points to Fit
+    // Calculate Points to Fit - COMPREHENSIVE LOGIC (Matches Map.tsx)
     useEffect(() => {
-        let pts: LatLng[] = [];
+        let markersToFit: LatLng[] = [];
+
+        // Mode: Picker (includes saved places)
         if (mode === 'picker') {
-            pts = points;
-        } else if (mode === 'trip' && trip) {
-            pts = getAllPointsFromTrip(trip);
-            if (driverLocation) pts.push(driverLocation);
-        } else if (mode === 'route') {
-            if (propStartPoint) pts.push(propStartPoint);
-            if (propEndPoint) pts.push(propEndPoint);
-            pts = [...pts, ...propWaypoints];
-        } else if (driverLocation) {
-            pts.push(driverLocation);
+            if (savedPlaces?.length) {
+                const saved = savedPlaces.map(p => ({ latitude: p.latitude, longitude: p.longitude }));
+                markersToFit.push(...saved);
+            }
+            if (points.length) markersToFit.push(...points);
         }
 
-        // Only update if points have acted changed to avoid infinite loops or jitter
-        // A simple length check or comparison might be needed, but useEffect depends on input references.
-        // We will just set it.
-        setAllPointsToFit(pts);
+        // Mode: Route
+        if (mode === 'route') {
+            if (propStartPoint) markersToFit.push(propStartPoint);
+            if (propEndPoint) markersToFit.push(propEndPoint);
+            if (propWaypoints) markersToFit.push(...propWaypoints);
+            // Include polyline points for better fit
+            if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+        }
 
-    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, driverLocation]);
+        // Mode: Trip
+        if (mode === 'trip' && trip) {
+            // Driver Location
+            if (driverLocation) markersToFit.push({ latitude: driverLocation.latitude, longitude: driverLocation.longitude });
+
+            // Trip Points (using helper or direct properties)
+            const tripPoints = getAllPointsFromTrip(trip);
+            markersToFit.push(...tripPoints);
+
+            // Include polyline points
+            if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+        }
+
+        // Filter invalid points
+        // @ts-ignore
+        markersToFit = markersToFit.filter(p => p && typeof p.latitude === 'number' && typeof p.longitude === 'number');
+
+        // Only update if we have points
+        if (markersToFit.length > 0) {
+            setAllPointsToFit(markersToFit);
+        }
+
+    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, driverLocation, savedPlaces, routeCoordinates]);
 
     // Handlers
     const handleMapClick = (e: L.LeafletMouseEvent) => {
@@ -243,7 +267,7 @@ export default function MapLeaflet({
                     zoomControl={false}
                 >
                     <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        attribution='&copy; Detour.ma'
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
 
@@ -254,7 +278,7 @@ export default function MapLeaflet({
                     {/* --- Picker Mode Markers --- */}
                     {mode === 'picker' && (
                         <>
-                            {user?.savedPlaces?.map((place, index) => (
+                            {savedPlaces?.map((place, index) => (
                                 <Marker
                                     key={`saved-${index}`}
                                     position={[place.latitude, place.longitude]}
@@ -358,7 +382,22 @@ export default function MapLeaflet({
                                         }
                                     >
                                         <Popup>
-                                            {client?.userId?.name || (isPickup ? 'Pickup' : 'Dropoff')}
+                                            <div style={{ minWidth: '120px' }}>
+                                                <div style={{ fontWeight: '800', fontSize: '14px', marginBottom: '4px' }}>
+                                                    {isPickup ? 'Pickup: ' : 'Dropoff: '}{client?.userId?.fullName || 'Client'}
+                                                </div>
+                                                {client?.userId?.email && (
+                                                    <div style={{ fontSize: '12px', color: '#666' }}>{client.userId.email}</div>
+                                                )}
+                                                {client?.price && (
+                                                    <div style={{ fontSize: '12px', fontWeight: '700', color: theme.primary || '#007AFF', marginTop: '4px' }}>
+                                                        {client.price} MAD
+                                                    </div>
+                                                )}
+                                                {client?.seats && (
+                                                    <div style={{ fontSize: '12px' }}>{client.seats} seat(s)</div>
+                                                )}
+                                            </div>
                                         </Popup>
                                     </Marker>
                                 );

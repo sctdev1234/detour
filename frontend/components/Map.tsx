@@ -95,6 +95,63 @@ export default function Map({
         }
     }, [trip]);
 
+    // Auto-center map on relevant points
+    React.useEffect(() => {
+        let markersToFit: LatLng[] = [];
+
+        // Mode: Picker (includes saved places)
+        if (mode === 'picker') {
+            if (savedPlaces?.length) {
+                const saved = savedPlaces.map(p => ({ latitude: p.latitude, longitude: p.longitude }));
+                markersToFit.push(...saved);
+            }
+            markersToFit.push(...points);
+        }
+
+        // Mode: Route
+        if (mode === 'route') {
+            if (startPoint) markersToFit.push(startPoint);
+            if (endPoint) markersToFit.push(endPoint);
+            if (waypoints) markersToFit.push(...waypoints);
+            // Include polyline points for better fit
+            if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+        }
+
+        // Mode: Trip
+        if (mode === 'trip' && trip) {
+            // Driver Location
+            if (driverLocation) markersToFit.push({ latitude: driverLocation.latitude, longitude: driverLocation.longitude });
+
+            // Trip Route
+            if (trip.routeId?.startPoint) markersToFit.push(trip.routeId.startPoint);
+            if (trip.routeId?.endPoint) markersToFit.push(trip.routeId.endPoint);
+            if (trip.routeId?.waypoints) markersToFit.push(...trip.routeId.waypoints);
+
+            // Clients
+            trip.clients?.forEach((client: any) => {
+                if (client.routeId?.startPoint) markersToFit.push(client.routeId.startPoint);
+                if (client.routeId?.endPoint) markersToFit.push(client.routeId.endPoint);
+            });
+
+            // Include polyline points
+            if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+        }
+
+        // Filter invalid points
+        // @ts-ignore
+        markersToFit = markersToFit.filter(p => p && typeof p.latitude === 'number' && typeof p.longitude === 'number');
+
+        if (markersToFit.length > 0 && mapRef.current) {
+            // Add a small delay to ensure map is ready
+            setTimeout(() => {
+                mapRef.current?.fitToCoordinates(markersToFit, {
+                    edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+                    animated: true,
+                });
+            }, 100);
+        }
+    }, [points, savedPlaces, trip, startPoint, endPoint, waypoints, driverLocation, routeCoordinates, mode]);
+
     const handlePress = (e: any) => {
         if (mode !== 'picker' || readOnly) return;
         const newPoint = e.nativeEvent.coordinate;
@@ -245,34 +302,48 @@ export default function Map({
                 {/* Clients */}
                 {clients.map((client: any, index: number) => (
                     <React.Fragment key={`client-${index}`}>
-                        {/* Client Pickup */}
-                        {client.routeId?.startPoint && (
-                            <Marker coordinate={client.routeId.startPoint}>
-                                {client.userId?.photoURL ? (
-                                    <View style={[styles.profileMarker, { borderColor: '#10b981' }]}>
-                                        <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
+                        <Marker coordinate={client.routeId.startPoint}>
+                            {client.userId?.photoURL ? (
+                                <View style={[styles.profileMarker, { borderColor: '#10b981' }]}>
+                                    <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
+                                </View>
+                            ) : (
+                                <View style={[styles.clientMarker, { backgroundColor: theme.secondary }]}>
+                                    <User size={12} color="#fff" />
+                                </View>
+                            )}
+                            <Callout tooltip>
+                                <View style={styles.callout}>
+                                    <View style={{ gap: 4, minWidth: 120 }}>
+                                        <Text style={[styles.calloutTitle, { color: theme.text }]}>Pickup: {client.userId?.fullName || 'Client'}</Text>
+                                        {client.userId?.email && <Text style={[styles.calloutSubtitle, { color: theme.icon }]}>{client.userId.email}</Text>}
+                                        {client.price && <Text style={[styles.calloutPrice, { color: theme.primary }]}>{client.price} MAD</Text>}
+                                        {client.seats && <Text style={[styles.calloutSubtitle, { color: theme.text }]}>{client.seats} seat(s)</Text>}
                                     </View>
-                                ) : (
-                                    <View style={[styles.clientMarker, { backgroundColor: theme.secondary }]}>
-                                        <User size={12} color="#fff" />
+                                </View>
+                            </Callout>
+                        </Marker>
+                        <Marker coordinate={client.routeId.endPoint}>
+                            {client.userId?.photoURL ? (
+                                <View style={[styles.profileMarker, { borderColor: '#ef4444' }]}>
+                                    <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
+                                </View>
+                            ) : (
+                                <View style={[styles.clientMarker, { backgroundColor: theme.secondary, opacity: 0.7 }]}>
+                                    <MapPin size={12} color="#fff" />
+                                </View>
+                            )}
+                            <Callout tooltip>
+                                <View style={styles.callout}>
+                                    <View style={{ gap: 4, minWidth: 120 }}>
+                                        <Text style={[styles.calloutTitle, { color: theme.text }]}>Dropoff: {client.userId?.fullName || 'Client'}</Text>
+                                        {client.userId?.email && <Text style={[styles.calloutSubtitle, { color: theme.icon }]}>{client.userId.email}</Text>}
+                                        {client.price && <Text style={[styles.calloutPrice, { color: theme.primary }]}>{client.price} MAD</Text>}
+                                        {client.seats && <Text style={[styles.calloutSubtitle, { color: theme.text }]}>{client.seats} seat(s)</Text>}
                                     </View>
-                                )}
-                            </Marker>
-                        )}
-                        {/* Client Dropoff */}
-                        {client.routeId?.endPoint && (
-                            <Marker coordinate={client.routeId.endPoint}>
-                                {client.userId?.photoURL ? (
-                                    <View style={[styles.profileMarker, { borderColor: '#ef4444' }]}>
-                                        <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
-                                    </View>
-                                ) : (
-                                    <View style={[styles.clientMarker, { backgroundColor: theme.secondary, opacity: 0.7 }]}>
-                                        <MapPin size={12} color="#fff" />
-                                    </View>
-                                )}
-                            </Marker>
-                        )}
+                                </View>
+                            </Callout>
+                        </Marker>
                     </React.Fragment>
                 ))}
             </>
@@ -457,6 +528,20 @@ const styles = StyleSheet.create({
     },
     calloutText: {
         fontWeight: '700',
+    },
+    calloutTitle: {
+        fontWeight: '800',
+        fontSize: 14,
+        marginBottom: 2,
+    },
+    calloutSubtitle: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    calloutPrice: {
+        fontSize: 12,
+        fontWeight: '700',
+        marginTop: 2,
     },
     controls: {
         position: 'absolute',

@@ -5,18 +5,16 @@ import React from 'react';
 import { Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
+import { useAuthStore } from '../store/useAuthStore';
+
+// Define visible routes for each role
+const CLIENT_ROUTES = ['index', 'search', 'requests', 'routes', 'trips', 'places', 'profile'];
+const DRIVER_ROUTES = ['index', 'cars', 'requests', 'routes', 'trips', 'places', 'profile'];
 
 const TabItem = ({ route, index, state, descriptors, navigation, theme }: {
     route: any, index: number, state: any, descriptors: any, navigation: any, theme: any
 }) => {
     const { options } = descriptors[route.key];
-    const label =
-        options.tabBarLabel !== undefined
-            ? options.tabBarLabel
-            : options.title !== undefined
-                ? options.title
-                : route.name;
-
     const isFocused = state.index === index;
     const scale = useSharedValue(1);
 
@@ -72,22 +70,44 @@ const TabItem = ({ route, index, state, descriptors, navigation, theme }: {
                 {Icon && Icon({ focused: isFocused, color })}
                 {isFocused && <View style={[styles.activeIndicator, { backgroundColor: theme.primary }]} />}
             </Animated.View>
-            {/* Optional: Hide label for cleaner look, or keep it small */}
-            {/* <Text style={[styles.label, { color }]}>
-                {label as string}
-            </Text> */}
         </TouchableOpacity>
     );
 };
 
-export function ClientTabBar({ state, descriptors, navigation }: MaterialTopTabBarProps) {
+export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const { user } = useAuthStore();
 
-    // Define which routes to show and their order
-    const visibleRoutes = ['index', 'search', 'routes', 'requests', 'trips', 'profile'];
+    // Determine which routes to show based on user role or pathname context if passed
+    // But since this component is used inside specific layouts, we might just want to infer based on the routes present
+    // OR we can rely on passed props if we need stricer control. 
+    // However, the cleanest way is often to just check the route names against our allowlists.
 
-    // Filter state routes that are in the visible list
+    // Check if we are in client or driver layout context by checking if 'search' (client only) or 'cars' (driver only) exists in state.routes
+    // A more robust way is to check the user role from store, AND filter routes that might be permitted.
+
+    let visibleRoutes: string[] = [];
+
+    // Simple heuristic: if the state routes contain 'search', it's likely client structure. If 'cars', driver.
+    // Or we can just join both lists if the names don't conflict in a way that shows wrong tabs.
+    // The safest is to rely on user role from store.
+
+    if (user?.role === 'driver') {
+        visibleRoutes = DRIVER_ROUTES;
+    } else {
+        // Default to client
+        visibleRoutes = CLIENT_ROUTES;
+    }
+
+    // EDGE CASE: If a user is not logged in but somehow in these screens (shouldn't happen due to auth guards), 
+    // or if the layout has routes that neither list has. 
+    // Let's fallback to checking if the route name exists in our combined set of "known tabs".
+    // Actually, sticking to role-based filtering is better for security/UX.
+
+    console.log('Rendering Footer for role:', user?.role);
+
+    // Filter state routes that are in the visible list for the current role
     const routesToShow = state.routes.filter(route => visibleRoutes.includes(route.name));
 
     const Container = Platform.OS === 'ios' ? BlurView : View;
@@ -153,11 +173,5 @@ const styles = StyleSheet.create({
         width: 4,
         height: 4,
         borderRadius: 2,
-    },
-    label: {
-        fontSize: 10,
-        fontWeight: '600',
-        textTransform: 'capitalize',
-        marginTop: 4,
     },
 });
