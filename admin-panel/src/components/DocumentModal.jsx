@@ -57,27 +57,27 @@ export default function DocumentModal({ user, onClose }) {
                 {docTypes.map((type) => (
                   <div key={type.key} className="bg-slate-900/50 rounded-xl p-4 border border-slate-700/50 hover:border-slate-600 transition-all">
                     <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                        {type.label}
+                      {type.label}
                     </h3>
                     <div className="aspect-video w-full bg-slate-800 rounded-lg overflow-hidden flex items-center justify-center border border-slate-700 group relative">
                       {docs[type.key] ? (
                         <>
-                            <img 
-                                src={docs[type.key]} 
-                                alt={type.label} 
-                                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" 
-                            />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
-                                 onClick={() => window.open(docs[type.key], '_blank')}
-                            >
-                                <span className="px-4 py-2 bg-white/10 backdrop-blur rounded-lg text-white text-sm font-medium hover:bg-white/20 transition-colors border border-white/20">
-                                    View Full Size
-                                </span>
-                            </div>
+                          <img
+                            src={docs[type.key]}
+                            alt={type.label}
+                            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                            onClick={() => window.open(docs[type.key], '_blank')}
+                          >
+                            <span className="px-4 py-2 bg-white/10 backdrop-blur rounded-lg text-white text-sm font-medium hover:bg-white/20 transition-colors border border-white/20">
+                              View Full Size
+                            </span>
+                          </div>
                         </>
                       ) : (
                         <div className="text-slate-600 flex flex-col items-center gap-2">
-                           <span className="text-xs font-medium uppercase tracking-wider">Not Uploaded</span>
+                          <span className="text-xs font-medium uppercase tracking-wider">Not Uploaded</span>
                         </div>
                       )}
                     </div>
@@ -85,16 +85,16 @@ export default function DocumentModal({ user, onClose }) {
                 ))}
               </div>
             )}
-             {/* Submission Date */}
-             {docs && docs.submittedAt && (
-                <div className="mt-8 pt-6 border-t border-slate-700/50 text-right">
-                    <p className="text-xs text-slate-500">
-                        Documents submitted on <span className="text-slate-400 font-medium">{new Date(docs.submittedAt).toLocaleDateString()} at {new Date(docs.submittedAt).toLocaleTimeString()}</span>
-                    </p>
-                </div>
-             )}
+            {/* Submission Date */}
+            {docs && docs.submittedAt && (
+              <div className="mt-8 pt-6 border-t border-slate-700/50 text-right">
+                <p className="text-xs text-slate-500">
+                  Documents submitted on <span className="text-slate-400 font-medium">{new Date(docs.submittedAt).toLocaleDateString()} at {new Date(docs.submittedAt).toLocaleTimeString()}</span>
+                </p>
+              </div>
+            )}
           </div>
-          
+
           {/* Footer */}
           <div className="p-4 border-t border-slate-700 bg-slate-800 flex justify-end">
             <button
