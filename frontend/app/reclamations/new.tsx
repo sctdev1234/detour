@@ -62,14 +62,12 @@ export default function NewReclamationScreen() {
                 evidenceUrl,
             });
 
-            showConfirm(
-                'Success',
-                'Reclamation submitted successfully',
-                () => router.back(),
-                undefined,
-                'OK',
-                ''
-            );
+            showConfirm({
+                title: 'Success',
+                message: 'Reclamation submitted successfully',
+                confirmText: 'OK',
+                onConfirm: () => router.back()
+            });
         } catch (error) {
             showToast('Failed to submit reclamation', 'error');
             console.error(error);

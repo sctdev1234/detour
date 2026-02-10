@@ -28,14 +28,13 @@ export default function ResetPasswordScreen() {
         setLoading(true);
         try {
             await resetPassword(token, newPassword);
-            showConfirm(
-                'Success',
-                'Your password has been reset. Please log in.',
-                () => router.dismissAll(),
-                undefined,
-                'Log In',
-                'OK'
-            );
+            showConfirm({
+                title: 'Success',
+                message: 'Your password has been reset. Please log in.',
+                confirmText: 'Log In',
+                cancelText: 'OK',
+                onConfirm: () => router.dismissAll()
+            });
         } catch (error: any) {
             showToast(error.message || 'Reset Failed', 'error');
         } finally {

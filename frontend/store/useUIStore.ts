@@ -8,6 +8,16 @@ interface ToastSlice {
     hideToast: () => void;
 }
 
+export interface ConfirmOptions {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    validationText?: string;
+}
+
 interface ConfirmSlice {
     confirmTitle: string;
     confirmMessage: string;
@@ -20,15 +30,7 @@ interface ConfirmSlice {
     validationText?: string; // The text user must type to confirm (e.g. email)
     confirmInput: string;
     setConfirmInput: (text: string) => void;
-    showConfirm: (
-        title: string,
-        message: string,
-        onConfirm: () => void,
-        onCancel?: () => void,
-        confirmText?: string,
-        cancelText?: string,
-        validationText?: string
-    ) => void;
+    showConfirm: (options: ConfirmOptions) => void;
     hideConfirm: () => void;
 }
 
@@ -59,14 +61,14 @@ export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
     setConfirmInput: (text) => set({ confirmInput: text }),
 
     // Confirm Actions
-    showConfirm: (title, message, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', validationText) => set({
-        confirmTitle: title,
-        confirmMessage: message,
-        onConfirmConfig: onConfirm,
-        onCancelConfig: onCancel || (() => { }),
-        confirmText,
-        cancelText,
-        validationText,
+    showConfirm: (options) => set({
+        confirmTitle: options.title,
+        confirmMessage: options.message,
+        onConfirmConfig: options.onConfirm,
+        onCancelConfig: options.onCancel || (() => { }),
+        confirmText: options.confirmText || 'Confirm',
+        cancelText: options.cancelText || 'Cancel',
+        validationText: options.validationText,
         confirmInput: '', // Reset input on show
         isConfirmVisible: true
     }),

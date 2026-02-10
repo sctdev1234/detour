@@ -50,14 +50,12 @@ export default function AssignCarScreen() {
             status: 'active' // In a real app, this might be 'pending' until accepted
         });
 
-        showConfirm(
-            'Success',
-            `Car assigned to ${email} with ${splitValue}% profit split.`,
-            () => router.back(),
-            undefined,
-            'OK',
-            ''
-        );
+        showConfirm({
+            title: 'Success',
+            message: `Car assigned to ${email} with ${splitValue}% profit split.`,
+            confirmText: 'OK',
+            onConfirm: () => router.back()
+        });
     };
 
     return (
