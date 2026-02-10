@@ -5,7 +5,6 @@ import {
     Briefcase,
     Calendar,
     ChevronRight,
-    Circle,
     Clock,
     Home,
     MapPin,
@@ -16,10 +15,9 @@ import {
     Star,
     X
 } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Modal,
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -27,15 +25,13 @@ import {
     useColorScheme,
     View
 } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import Animated, { FadeInDown, SlideInUp } from 'react-native-reanimated';
-import RouteMapView from '../../components/RouteMapView';
+import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ClientRequest, useClientRequestStore } from '../../store/useClientRequestStore';
 import { useRatingStore } from '../../store/useRatingStore';
-import { LatLng, Route, useTripStore } from '../../store/useTripStore';
-import { getRegionForCoordinates } from '../../utils/location';
+import { Route, useTripStore } from '../../store/useTripStore';
 
 export default function ClientDashboard() {
     const router = useRouter();
@@ -167,40 +163,9 @@ export default function ClientDashboard() {
     );
 
     const RouteDetailsModal = () => {
-        const mapRef = useRef<MapView>(null);
 
-        // Collect all route points for the map
-        const getRoutePoints = (): LatLng[] => {
-            if (!selectedRoute) return [];
-            const points: LatLng[] = [];
-            if (selectedRoute.startPoint?.latitude) points.push(selectedRoute.startPoint);
-            if (selectedRoute.waypoints?.length) {
-                selectedRoute.waypoints.forEach(wp => {
-                    if (wp.latitude) points.push(wp);
-                });
-            }
-            if (selectedRoute.endPoint?.latitude) points.push(selectedRoute.endPoint);
-            return points;
-        };
 
-        const routePoints = selectedRoute ? getRoutePoints() : [];
-        const initialRegion = getRegionForCoordinates(routePoints) || {
-            latitude: selectedRoute?.startPoint?.latitude || 33.5731,
-            longitude: selectedRoute?.startPoint?.longitude || -7.5898,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-        };
 
-        useEffect(() => {
-            if (showRouteDetails && Platform.OS !== 'web' && mapRef.current && routePoints.length > 0) {
-                setTimeout(() => {
-                    mapRef.current?.fitToCoordinates(routePoints, {
-                        edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
-                        animated: true,
-                    });
-                }, 300);
-            }
-        }, [showRouteDetails, selectedRoute]);
 
         return (
             <Modal
@@ -229,59 +194,14 @@ export default function ClientDashboard() {
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 {/* Map View - Uses Leaflet on Web */}
                                 <View style={[styles.mapContainer, { borderColor: theme.border }]}>
-                                    {Platform.OS === 'web' ? (
-                                        <RouteMapView
-                                            startPoint={selectedRoute.startPoint}
-                                            endPoint={selectedRoute.endPoint}
-                                            waypoints={selectedRoute.waypoints}
-                                            theme={theme}
-                                            height={200}
-                                        />
-                                    ) : (
-                                        <MapView
-                                            ref={mapRef}
-                                            style={styles.map}
-                                            initialRegion={initialRegion}
-                                        >
-                                            {/* Route Polyline */}
-                                            {routePoints.length > 1 && (
-                                                <Polyline
-                                                    coordinates={routePoints}
-                                                    strokeColor={theme.primary}
-                                                    strokeWidth={4}
-                                                />
-                                            )}
-
-                                            {/* Start Point Marker */}
-                                            {selectedRoute.startPoint?.latitude && (
-                                                <Marker coordinate={selectedRoute.startPoint}>
-                                                    <View style={[styles.mapMarker, styles.startMarker]}>
-                                                        <Navigation size={14} color="#fff" />
-                                                    </View>
-                                                </Marker>
-                                            )}
-
-                                            {/* Waypoint Markers */}
-                                            {selectedRoute.waypoints?.map((waypoint, index) => (
-                                                waypoint.latitude && (
-                                                    <Marker key={`waypoint-${index}`} coordinate={waypoint}>
-                                                        <View style={[styles.mapMarker, styles.waypointMarker]}>
-                                                            <Circle size={10} color="#fff" fill="#fff" />
-                                                        </View>
-                                                    </Marker>
-                                                )
-                                            ))}
-
-                                            {/* End Point Marker */}
-                                            {selectedRoute.endPoint?.latitude && (
-                                                <Marker coordinate={selectedRoute.endPoint}>
-                                                    <View style={[styles.mapMarker, styles.endMarker]}>
-                                                        <MapPin size={14} color="#fff" />
-                                                    </View>
-                                                </Marker>
-                                            )}
-                                        </MapView>
-                                    )}
+                                    <DetourMap
+                                        mode="route"
+                                        startPoint={selectedRoute.startPoint}
+                                        endPoint={selectedRoute.endPoint}
+                                        waypoints={selectedRoute.waypoints}
+                                        theme={theme}
+                                        height={200}
+                                    />
                                 </View>
 
                                 {/* Full Route Trajectory with Waypoints */}

@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Maximize2, MessageCircle, Phone, Share2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
-import MapPicker from '../../components/MapPicker';
+import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
 import { useTrackingStore } from '../../store/useTrackingStore';
@@ -105,7 +105,8 @@ export default function TripDetailsScreen() {
 
             {/* Map Background Layer */}
             <View style={[styles.mapLayer, { height: isExpandedMap ? '100%' : '45%' }]}>
-                <MapPicker
+                <DetourMap
+                    mode="picker"
                     theme={theme}
                     initialPoints={[request.startPoint, request.endPoint]}
                     driverLocation={driverLocation || undefined}

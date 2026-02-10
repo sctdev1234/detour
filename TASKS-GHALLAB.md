@@ -12,8 +12,10 @@ Admin Panel Tasks:
 
 
 [O] the clients page become users page that show all the users (clients and drivers) and we can ban the user or unban the user , and also contains the admin (support ),and we have the full access (crud) 
-<!-- [ ] routes management
+<!-- 
+[ ] routes management
 [ ] trips management
 [ ] payments management
-[ ] notifications management -->
+[ ] notifications management 
+-->
 

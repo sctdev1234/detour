@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Car, Check, Clock, DollarSign, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
-import MapPicker from '../../components/MapPicker';
+import DetourMap from '../../components/Map';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { RouteService } from '../../services/RouteService';
@@ -137,7 +137,7 @@ export default function AddRouteScreen() {
                         </View>
 
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
-                            <MapPicker onPointsChange={handlePointsChange} theme={theme} />
+                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} />
                             {points.length === 0 && (
                                 <View style={[styles.mapOverlay, { backgroundColor: theme.surface }]}>
                                     <MapPin size={24} color={theme.primary} />

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { MapProps } from './Map';
 
 // Dynamically import the Leaflet component on client-side only
-// This is necessary because 'leaflet' accesses 'window' during module initialization
-export default function MapPicker(props: any) {
+export default function Map(props: MapProps) {
     const [MapComponent, setMapComponent] = useState<any>(null);
 
     useEffect(() => {
@@ -11,7 +11,7 @@ export default function MapPicker(props: any) {
 
         // Only import relevant map on web client
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            import('./MapPickerLeaflet').then((module) => {
+            import('./MapLeaflet').then((module) => {
                 if (isMounted) {
                     setMapComponent(() => module.default);
                 }
@@ -27,9 +27,9 @@ export default function MapPicker(props: any) {
 
     if (!MapComponent) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
-                <Text style={styles.loadingText}>Loading Map...</Text>
+            <View style={[styles.loadingContainer, { height: props.height || 300 }]}>
+                <ActivityIndicator size="large" color={props.theme?.primary || "#007AFF"} />
+                <Text style={[styles.loadingText, { color: props.theme?.icon || "#666" }]}>Loading Map...</Text>
             </View>
         );
     }
@@ -39,7 +39,6 @@ export default function MapPicker(props: any) {
 
 const styles = StyleSheet.create({
     loadingContainer: {
-        height: 400,
         borderRadius: 20,
         borderWidth: 1,
         borderColor: '#ccc',
@@ -49,7 +48,6 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         marginTop: 10,
-        color: '#666',
         fontSize: 14,
     }
 });

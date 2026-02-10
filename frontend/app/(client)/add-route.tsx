@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
-import MapPicker from '../../components/MapPicker';
+import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { RouteService } from '../../services/RouteService';
 import { LatLng, useTripStore } from '../../store/useTripStore';
@@ -88,7 +88,7 @@ export default function AddClientRouteScreen() {
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: theme.text }]}>1. Select Points</Text>
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
-                            <MapPicker onPointsChange={handlePointsChange} theme={theme} />
+                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} />
                         </View>
 
                         {points.map((p, i) => (

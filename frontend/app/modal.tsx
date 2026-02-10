@@ -3,8 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Clock, Edit3, Navigation, Save, Trash2, User, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import DetourMap from '../components/Map';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
-import TripMap from '../components/TripMap';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 import { useTripStore } from '../store/useTripStore';
@@ -183,7 +183,7 @@ export default function ModalScreen() {
         </View>
 
         {/* Map with custom order */}
-        <TripMap trip={trip} theme={theme} customStopOrder={customStopOrder} />
+        <DetourMap mode="trip" trip={trip} theme={theme} customStopOrder={customStopOrder || undefined} />
 
         {/* Route Order Editor (Driver only) */}
         {isDriver && currentStops.length > 0 && (
