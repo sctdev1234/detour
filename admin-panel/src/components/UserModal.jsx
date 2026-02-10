@@ -136,7 +136,7 @@ export default function UserModal({ user, onClose, onSave }) {
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div className="pt-4 flex justify-end gap-3">
                             <button
                                 type="button"
