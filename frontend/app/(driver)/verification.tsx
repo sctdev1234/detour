@@ -15,7 +15,7 @@ export default function VerificationScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { documents, updateDocuments, verificationStatus, setRole, user } = useAuthStore();
-    const { showToast, showConfirm } = useUIStore();
+    const { showToast } = useUIStore();
 
     const [permission, requestPermission] = useCameraPermissions();
     const [cameraVisible, setCameraVisible] = useState(false);

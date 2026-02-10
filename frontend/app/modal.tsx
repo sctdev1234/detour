@@ -142,10 +142,12 @@ export default function ModalScreen() {
   const { showConfirm } = useUIStore();
 
   const handleRemoveClient = (clientId: string, clientName: string) => {
-    showConfirm(
-      "Remove Passenger",
-      `Are you sure you want to remove ${clientName} from this trip?`,
-      async () => {
+    showConfirm({
+      title: "Remove Passenger",
+      message: `Are you sure you want to remove ${clientName} from this trip?`,
+      confirmText: "Remove",
+      cancelText: "Cancel",
+      onConfirm: async () => {
         setActionLoading(true);
         try {
           await removeClient(trip.id, clientId);
@@ -155,11 +157,8 @@ export default function ModalScreen() {
         } finally {
           setActionLoading(false);
         }
-      },
-      undefined,
-      "Remove",
-      "Cancel"
-    );
+      }
+    });
   };
 
   return (

@@ -88,14 +88,12 @@ export default function EditProfileScreen() {
         setIsLoading(true);
         try {
             await updateProfile({ fullName: displayName.trim() });
-            showConfirm(
-                'Success',
-                'Profile updated successfully',
-                () => router.back(),
-                undefined,
-                'OK',
-                ''
-            );
+            showConfirm({
+                title: 'Success',
+                message: 'Profile updated successfully',
+                confirmText: 'OK',
+                onConfirm: () => router.back()
+            });
         } catch (error) {
             console.error(error);
             showToast('Failed to update profile', 'error');

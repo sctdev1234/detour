@@ -70,7 +70,8 @@ export default function MapLeaflet({
     startPoint: propStartPoint,
     endPoint: propEndPoint,
     waypoints: propWaypoints = [],
-    driverLocation
+    driverLocation,
+    maxPoints
 }: MapProps) {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
@@ -147,7 +148,16 @@ export default function MapLeaflet({
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         if (mode !== 'picker' || readOnly) return;
         const newPoint = { latitude: e.latlng.lat, longitude: e.latlng.lng };
-        const newPoints = [...points, newPoint];
+
+        let newPoints = [...points];
+        if (maxPoints === 1) {
+            newPoints = [newPoint];
+        } else if (maxPoints && points.length >= maxPoints) {
+            return;
+        } else {
+            newPoints.push(newPoint);
+        }
+
         setPoints(newPoints);
         onPointsChange && onPointsChange(newPoints);
     };

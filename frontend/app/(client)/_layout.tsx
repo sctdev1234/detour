@@ -1,4 +1,4 @@
-import { Bell, Calendar, Home, MapPin, Search, User } from 'lucide-react-native';
+import { Bell, Bookmark, Calendar, Home, MapPin, Search, User } from 'lucide-react-native';
 import { useColorScheme } from 'react-native';
 import { ClientTabBar } from '../../components/ClientTabBar';
 import { SwipeableTabs } from '../../components/SwipeableLayout';
@@ -50,17 +50,17 @@ export default function ClientLayout() {
                 }}
             />
             <SwipeableTabs.Screen
+                name="places"
+                options={{
+                    title: 'Places',
+                    tabBarIcon: ({ color }) => <Bookmark size={24} color={color} />,
+                }}
+            />
+            <SwipeableTabs.Screen
                 name="profile"
                 options={{
                     title: 'Profile',
                     tabBarIcon: ({ color }) => <User size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="request-trip"
-                options={{
-                    // @ts-ignore
-                    href: null,
                 }}
             />
             <SwipeableTabs.Screen

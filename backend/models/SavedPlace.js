@@ -29,4 +29,4 @@ const SavedPlaceSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('SavedPlace', SavedPlaceSchema);
+module.exports = mongoose.model('places', SavedPlaceSchema);

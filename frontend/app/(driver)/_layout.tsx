@@ -1,4 +1,4 @@
-import { Bell, Calendar, Car, LayoutDashboard, MapPin, User } from 'lucide-react-native';
+import { Bell, Bookmark, Calendar, Car, LayoutDashboard, MapPin, User } from 'lucide-react-native';
 import { useColorScheme } from 'react-native';
 import { DriverTabBar } from '../../components/DriverTabBar';
 import { SwipeableTabs } from '../../components/SwipeableLayout';
@@ -71,6 +71,14 @@ export default function DriverLayout() {
                 options={{
                     title: 'Profile',
                     tabBarIcon: ({ color }) => <User size={24} color={color} />,
+                }}
+            />
+
+            <SwipeableTabs.Screen
+                name="places"
+                options={{
+                    title: 'Places',
+                    tabBarIcon: ({ color }) => <Bookmark size={24} color={color} />,
                 }}
             />
 

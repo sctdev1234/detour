@@ -47,16 +47,15 @@ export default function WalletScreen() {
     };
 
     const handleSubscribe = () => {
-        showConfirm(
-            'Upgrade to Pro',
-            'Subscribe for 29.99 DZD/month to unlock exclusive features.',
-            () => {
+        showConfirm({
+            title: 'Upgrade to Pro',
+            message: 'Subscribe for 29.99 DZD/month to unlock exclusive features.',
+            confirmText: 'Subscribe',
+            cancelText: 'Cancel',
+            onConfirm: () => {
                 if (user) subscribe(user.id);
-            },
-            () => { },
-            'Subscribe',
-            'Cancel'
-        );
+            }
+        });
     };
 
     if (!user || !wallet) return null;

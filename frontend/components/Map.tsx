@@ -1,12 +1,12 @@
-import { Car, MapPin, Navigation, Star, Trash2, User } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import * as Location from 'expo-location';
+import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Trash2, User } from 'lucide-react-native';
+import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import MapView, { Callout, Marker, Polyline } from 'react-native-maps';
-import { useAuthStore } from '../store/useAuthStore';
-import { useLocationStore } from '../store/useLocationStore';
 import { LatLng, Trip } from '../store/useTripStore';
-import { getRegionForCoordinates } from '../utils/location';
-import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
+import { decodePolyline, getRegionForCoordinates } from '../utils/location';
+
+
 
 interface StopItem {
     id: string;
@@ -17,13 +17,14 @@ interface StopItem {
 export interface MapProps {
     mode?: 'picker' | 'trip' | 'route' | 'view';
     theme: any;
-    height?: number | string;
+    height?: ViewStyle['height'];
     readOnly?: boolean;
     style?: ViewStyle;
 
     // Picker Props
     initialPoints?: LatLng[];
     onPointsChange?: (points: LatLng[]) => void;
+    maxPoints?: number;
 
     // Trip Props
     trip?: Trip;
@@ -36,6 +37,7 @@ export interface MapProps {
 
     // General
     driverLocation?: { latitude: number; longitude: number; heading: number };
+    savedPlaces?: any[]; // Keep flexible or use SavedPlace type if imported
 }
 
 export default function Map({
@@ -51,101 +53,66 @@ export default function Map({
     startPoint,
     endPoint,
     waypoints = [],
+    maxPoints,
+    savedPlaces = [],
     driverLocation
 }: MapProps) {
-    // Web fallback is handled by Map.web.tsx, so this is purely Native code.
-    // However, if this file is imported on web by mistake, we should handle it or it will crash if react-native-maps doesn't support web well (it doesn't).
-    // The .web.tsx extension handles the platform split.
+    const mapRef = React.useRef<MapView>(null);
+    const [points, setPoints] = React.useState<LatLng[]>(initialPoints);
+    const [location, setLocation] = React.useState<Location.LocationObject | null>(null);
+    const [routeCoordinates, setRouteCoordinates] = React.useState<LatLng[]>([]);
 
-    const mapRef = useRef<MapView>(null);
-    const { location } = useLocationStore();
-    const { user } = useAuthStore();
+    React.useEffect(() => {
+        (async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                return;
+            }
 
-    // -- generic state --
-    const [points, setPoints] = useState<LatLng[]>(initialPoints);
+            let location = await Location.getCurrentPositionAsync({});
+            setLocation(location);
+        })();
+    }, []);
 
-    // -- trip state --
-    const [routeCoordinates, setRouteCoordinates] = useState<LatLng[]>([]);
-    const [intermediatePoints, setIntermediatePoints] = useState<RoutePoint[]>([]);
-
-    // Initialize points for Picker Picker
-    useEffect(() => {
-        if (mode === 'picker' && initialPoints.length > 0) {
+    React.useEffect(() => {
+        if (initialPoints) {
             setPoints(initialPoints);
         }
-    }, [initialPoints, mode]);
+    }, [initialPoints]);
 
-    // Calculate Trip Route
-    useEffect(() => {
-        if (mode === 'trip' && trip) {
-            const driverRoute = trip.routeId;
-            const clients = trip.clients || [];
-
-            // Allow override if customStopOrder is passed? 
-            // The optimizeRoute utility currently doesn't accept customStopOrder directly as a list of points to force.
-            // But we can construct the route manually if exists.
-
-            if (customStopOrder && customStopOrder.length > 0) {
-                const coords = customStopOrder.map(s => ({
-                    latitude: s.latitude,
-                    longitude: s.longitude
-                }));
-                // We might want to include start/end if they are not in custom order?
-                // For now assuming customStopOrder is the full sequence or user preference
-                setRouteCoordinates(coords);
-            } else {
-                const { sortedPoints, routeCoordinates: computedRoute } = optimizeRoute(
-                    driverRoute?.startPoint,
-                    driverRoute?.endPoint,
-                    driverRoute?.waypoints,
-                    clients
-                );
-                setIntermediatePoints(sortedPoints);
-                setRouteCoordinates(computedRoute);
-            }
+    // Simple route coordinates calculation if needed, or if trip provides polyline
+    React.useEffect(() => {
+        if (trip?.routeId?.routeGeometry) {
+            const decoded = decodePolyline(trip.routeId.routeGeometry);
+            setRouteCoordinates(decoded);
+        } else if (trip?.routeId?.startPoint && trip?.routeId?.endPoint) {
+            // Fallback to straight line if no geometry
+            setRouteCoordinates([
+                trip.routeId.startPoint,
+                ...(trip.routeId.waypoints || []),
+                trip.routeId.endPoint
+            ].filter(p => p && p.latitude));
         }
-    }, [trip, customStopOrder, mode]);
-
-    // Calculate generic Route
-    useEffect(() => {
-        if (mode === 'route' && startPoint && endPoint) {
-            // Simple start -> waypoints -> end
-            const coords: LatLng[] = [startPoint, ...waypoints, endPoint];
-            setRouteCoordinates(coords);
-        }
-    }, [startPoint, endPoint, waypoints, mode]);
-
-    // Fit to coordinates
-    useEffect(() => {
-        if (mapRef.current) {
-            let pointsToFit: LatLng[] = [];
-
-            if (mode === 'picker') {
-                pointsToFit = points;
-            } else if (mode === 'trip' && trip) {
-                pointsToFit = getAllPointsFromTrip(trip);
-                if (driverLocation) pointsToFit.push(driverLocation);
-            } else if (mode === 'route') {
-                if (startPoint) pointsToFit.push(startPoint);
-                if (endPoint) pointsToFit.push(endPoint);
-                pointsToFit = [...pointsToFit, ...waypoints];
-            }
-
-            if (pointsToFit.length > 0) {
-                mapRef.current.fitToCoordinates(pointsToFit, {
-                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                    animated: true,
-                });
-            }
-        }
-    }, [points, trip, startPoint, endPoint, waypoints, mode, driverLocation]);
-
-    // --- Interaction Handlers (Picker Mode) ---
+    }, [trip]);
 
     const handlePress = (e: any) => {
         if (mode !== 'picker' || readOnly) return;
         const newPoint = e.nativeEvent.coordinate;
-        const newPoints = [...points, newPoint];
+
+        let newPoints = [...points];
+        if (maxPoints === 1) {
+            newPoints = [newPoint];
+        } else if (maxPoints && points.length >= maxPoints) {
+            // If we have a limit and reached it, maybe replace the last one or just return?
+            // For now, let's assume we strictly limit. But for "selection", replacing last or alerting might be better.
+            // Given the requirement is for "single place", replacing is the standard behavior.
+            // If maxPoints > 1, arguably we should just return or show alert. 
+            // But let's stick to the single place request primarily.
+            return;
+        } else {
+            newPoints.push(newPoint);
+        }
+
         setPoints(newPoints);
         onPointsChange && onPointsChange(newPoints);
     };
@@ -171,29 +138,40 @@ export default function Map({
     const renderPickerMarkers = () => {
         return (
             <>
-                {user?.savedPlaces?.map((place, index) => (
-                    <Marker
-                        key={`saved-${index}`}
-                        coordinate={{ latitude: place.latitude, longitude: place.longitude }}
-                        anchor={{ x: 0.5, y: 0.5 }}
-                        onPress={(e) => {
-                            if (readOnly) return;
-                            const newPoint = e.nativeEvent.coordinate;
-                            setPoints([...points, newPoint]);
-                            onPointsChange && onPointsChange([...points, newPoint]);
-                        }}
-                    >
-                        <View style={[styles.savedPlaceMarker, { backgroundColor: theme.surface }]}>
-                            <Star size={16} color="#FFD700" fill="#FFD700" />
-                        </View>
-                        <Callout>
-                            <View style={styles.callout}>
-                                <Text style={[styles.calloutText, { color: theme.text }]}>{place.label}</Text>
-                                <Text style={{ fontSize: 10, color: theme.icon }}>Tap to add to route</Text>
+                {savedPlaces?.map((place, index) => {
+                    let IconComponent = MapPin;
+                    let color = theme.primary;
+                    switch (place.icon) {
+                        case 'home': IconComponent = Home; break;
+                        case 'work': case 'briefcase': IconComponent = Briefcase; break;
+                        case 'gym': IconComponent = Dumbbell; break;
+                        case 'school': case 'graduation-cap': IconComponent = GraduationCap; break;
+                    }
+
+                    return (
+                        <Marker
+                            key={`saved-${place._id || index}`}
+                            coordinate={{ latitude: place.latitude, longitude: place.longitude }}
+                            anchor={{ x: 0.5, y: 0.5 }}
+                            onPress={(e) => {
+                                if (readOnly) return;
+                                const newPoint = e.nativeEvent.coordinate;
+                                setPoints([...points, newPoint]);
+                                onPointsChange && onPointsChange([...points, newPoint]);
+                            }}
+                        >
+                            <View style={[styles.savedPlaceMarker, { backgroundColor: theme.primary, borderColor: '#fff' }]}>
+                                <IconComponent size={16} color="#fff" />
                             </View>
-                        </Callout>
-                    </Marker>
-                ))}
+                            <Callout>
+                                <View style={styles.callout}>
+                                    <Text style={[styles.calloutText, { color: theme.text }]}>{place.label}</Text>
+                                    {!readOnly && <Text style={{ fontSize: 10, color: theme.icon }}>Tap to add to route</Text>}
+                                </View>
+                            </Callout>
+                        </Marker>
+                    );
+                })}
 
                 {points.map((point, index) => (
                     <Marker
@@ -329,7 +307,11 @@ export default function Map({
         );
     };
 
-    const initialRegion = getRegionForCoordinates(mode === 'picker' ? points : []) || {
+    const allPointsForRegion = [
+        ...(mode === 'picker' ? points : []),
+        ...(savedPlaces?.map(p => ({ latitude: p.latitude, longitude: p.longitude })) || [])
+    ];
+    const initialRegion = getRegionForCoordinates(allPointsForRegion) || {
         latitude: 33.5731,
         longitude: -7.5898,
         latitudeDelta: 0.0922,

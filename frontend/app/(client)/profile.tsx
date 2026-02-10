@@ -39,10 +39,12 @@ export default function ProfileScreen() {
     const { showToast, showConfirm } = useUIStore();
 
     const handleSignOut = async () => {
-        showConfirm(
-            "Sign Out",
-            "Are you sure you want to sign out?",
-            async () => {
+        showConfirm({
+            title: "Sign Out",
+            message: "Are you sure you want to sign out?",
+            confirmText: "Sign Out",
+            cancelText: "Cancel",
+            onConfirm: async () => {
                 try {
                     logout();
                     router.replace('/(auth)/login');
@@ -50,20 +52,20 @@ export default function ProfileScreen() {
                     console.error(error);
                     showToast("Failed to sign out", 'error');
                 }
-            },
-            () => { }, // cancel
-            "Sign Out",
-            "Cancel"
-        );
+            }
+        });
     };
 
     const handleDeleteAccount = async () => {
         if (!user?.email) return;
 
-        showConfirm(
-            "Delete Account",
-            "This action cannot be undone. Please type your email to confirm.",
-            async () => {
+        showConfirm({
+            title: "Delete Account",
+            message: "This action cannot be undone. Please type your email to confirm.",
+            confirmText: "Delete Account",
+            cancelText: "Cancel",
+            validationText: user.email,
+            onConfirm: async () => {
                 try {
                     await deleteAccount();
                     router.replace('/(auth)/login');
@@ -72,12 +74,8 @@ export default function ProfileScreen() {
                     console.error(error);
                     showToast(error.message || "Failed to delete account", 'error');
                 }
-            },
-            () => { }, // cancel
-            "Delete Account",
-            "Cancel",
-            user.email // validation text
-        );
+            }
+        });
     };
 
     const StatusBadge = () => {

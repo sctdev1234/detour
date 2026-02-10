@@ -1,5 +1,9 @@
 [X] - allow user (client & driver) to update profile image
 [X] - allow user (client & driver) to update password
+
+[ ] - places page
+[ ] - tasks Page
+
 [ ] - trips management (the trip becomes trip if the places are great for both the client and the driver)
 [ ] - coupon logic
 [ ] - rating system for client and driver, (client rate driver, driver rate client)
@@ -41,8 +45,8 @@
 - force the driver to confirm the trip before the trip starts (10 minutes before)
 
 # tasks page is the first thing to see after signup or login
-- if the user complited the tasks, show him the home page
-- if the user didn't complited the tasks, show him only the tasks page (no home page, no other pages)
+[ ] - if the user complited the tasks, show him the home page
+[ ] - if the user didn't complited the tasks, show him only the tasks page (no home page, no other pages)
 
 - the client tasks are:
 -- create a trip (Pickup Point and Destination Point)

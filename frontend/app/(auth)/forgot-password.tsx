@@ -27,13 +27,12 @@ export default function ForgotPasswordScreen() {
             const token = await forgotPassword(email);
             // In a real app, you would tell the user to check their email.
             // For this dev setup, we simulate the next step.
-            showConfirm(
-                'Check your Email',
-                `We have sent a reset link to ${email}. \n\n(Dev Token: ${token.substring(0, 8)}...)`,
-                () => router.push({ pathname: '/(auth)/reset-password', params: { token } }),
-                () => { },
-                'Enter Reset Code'
-            );
+            showConfirm({
+                title: 'Check your Email',
+                message: `We have sent a reset link to ${email}. \n\n(Dev Token: ${token.substring(0, 8)}...)`,
+                confirmText: 'Enter Reset Code',
+                onConfirm: () => router.push({ pathname: '/(auth)/reset-password', params: { token } })
+            });
         } catch (error: any) {
             showToast(error.message || 'Error occurred', 'error');
         } finally {
