@@ -1,7 +1,8 @@
 import { useUIStore } from '@/store/useUIStore';
-import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
@@ -11,6 +12,7 @@ import { LatLng, useTripStore } from '../../store/useTripStore';
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function AddClientRouteScreen() {
+    const params = useLocalSearchParams();
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -21,6 +23,38 @@ export default function AddClientRouteScreen() {
     const [timeStart, setTimeStart] = useState('08:00');
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
     const [pointAddresses, setPointAddresses] = useState<string[]>([]);
+
+    useEffect(() => {
+        const initRoute = async () => {
+            if (params.fromCurrent === 'true' && params.destLat && params.destLng) {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') return;
+
+                const location = await Location.getCurrentPositionAsync({});
+                const startPoint: LatLng = {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude
+                };
+
+                const endPoint: LatLng = {
+                    latitude: parseFloat(params.destLat as string),
+                    longitude: parseFloat(params.destLng as string)
+                };
+
+                const newPoints = [startPoint, endPoint];
+                setPoints(newPoints);
+
+                // Get addresses
+                try {
+                    const startAddr = await RouteService.reverseGeocode(startPoint.latitude, startPoint.longitude);
+                    setPointAddresses([startAddr, params.destAddress as string || 'Destination']);
+                } catch (e) {
+                    setPointAddresses(['Current Location', params.destAddress as string || 'Destination']);
+                }
+            }
+        };
+        initRoute();
+    }, [params]);
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
@@ -88,7 +122,12 @@ export default function AddClientRouteScreen() {
                     <View style={styles.section}>
                         <Text style={[styles.sectionTitle, { color: theme.text }]}>1. Select Points</Text>
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
-                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} />
+                            <DetourMap
+                                mode="picker"
+                                initialPoints={points}
+                                onPointsChange={handlePointsChange}
+                                theme={theme}
+                            />
                         </View>
 
                         {points.map((p, i) => (
