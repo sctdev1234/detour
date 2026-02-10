@@ -5,45 +5,10 @@ const Place = require('../models/Place');
 const Subscription = require('../models/Subscription');
 const Coupon = require('../models/Coupon');
 const Withdrawal = require('../models/Withdrawal');
+const bcrypt = require('bcryptjs');
+const { auth } = require('../middleware/auth');
 
 // Middleware to verify if user is admin
-// NOTE: You should also use the auth middleware to verify the token
-const auth = require('./auth'); // Assuming auth exports the middleware function as 'auth' or default? 
-// Checking auth.js content:
-// const auth = (req, res, next) => { ... }
-// module.exports = router;
-// Wait, auth.js exports 'router'. usage in server.js: app.use('/api/auth', require('./routes/auth'));
-// The auth middleware is DEFINED in auth.js but not exported separately.
-// We need to fix this or copy the middleware. 
-// Ideally, we should move middleware to a separate file. 
-// For now, I'll copy the middleware logic or require it if possible.
-// Let's create a separate middleware file ideally, but to minimize changes, I will implement a simple token check here or ask user to refactor.
-// Better: Refactor auth.js slightly or duplicate logic? 
-// Duplicating logic is bad. 
-// Let's look at `auth.js` again. It has `const auth = ...` but only exports `router`.
-// I'll create a new middleware file 'middleware/auth.js'.
-
-// Wait, I can't easily refactor auth.js without viewing it again to be sure.
-// I'll create 'middleware/auth.js' first, then use it in both files? 
-// Or just inline it here for now to save time, as it's just verification.
-// I'll inline it for now but with a TODO.
-// Actually, `jwt` is needed.
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_123';
-
-const authMiddleware = (req, res, next) => {
-    const token = req.header('x-auth-token');
-    if (!token) return res.status(401).json({ msg: 'No token, authorization denied' });
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded.user;
-        next();
-    } catch (e) {
-        res.status(401).json({ msg: 'Token is not valid' });
-    }
-};
-
 const adminCheck = (req, res, next) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ msg: 'Access denied: Admins only' });
@@ -54,14 +19,8 @@ const adminCheck = (req, res, next) => {
 // @route   GET api/admin/pending-drivers
 // @desc    Get all drivers with pending verification
 // @access  Admin
-router.get('/pending-drivers', authMiddleware, adminCheck, async (req, res) => {
+router.get('/pending-drivers', auth, adminCheck, async (req, res) => {
     try {
-        // Find users with role 'driver' AND verificationStatus 'pending'
-        // Some might be 'unverified' but have uploaded documents. 
-        // Logic: if documents exist? 
-        // For now, let's assume they set status to 'pending' when uploading.
-        // If the mobile app doesn't set 'pending', we might need to check 'unverified'.
-        // Let's exact match 'pending' for now.
         const drivers = await User.find({
             role: 'driver',
             verificationStatus: 'pending'
@@ -76,7 +35,7 @@ router.get('/pending-drivers', authMiddleware, adminCheck, async (req, res) => {
 // @route   POST api/admin/verify-driver/:id
 // @desc    Approve a driver
 // @access  Admin
-router.post('/verify-driver/:id', authMiddleware, adminCheck, async (req, res) => {
+router.post('/verify-driver/:id', auth, adminCheck, async (req, res) => {
     try {
         let user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -93,13 +52,12 @@ router.post('/verify-driver/:id', authMiddleware, adminCheck, async (req, res) =
 // @route   POST api/admin/reject-driver/:id
 // @desc    Reject a driver
 // @access  Admin
-router.post('/reject-driver/:id', authMiddleware, adminCheck, async (req, res) => {
+router.post('/reject-driver/:id', auth, adminCheck, async (req, res) => {
     try {
         let user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
 
         user.verificationStatus = 'rejected';
-        // Optional: Add a reason logic later
         await user.save();
         res.json({ msg: 'Driver rejected', user });
     } catch (err) {
@@ -109,51 +67,166 @@ router.post('/reject-driver/:id', authMiddleware, adminCheck, async (req, res) =
 });
 
 // @route   GET api/admin/users
-// @desc    Get all users (with optional role filter)
+// @desc    Get all users (with optional role and verification filter, and pagination)
 // @access  Admin
-router.get('/users', authMiddleware, adminCheck, async (req, res) => {
+router.get('/users', auth, adminCheck, async (req, res) => {
     try {
-        const { role } = req.query;
+        const { role, verificationStatus, page = 1, limit = 10 } = req.query;
         let query = {};
-        if (role) {
+        
+        if (role && role !== 'all') {
             query.role = role;
         }
-        const users = await User.find(query).select('-password').sort({ createdAt: -1 });
-        res.json(users);
+
+        if (verificationStatus && verificationStatus !== 'all') {
+            // 'verified' matches 'verified'
+            // 'unverified' matches 'unverified'
+            // 'pending' matches 'pending' (though these are usually in driver queue)
+            // 'rejected' (banned) matches 'rejected'
+            query.verificationStatus = verificationStatus;
+        }
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        const totalUsers = await User.countDocuments(query);
+        const users = await User.find(query)
+            .select('-password')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum);
+
+        res.json({
+            users,
+            totalPages: Math.ceil(totalUsers / limitNum),
+            currentPage: pageNum,
+            totalUsers
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ msg: 'Server Error' });
     }
 });
 
-// @route   POST api/admin/ban-user/:id
-// @desc    Ban a user (Client or Driver)
+// @route   POST api/admin/users
+// @desc    Create a new user (Admin/Support/Client/Driver)
 // @access  Admin
-router.post('/ban-user/:id', authMiddleware, adminCheck, async (req, res) => {
+router.post('/users', auth, adminCheck, async (req, res) => {
+    const { fullName, email, password, role, phone } = req.body;
+    try {
+        let user = await User.findOne({ email });
+        if (user) {
+            return res.status(400).json({ msg: 'User already exists' });
+        }
+
+        user = new User({
+            fullName,
+            email,
+            role: role || 'client',
+            // verificationStatus defaults to 'unverified'
+        });
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+
+        await user.save();
+        
+        // Return user without password
+        const userObj = user.toObject();
+        delete userObj.password;
+        
+        res.json(userObj);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   PUT api/admin/users/:id
+// @desc    Update a user
+// @access  Admin
+router.put('/users/:id', auth, adminCheck, async (req, res) => {
+    const { fullName, email, role, phone } = req.body;
     try {
         let user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
 
-        // Toggle ban status or set a specific 'banned' status?
-        // The TASKS.md says "ban the driver".
-        // Use 'rejected' or a new 'banned' status?
-        // User model has verificationStatus: ['pending', 'verified', 'rejected', 'unverified']
-        // 'rejected' effectively bans them from driving usually.
-        // But for Clients, verifStatus might not apply the same way?
-        // Let's check User model again if there is an 'isActive' or 'isBanned'.
-        // If not, I might need to add it or use verificationStatus = 'rejected' for now.
-        // Or users might just be deleted? No, ban is better.
-        // Let's assume 'rejected' or add a new 'banned' if needed.
-        // For simplicity, let's set verificationStatus to 'rejected' for drivers.
-        // For clients, we might need a separate field since they don't have verificationStatus usually?
-        // Wait, Userjs shows verificationStatus default 'unverified'. 
-        // Let's stick to using verificationStatus = 'rejected' as "Banned" for now.
-
-        user.verificationStatus = 'rejected';
-        // We could also add a 'banned: true' field in the future if needed.
+        if (fullName) user.fullName = fullName;
+        if (email) user.email = email; // Note: Typically should check if email is taken by another user
+        if (role) user.role = role;
+        // if (phone) user.phone = phone; // Add phone if model supports it
 
         await user.save();
-        res.json({ msg: 'User has been banned/rejected', user });
+         const userObj = user.toObject();
+        delete userObj.password;
+
+        res.json(userObj);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   DELETE api/admin/users/:id
+// @desc    Delete a user
+// @access  Admin
+router.delete('/users/:id', auth, adminCheck, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        await user.deleteOne();
+        res.json({ msg: 'User removed' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+
+// @route   POST api/admin/ban-user/:id
+// @desc    Ban a user
+// @access  Admin
+router.post('/ban-user/:id', auth, adminCheck, async (req, res) => {
+    try {
+        let user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        user.verificationStatus = 'rejected';
+        await user.save();
+        res.json({ msg: 'User has been banned', user });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   POST api/admin/unban-user/:id
+// @desc    Unban a user
+// @access  Admin
+router.post('/unban-user/:id', auth, adminCheck, async (req, res) => {
+    try {
+        let user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ msg: 'User not found' });
+
+        // Restore status based on role or default
+        if (user.role === 'driver') {
+            // If they were verified before, maybe 'verified'? 
+            // Safer to set to 'unverified' or 'pending' if we want them to re-verify?
+            // Or 'verified' if we trust the unban action.
+            // Let's set to 'verified' for convenience, or 'unverified' if no docs?
+            // Simplest: 'verified' if documents exist, or 'unverified'.
+            // For now, let's set to 'unverified' to be safe, or 'verified'.
+            // The user asked to "unban". Usually means restore access.
+            user.verificationStatus = 'verified'; 
+        } else {
+            user.verificationStatus = 'unverified'; // Default for clients
+        }
+        
+        await user.save();
+        res.json({ msg: 'User has been unbanned', user });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ msg: 'Server Error' });
@@ -163,7 +236,7 @@ router.post('/ban-user/:id', authMiddleware, adminCheck, async (req, res) => {
 // @route   GET api/admin/places
 // @desc    Get all places
 // @access  Admin
-router.get('/places', authMiddleware, adminCheck, async (req, res) => {
+router.get('/places', auth, adminCheck, async (req, res) => {
     try {
         const places = await Place.find().sort({ createdAt: -1 });
         res.json(places);
@@ -176,7 +249,7 @@ router.get('/places', authMiddleware, adminCheck, async (req, res) => {
 // @route   POST api/admin/places
 // @desc    Add a new place
 // @access  Admin
-router.post('/places', authMiddleware, adminCheck, async (req, res) => {
+router.post('/places', auth, adminCheck, async (req, res) => {
     try {
         const { name, address, category } = req.body;
         const newPlace = new Place({
@@ -196,7 +269,7 @@ router.post('/places', authMiddleware, adminCheck, async (req, res) => {
 // @route   DELETE api/admin/places/:id
 // @desc    Delete a place
 // @access  Admin
-router.delete('/places/:id', authMiddleware, adminCheck, async (req, res) => {
+router.delete('/places/:id', auth, adminCheck, async (req, res) => {
     try {
         const place = await Place.findById(req.params.id);
         if (!place) return res.status(404).json({ msg: 'Place not found' });
@@ -212,7 +285,7 @@ router.delete('/places/:id', authMiddleware, adminCheck, async (req, res) => {
 // @route   GET api/admin/subscriptions
 // @desc    Get all subscriptions
 // @access  Admin
-router.get('/subscriptions', authMiddleware, adminCheck, async (req, res) => {
+router.get('/subscriptions', auth, adminCheck, async (req, res) => {
     try {
         const subs = await Subscription.find().sort({ createdAt: -1 });
         res.json(subs);
@@ -225,7 +298,7 @@ router.get('/subscriptions', authMiddleware, adminCheck, async (req, res) => {
 // @route   POST api/admin/subscriptions
 // @desc    Create a subscription plan
 // @access  Admin
-router.post('/subscriptions', authMiddleware, adminCheck, async (req, res) => {
+router.post('/subscriptions', auth, adminCheck, async (req, res) => {
     try {
         const newSub = new Subscription(req.body);
         const savedSub = await newSub.save();
@@ -239,7 +312,7 @@ router.post('/subscriptions', authMiddleware, adminCheck, async (req, res) => {
 // @route   DELETE api/admin/subscriptions/:id
 // @desc    Delete a subscription plan
 // @access  Admin
-router.delete('/subscriptions/:id', authMiddleware, adminCheck, async (req, res) => {
+router.delete('/subscriptions/:id', auth, adminCheck, async (req, res) => {
     try {
         const sub = await Subscription.findById(req.params.id);
         if (!sub) return res.status(404).json({ msg: 'Plan not found' });
@@ -255,7 +328,7 @@ router.delete('/subscriptions/:id', authMiddleware, adminCheck, async (req, res)
 // @route   GET api/admin/coupons
 // @desc    Get all coupons
 // @access  Admin
-router.get('/coupons', authMiddleware, adminCheck, async (req, res) => {
+router.get('/coupons', auth, adminCheck, async (req, res) => {
     try {
         const coupons = await Coupon.find().sort({ createdAt: -1 });
         res.json(coupons);
@@ -268,7 +341,7 @@ router.get('/coupons', authMiddleware, adminCheck, async (req, res) => {
 // @route   POST api/admin/coupons
 // @desc    Create a coupon
 // @access  Admin
-router.post('/coupons', authMiddleware, adminCheck, async (req, res) => {
+router.post('/coupons', auth, adminCheck, async (req, res) => {
     try {
         const newCoupon = new Coupon(req.body);
         const savedCoupon = await newCoupon.save();
@@ -282,7 +355,7 @@ router.post('/coupons', authMiddleware, adminCheck, async (req, res) => {
 // @route   DELETE api/admin/coupons/:id
 // @desc    Delete a coupon
 // @access  Admin
-router.delete('/coupons/:id', authMiddleware, adminCheck, async (req, res) => {
+router.delete('/coupons/:id', auth, adminCheck, async (req, res) => {
     try {
         const coupon = await Coupon.findById(req.params.id);
         if (!coupon) return res.status(404).json({ msg: 'Coupon not found' });
@@ -298,7 +371,7 @@ router.delete('/coupons/:id', authMiddleware, adminCheck, async (req, res) => {
 // @route   GET api/admin/withdrawals
 // @desc    Get all withdrawals
 // @access  Admin
-router.get('/withdrawals', authMiddleware, adminCheck, async (req, res) => {
+router.get('/withdrawals', auth, adminCheck, async (req, res) => {
     try {
         const withdrawals = await Withdrawal.find()
             .populate('user', 'fullName email')
@@ -313,7 +386,7 @@ router.get('/withdrawals', authMiddleware, adminCheck, async (req, res) => {
 // @route   POST api/admin/withdrawals/:id/:action
 // @desc    Approve or Reject withdrawal
 // @access  Admin
-router.post('/withdrawals/:id/:action', authMiddleware, adminCheck, async (req, res) => {
+router.post('/withdrawals/:id/:action', auth, adminCheck, async (req, res) => {
     try {
         const { id, action } = req.params;
         const withdrawal = await Withdrawal.findById(id);
@@ -349,7 +422,7 @@ router.post('/withdrawals/:id/:action', authMiddleware, adminCheck, async (req, 
 // @route   GET api/admin/stats
 // @desc    Get dashboard statistics
 // @access  Admin
-router.get('/stats', authMiddleware, adminCheck, async (req, res) => {
+router.get('/stats', auth, adminCheck, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments({ role: 'client' });
         const totalDrivers = await User.countDocuments({ role: 'driver' });
@@ -386,14 +459,11 @@ router.get('/stats', authMiddleware, adminCheck, async (req, res) => {
 // @route   GET api/admin/trips
 // @desc    Get all trips
 // @access  Admin
-router.get('/trips', authMiddleware, adminCheck, async (req, res) => {
+router.get('/trips', auth, adminCheck, async (req, res) => {
     try {
         const Trip = require('../models/Trip');
         const trips = await Trip.find()
             .populate('driverId', 'fullName email')
-            // .populate('userId', 'fullName email') // Assuming rideRequestId has user info or Trip has userId?
-            // Trip model shows rideRequestId ref 'RideRequest'. 
-            // We might need to deep populate or just show basic info.
             .sort({ createdAt: -1 });
         res.json(trips);
     } catch (err) {

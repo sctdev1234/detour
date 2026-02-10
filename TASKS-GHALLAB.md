@@ -7,11 +7,13 @@ Admin Panel Tasks:
 [ ] credits and withdraw money management
 [ ] currency logic
 
-[O] users management
-[O] Verification Request management
-[ ] routes management
+<!-- [O] users management -->
+[O] in place of driver management we need it to become verification request management we can approve or reject the driver requests and we can show the driver status (active, inactive, banned)
+
+
+[O] the clients page become users page that show all the users (clients and drivers) and we can ban the user or unban the user , and also contains the admin (support ),and we have the full access (crud) 
+<!-- [ ] routes management
 [ ] trips management
 [ ] payments management
-[ ] notifications management
-[ ] settings management (3 languages - Arabic, French, English)
-[ ] 
+[ ] notifications management -->
+
