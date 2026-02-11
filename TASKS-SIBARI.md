@@ -18,6 +18,36 @@
 ===========================================================
 
 
+# Payments
+## Clients Payment
+Online Payment:
+- CashIn to full his Balance. ex : +20DH
+use it for payments
+
+Offline Payment:
+- the client can pay the driver in cash then the driver should see the payment in his balance - [Deductions]
+- the client will see his payment in his payments history page and it's status
+
+
+
+## Driver Payment
+Online Payment:
+- CashIn to full his Balance. ex : +20DH
+use it for the Company [Deductions]
+- the driver will see the client payment in his payments history page and it's status
+
+
+# Deductions
+- 10% of the trip price goes to the [COMPANY] (minimum 2MAD for every place in the trip)
+
+
+===========================================================
+
+
+
+===========================================================
+
+
 
 [X] - allow user (client & driver) to update profile image
 [X] - allow user (client & driver) to update password
@@ -38,7 +68,7 @@
 [ ] - allow the client to be [EMERGENCY-CLIENT] in offtime like inDrive (extra payment) 
 
 # abonnement payment logic
-- 10% of the trip price goes to the [COMPANY] (minimum 5 MAD for every place in the trip)
+- 10% of the trip price goes to the [COMPANY] (minimum 2MAD for every place in the trip)
 - 90% of the trip price goes to the [DRIVER]
 - the price is set by the driver
 
@@ -94,9 +124,9 @@
 
 - the [CLIENT] must pay the [DRIVER] monthly (pay first day of the month)
 - the [DRIVER] should get paid from the [CLIENT]'s monthly payment
-- 10% of the trip price goes to the [COMPANY] (minimum 5 MAD for every place in the trip)
+- 10% of the trip price goes to the [COMPANY] (minimum 2MAD for every place in the trip)
 - 90% of the trip price goes to the [DRIVER]
-- the [DRIVER] get 5DH credits Gift from the [COMPANY] after signing up (to try the service)
+- the [DRIVER] get 2MAD credits Gift from the [COMPANY] after signing up (to try the service)
 - the [DRIVER] can buy credits (to get more trips or keep renew trips subscription)
 - if the [CLIENT] didn't pay the [DRIVER] monthly, the [DRIVER] should cancel the trip and the [CLIENT] should be banned
 - if the [DRIVER] didn't show up for 3 consecutive days, the [DRIVER] should be banned and the [CLIENT] should be notified and find a new driver for the [CLIENT] imergencly
