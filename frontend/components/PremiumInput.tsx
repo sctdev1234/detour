@@ -63,11 +63,21 @@ export function PremiumInput({
     };
 
     return (
-        <View style={[styles.container, style]}>
+        <View style={[styles.container, style as any]}>
             {label && <Text style={[styles.label, { color: theme.text }]}>{label}</Text>}
 
-            <Animated.View style={[styles.inputWrapper, animatedBorderIdx]}>
-                <BlurView intensity={20} tint="light" style={styles.blurContainer}>
+            <Animated.View
+                style={[
+                    styles.inputWrapper,
+                    animatedBorderIdx,
+                    { backgroundColor: colorScheme === 'dark' ? 'rgba(30,30,30,0.6)' : 'rgba(255,255,255,0.6)' }
+                ]}
+            >
+                <BlurView
+                    intensity={colorScheme === 'dark' ? 40 : 20}
+                    tint={colorScheme === 'dark' ? "dark" : "light"}
+                    style={styles.blurContainer}
+                >
                     {Icon && (
                         <View style={styles.iconContainer}>
                             <Icon size={20} color={isFocused ? theme.primary : theme.icon} />
@@ -119,7 +129,6 @@ const styles = StyleSheet.create({
     inputWrapper: {
         borderRadius: 16,
         overflow: 'hidden',
-        backgroundColor: 'rgba(255,255,255,0.6)',
     },
     blurContainer: {
         flexDirection: 'row',

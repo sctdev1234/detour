@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -46,7 +46,10 @@ export default function LoginScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}
             >
-                <View style={styles.contentContainer}>
+                <ScrollView
+                    contentContainerStyle={styles.contentContainer}
+                    showsVerticalScrollIndicator={false}
+                >
                     <View style={styles.header}>
                         <View style={[styles.logoContainer, { backgroundColor: theme.surface }]}>
                             <Image
@@ -136,7 +139,7 @@ export default function LoginScreen() {
                         </TouchableOpacity>
                     </View>
 
-                </View>
+                </ScrollView>
             </KeyboardAvoidingView>
         </LinearGradient>
     );
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     contentContainer: {
-        flex: 1,
+        flexGrow: 1,
         padding: 24,
         justifyContent: 'center',
     },
