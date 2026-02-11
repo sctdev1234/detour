@@ -1,18 +1,3 @@
-# tasks page is the first thing to see after signup or login the user can't do anything alse.
-- if the user didn't complited the tasks, show him only the tasks page (no home page, no other pages ...) can't do anything alse.
-
-- the client tasks:
--- add two places in /places page (optional can skip)
--- go to create route page
-
-- the driver tasks:
--- upload the Documents (required)
--- Add a Car or Receive it from another driver (required)
--- wait for admin approval
--- if he didn't create a route yet, go to create a Route page first
-
-
-- if the user complited the tasks, show him the home page
 
 
 ===========================================================
@@ -173,15 +158,15 @@ use it for the Company [Deductions]
 [ ] - allow direct negotiation of price between [Client] and [Driver]
 
 [X] - places page
-[ ] - tasks Page
+[X] - tasks Page
 
 [ ] - trips management
 [ ] - coupon logic
 [ ] - rating system for client and driver, (client rate driver, driver rate client)
 [ ] - credits and withdraw money logic
-[ ] - saved places for client and driver (home, work, school, etc)
+[X] - saved places for client and driver (home, work, school, etc)
 [ ] - allow the user to create (aller et retour) trips (the return trip should be created automatically)
-[ ] - the client cant send request to the same trip more then one time
+[ ] - the client can't send request to the same trip more then one time
 
 
 [ ] - allow the driver to be [EMERGENCY-DRIVER] in offtime like inDrive (earn extra money)
