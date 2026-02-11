@@ -20,8 +20,10 @@ class AuthController {
                     email: user.email,
                     role: user.role,
                     verificationStatus: user.verificationStatus,
-                    photoURL: user.photoURL
+                    photoURL: user.photoURL,
+                    onboardingStatus: user.onboardingStatus
                 }
+
             });
         } catch (err) {
             console.error(err.message);
@@ -49,8 +51,10 @@ class AuthController {
                     fullName: user.fullName,
                     email: user.email,
                     role: user.role,
-                    verificationStatus: user.verificationStatus
+                    verificationStatus: user.verificationStatus,
+                    onboardingStatus: user.onboardingStatus
                 }
+
             });
         } catch (err) {
             console.error(err.message);

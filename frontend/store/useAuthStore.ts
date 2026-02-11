@@ -21,7 +21,17 @@ interface User {
         longitude: number;
         icon: string;
     }[];
+    onboardingStatus?: {
+        completed: boolean;
+        steps: {
+            id: string;
+            label: string;
+            status: 'pending' | 'in-progress' | 'completed';
+            required: boolean;
+        }[];
+    };
 }
+
 
 interface AuthState {
     user: User | null;

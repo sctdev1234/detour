@@ -2,6 +2,9 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const SavedPlace = require('../models/SavedPlace');
+const Route = require('../models/Route');
+const Car = require('../models/Car');
+
 const fs = require('fs');
 
 class AuthService {
@@ -26,8 +29,13 @@ class AuthService {
         await user.save();
 
         const token = this.generateToken(user);
+        const onboardingStatus = await this.calculateOnboardingStatus(user);
+        const userObj = user.toObject();
+        userObj.onboardingStatus = onboardingStatus;
 
-        return { user, token };
+
+        return { user: userObj, token };
+
     }
 
     async login({ email, password }) {
@@ -45,11 +53,13 @@ class AuthService {
         const savedPlaces = await SavedPlace.find({ user: user.id });
         const userObj = user.toObject();
         userObj.savedPlaces = savedPlaces;
+        userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
 
         return {
             token: this.generateToken(user),
             user: userObj
         };
+
     }
 
     async getUser(userId) {
@@ -59,8 +69,10 @@ class AuthService {
         const savedPlaces = await SavedPlace.find({ user: userId });
         const userObj = user.toObject();
         userObj.savedPlaces = savedPlaces;
+        userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
 
         return userObj;
+
     }
 
     async forgotPassword({ email }) {
@@ -109,8 +121,14 @@ class AuthService {
             { new: true }
         ).select('-password');
 
+
         if (!user) throw new Error('User not found');
-        return user;
+
+        const userObj = user.toObject();
+        userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
+
+        return userObj;
+
     }
 
     async verifyDriver(userId, documents) {
@@ -121,7 +139,12 @@ class AuthService {
         user.verificationStatus = 'pending';
 
         await user.save();
-        return user;
+
+        const userObj = user.toObject();
+        userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
+
+        return userObj;
+
     }
 
     async deleteAccount(userId) {
@@ -191,6 +214,92 @@ class AuthService {
             { expiresIn: '7d' }
         );
     }
+    async calculateOnboardingStatus(user) {
+        const status = {
+            completed: false,
+            steps: []
+        };
+
+        if (user.role === 'client') {
+            // Check if user has at least one route created (Required to unlock app)
+            const routeCount = await Route.countDocuments({ userId: user._id, role: 'client' });
+            const hasRoute = routeCount > 0;
+
+            // Check if user has saved places (Optional)
+            const placesCount = await SavedPlace.countDocuments({ user: user._id });
+            const hasPlaces = placesCount >= 2;
+
+            status.steps.push({
+                id: 'route',
+                label: 'Create your first route',
+                status: hasRoute ? 'completed' : 'pending',
+                required: true
+            });
+
+            status.steps.push({
+                id: 'places',
+                label: 'Add saved places',
+                status: hasPlaces ? 'completed' : (placesCount > 0 ? 'in-progress' : 'pending'),
+                required: false
+            });
+
+            status.completed = hasRoute;
+        } else if (user.role === 'driver') {
+            // 1. Upload Documents (Required)
+            const docs = user.documents && user.documents.length > 0 ? user.documents[user.documents.length - 1] : null;
+            const hasDocs = !!docs;
+
+            // 2. Add Car (Required)
+            // Check if user owns a car OR is assigned to one
+            const carOwned = await Car.findOne({ ownerId: user._id });
+            const carAssigned = await Car.findOne({
+                'assignment.driverEmail': user.email,
+                'assignment.status': 'active'
+            });
+            const hasCar = !!(carOwned || carAssigned);
+
+            // 3. Admin Approval (Required)
+            const isApproved = user.verificationStatus === 'verified';
+
+            // 4. Create Route (Optional)
+            const routeCount = await Route.countDocuments({ userId: user._id, role: 'driver' });
+            const hasRoute = routeCount > 0;
+
+            status.steps.push({
+                id: 'documents',
+                label: 'Upload Required Documents',
+                status: hasDocs ? 'completed' : 'pending',
+                required: true
+            });
+
+            status.steps.push({
+                id: 'car',
+                label: 'Add or Join a Car',
+                status: hasCar ? 'completed' : 'pending',
+                required: true
+            });
+
+            status.steps.push({
+                id: 'approval',
+                label: 'Wait for Admin Approval',
+                status: isApproved ? 'completed' : (user.verificationStatus === 'pending' ? 'in-progress' : 'pending'),
+                required: true
+            });
+
+            status.steps.push({
+                id: 'route',
+                label: 'Create a Route',
+                status: hasRoute ? 'completed' : 'pending',
+                required: false
+            });
+
+            // Only unlock if ALL required steps are done
+            status.completed = hasDocs && hasCar && isApproved;
+        }
+
+        return status;
+    }
 }
+
 
 module.exports = new AuthService();

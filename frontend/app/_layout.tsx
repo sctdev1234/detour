@@ -76,19 +76,57 @@ export default function RootLayout() {
         router.replace('/(auth)/role-selection');
       }
     } else {
-      // If user has a role, ensure they are in their role group OR a shared route
-      const currentGroup = segmentsArray[0];
-      const isSharedRoute = sharedRoutes.includes(currentGroup);
+      // If user has a role, check onboarding status
+      const onboardingStatus = user.onboardingStatus;
+      const isCompleted = onboardingStatus?.completed;
 
-      if (!isSharedRoute) {
-        if (role === 'driver' && currentGroup !== '(driver)') {
-          router.replace('/(driver)');
-        } else if (role === 'client' && currentGroup !== '(client)') {
-          router.replace('/(client)');
+      const currentRoute = segmentsArray.join('/');
+      const isTasksPage = segmentsArray.includes('tasks');
+
+      // Define currentGroup for role checking
+      const currentGroup = segmentsArray[0];
+
+      // Whitelist of routes allowed during onboarding
+
+      const onboardingWhitelist = [
+        'tasks',
+        '(client)/add-route',
+        '(client)/places',
+        '(driver)/verification', // documents
+        '(driver)/add-car',
+        'modal',
+        'chat' // Maybe allow support?
+      ];
+
+      const isWhitelisted = onboardingWhitelist.some(route => currentRoute.includes(route));
+
+      if (!isCompleted) {
+        // If not completed and not on a whitelisted page, force to tasks
+        if (!isWhitelisted && !isTasksPage) {
+          // Prevent loop if already attempting to go there
+          router.replace('/tasks' as any);
+        }
+      } else {
+
+        // Onboarding completed
+        // Special rule for Driver: If route missing, go to add-route
+        if (role === 'driver') {
+          const hasRoute = onboardingStatus?.steps.find(s => s.id === 'route')?.status === 'completed';
+          // Only redirect if we are on the 'root' or dashboard, to avoid interfering with other navigation
+          if (!hasRoute && (currentRoute === '(driver)' || currentRoute === '(driver)/index')) {
+            router.replace('/(driver)/add-route');
+          } else if (currentGroup !== '(driver)' && !sharedRoutes.includes(currentGroup)) {
+            router.replace('/(driver)');
+          }
+        } else if (role === 'client') {
+          if (currentGroup !== '(client)' && !sharedRoutes.includes(currentGroup)) {
+            router.replace('/(client)');
+          }
         }
       }
     }
   }, [user, role, segments, isLoading, router]);
+
 
   const theme = colorScheme === 'dark' ? {
     ...DarkTheme,
@@ -125,7 +163,9 @@ export default function RootLayout() {
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
           <Stack.Screen name="change-password" options={{ headerShown: false }} />
           <Stack.Screen name="chat" options={{ headerShown: false }} />
+          <Stack.Screen name="tasks" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+
         </Stack>
         <LocationTracker />
         <Toast />
