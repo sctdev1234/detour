@@ -8,7 +8,20 @@ const { auth, requireVerification } = require('../middleware/auth');
 // @desc    Add a new car
 router.post('/', auth, requireVerification, async (req, res) => {
     try {
-        const { marque, model, year, color, places, isDefault, images, documents, ownerId } = req.body;
+        let { marque, model, year, color, places, isDefault, images, documents, ownerId } = req.body;
+
+        // Check if user has any cars
+        const existingCarsCount = await Car.countDocuments({ ownerId });
+
+        // If it's the first car, force it to be default
+        if (existingCarsCount === 0) {
+            isDefault = true;
+        }
+
+        // If this car is set as default (either by user or forced), unset others
+        if (isDefault) {
+            await Car.updateMany({ ownerId }, { isDefault: false });
+        }
 
         const newCar = new Car({
             marque,

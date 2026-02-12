@@ -141,34 +141,6 @@ use it for the Company [Deductions]
 ===========================================================
 
 
-[X] - allow user (client & driver) to update profile image
-[X] - allow user (client & driver) to update password
-
-[ ] - home page show for the Driver 
-    - his balance 
-    - money earned (today, All time)
-    - the number of trips he has done (today, All time)
-    - clients he has served (today, All time)
-
-[ ] - home page show for the Client 
-    - his balance 
-    - money deducted from his balance (today, All time)
-    - the number of trips he has done (today, All time)
-
-[ ] - allow direct negotiation of price between [Client] and [Driver]
-
-[X] - places page
-[X] - tasks Page
-
-[ ] - trips management
-[ ] - coupon logic
-[ ] - rating system for client and driver, (client rate driver, driver rate client)
-[ ] - credits and withdraw money logic
-[X] - saved places for client and driver (home, work, school, etc)
-[ ] - allow the user to create (aller et retour) trips (the return trip should be created automatically)
-[ ] - the client can't send request to the same trip more then one time
-
-
 [ ] - allow the driver to be [EMERGENCY-DRIVER] in offtime like inDrive (earn extra money)
 [ ] - allow the client to be [EMERGENCY-CLIENT] in offtime like inDrive (extra payment) 
 
@@ -200,18 +172,8 @@ use it for the Company [Deductions]
 - force the driver to enable the gps before the trip starts 
 - force the driver to confirm the trip before the trip starts 
 
-# tasks page is the first thing to see after signup or login
-[ ] - if the user complited the tasks, show him the home page
-[ ] - if the user didn't complited the tasks, show him only the tasks page (no home page, no other pages)
 
-- the client tasks are:
--- create a trip (Pickup Point and Destination Point)
 
-- the driver tasks are:
--- upload the Documents
--- Add a Car or Receive it from another driver
--- wait for admin approval 
--- create a trip (Pickup Point and Destination Point)
 
 # Notes
 - the [CLIENT] can be late for 5min max ([DRIVER] should wait for him)

@@ -14,9 +14,25 @@ export default function AddCarScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const addCar = useCarStore((state) => state.addCar);
+    const { addCar, fetchCars, cars } = useCarStore();
     const user = useAuthStore((state) => state.user);
     const { showToast } = useUIStore();
+
+    // Check if it's the user's first car
+    const isFirstCar = cars.length === 0;
+
+    React.useEffect(() => {
+        if (user?.id) {
+            fetchCars(user.id);
+        }
+    }, [user?.id]);
+
+    // Force isDefault to true if it's the first car
+    React.useEffect(() => {
+        if (isFirstCar && !form.isDefault) {
+            setForm(prev => ({ ...prev, isDefault: true }));
+        }
+    }, [isFirstCar]);
 
     const [form, setForm] = useState({
         marque: '',
@@ -42,7 +58,11 @@ export default function AddCarScreen() {
         });
 
         if (!result.canceled) {
-            setForm(prev => ({ ...prev, images: [...prev.images, result.assets[0].uri] }));
+            setForm(prev => ({
+                ...prev,
+                isDefault: (isFirstCar || prev.images.length === 0) ? true : prev.isDefault,
+                images: [...prev.images, result.assets[0].uri]
+            }));
         }
     };
 
@@ -114,7 +134,7 @@ export default function AddCarScreen() {
                 year: form.year,
                 color: form.color,
                 places: parseInt(form.places) || 4,
-                isDefault: form.isDefault,
+                isDefault: isFirstCar ? true : form.isDefault,
                 images: uploadedImages,
                 documents: uploadedDocs,
             }, user.id); // Pass user.id
@@ -240,14 +260,17 @@ export default function AddCarScreen() {
                     ))}
                 </View>
 
-                <View style={[styles.switchGroup, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <View style={[styles.switchGroup, { backgroundColor: theme.surface, borderColor: theme.border, opacity: isFirstCar ? 0.8 : 1 }]}>
                     <View>
                         <Text style={[styles.switchLabel, { color: theme.text }]}>Set as Default Car</Text>
-                        <Text style={[styles.switchSubtitle, { color: theme.icon }]}>Use this car for your trips by default</Text>
+                        <Text style={[styles.switchSubtitle, { color: theme.icon }]}>
+                            {isFirstCar ? 'First car is set as default automatically' : 'Use this car for your trips by default'}
+                        </Text>
                     </View>
                     <Switch
-                        value={form.isDefault}
-                        onValueChange={(value) => setForm({ ...form, isDefault: value })}
+                        value={isFirstCar || form.isDefault}
+                        onValueChange={(value) => { if (!isFirstCar) setForm({ ...form, isDefault: value }); }}
+                        disabled={isFirstCar}
                         trackColor={{ false: theme.border, true: theme.primary }}
                     />
                 </View>
