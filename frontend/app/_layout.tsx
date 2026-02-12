@@ -95,7 +95,10 @@ export default function RootLayout() {
         '(driver)/verification', // documents
         '(driver)/add-car',
         'modal',
-        'chat' // Maybe allow support?
+        'chat', // Maybe allow support?
+        '(client)/profile',
+        '(driver)/profile',
+        'edit-profile'
       ];
 
       const isWhitelisted = onboardingWhitelist.some(route => currentRoute.includes(route));
@@ -154,8 +157,8 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={theme}>
-      <SafeAreaProvider style={{ paddingTop: 60 }}>
-        <Header />
+      <SafeAreaProvider style={{ paddingTop: user ? 60 : 0 }}>
+        {user && <Header />}
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(driver)" options={{ headerShown: false }} />
