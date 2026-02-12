@@ -495,15 +495,20 @@ router.get('/stats', auth, adminCheck, async (req, res) => {
 // @access  Admin
 router.get('/trips', auth, adminCheck, async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, status } = req.query;
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
         const Trip = require('../models/Trip');
 
-        const totalTrips = await Trip.countDocuments();
-        const trips = await Trip.find()
+        let query = {};
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        const totalTrips = await Trip.countDocuments(query);
+        const trips = await Trip.find(query)
             .populate('driverId', 'fullName email')
             .populate('routeId')
             .sort({ createdAt: -1 })

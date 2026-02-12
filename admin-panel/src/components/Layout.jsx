@@ -97,8 +97,8 @@ export default function Layout() {
 const style = document.createElement('style');
 style.textContent = `
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; margin-top: 10px; }
+        to { opacity: 1; margin-top: 0; }
     }
     .animate-fadeIn {
         animation: fadeIn 0.4s ease-out forwards;

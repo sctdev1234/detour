@@ -1,5 +1,6 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 
@@ -57,7 +58,7 @@ function FocusHandler({ focusCoords }) {
     return null;
 }
 
-export default function TripsMap({ selectedTrip, focusCoords }) {
+export default function TripsMap({ selectedTrip, focusCoords, isFullScreen, onToggleFullScreen }) {
     // Default center (Casablanca)
     const defaultCenter = [33.5731, -7.5898];
 
@@ -84,7 +85,15 @@ export default function TripsMap({ selectedTrip, focusCoords }) {
     const pathPositions = getPath();
 
     return (
-        <div className="h-[400px] w-full rounded-2xl overflow-hidden shadow-lg border border-slate-700/50 mb-6 bg-slate-900 relative">
+        <div className={`w-full rounded-2xl overflow-hidden shadow-lg border border-slate-700/50 bg-slate-900 relative transition-all duration-500 ${isFullScreen ? 'h-full rounded-none border-0' : 'h-[400px] mb-6'}`}>
+            {/* Toggle Full Screen Button */}
+            <button
+                onClick={onToggleFullScreen}
+                className="absolute top-4 right-4 z-[400] p-3 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 hover:text-white hover:bg-blue-600 hover:border-blue-500 transition-all duration-300 shadow-2xl group"
+                title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
+            >
+                {isFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            </button>
             {/* ... overlay code ... */}
             <MapContainer
                 center={defaultCenter}
