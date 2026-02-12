@@ -8,6 +8,8 @@
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run start",
     "admin-panel": "cd admin-panel && npm run dev",
+    "sibari": "npx concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"green,blue\" \"npm run backend\" \"npm run frontend\"",
+    "ghallab": "npx concurrently --kill-others-on-fail -n \"BACKEND,ADMIN-PANEL\" -c \"green,blue\" \"npm run backend\" \"npm run admin-panel\"",
     "==[ Installing ]=============================================================": "",
     "install-all": "npx concurrently --kill-others-on-fail -n \"PROJECT,BACKEND,FRONTEND,ADMIN-PANEL\" -c \"green,blue,magenta,cyan\" \"npm run install-project\" \"npm run install-backend\" \"npm run install-frontend\" \"npm run install-admin-panel\"",
     "install-project": "npm install",
