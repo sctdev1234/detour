@@ -32,6 +32,7 @@ app.use((req, res, next) => {
 });
 
 // Database Connection
+// Database Connection
 const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
     console.error('CRITICAL: MONGODB_URI is not defined in .env');
@@ -46,17 +47,26 @@ if (!process.env.JWT_SECRET) {
 const uriDebug = MONGODB_URI ? MONGODB_URI.replace(/:([^:@]+)@/, ':****@') : 'undefined';
 console.log('Attempting to connect to MongoDB with URI:', uriDebug);
 
-mongoose.connect(MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000
-})
+mongoose.connect(MONGODB_URI)
     .then(() => {
         console.log('MongoDB Connected');
         console.log('Connected to Database:', mongoose.connection.name);
     })
     .catch(err => {
-        console.error('MongoDB Connection Error:', err);
-        console.log('URI used:', uriDebug);
+        console.error('MongoDB Initial Connection Error:', err);
     });
+
+mongoose.connection.on('error', err => {
+    console.error('MongoDB Runtime Connection Error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    console.log('MongoDB Disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+    console.log('MongoDB Reconnected');
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

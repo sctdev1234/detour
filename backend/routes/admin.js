@@ -73,7 +73,7 @@ router.get('/users', auth, adminCheck, async (req, res) => {
     try {
         const { role, verificationStatus, page = 1, limit = 10 } = req.query;
         let query = {};
-        
+
         if (role && role !== 'all') {
             query.role = role;
         }
@@ -132,11 +132,11 @@ router.post('/users', auth, adminCheck, async (req, res) => {
         user.password = await bcrypt.hash(password, salt);
 
         await user.save();
-        
+
         // Return user without password
         const userObj = user.toObject();
         delete userObj.password;
-        
+
         res.json(userObj);
     } catch (err) {
         console.error(err.message);
@@ -159,7 +159,7 @@ router.put('/users/:id', auth, adminCheck, async (req, res) => {
         // if (phone) user.phone = phone; // Add phone if model supports it
 
         await user.save();
-         const userObj = user.toObject();
+        const userObj = user.toObject();
         delete userObj.password;
 
         res.json(userObj);
@@ -220,11 +220,11 @@ router.post('/unban-user/:id', auth, adminCheck, async (req, res) => {
             // Simplest: 'verified' if documents exist, or 'unverified'.
             // For now, let's set to 'unverified' to be safe, or 'verified'.
             // The user asked to "unban". Usually means restore access.
-            user.verificationStatus = 'verified'; 
+            user.verificationStatus = 'verified';
         } else {
             user.verificationStatus = 'unverified'; // Default for clients
         }
-        
+
         await user.save();
         res.json({ msg: 'User has been unbanned', user });
     } catch (err) {
@@ -238,11 +238,35 @@ router.post('/unban-user/:id', auth, adminCheck, async (req, res) => {
 // @access  Admin
 router.get('/places', auth, adminCheck, async (req, res) => {
     try {
-        const places = await Place.find().sort({ createdAt: -1 });
-        res.json(places);
+        console.log('GET /places params:', req.query);
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+
+        if (isNaN(pageNum) || isNaN(limitNum)) {
+            return res.status(400).json({ msg: 'Invalid page or limit' });
+        }
+
+        const skip = (pageNum - 1) * limitNum;
+        console.log(`Pagination: page=${pageNum}, limit=${limitNum}, skip=${skip}`);
+
+        const totalPlaces = await Place.countDocuments();
+        const places = await Place.find()
+            .populate('user', 'fullName email photoURL phone role')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum);
+
+        res.json({
+            places,
+            totalPages: Math.ceil(totalPlaces / limitNum),
+            currentPage: pageNum,
+            totalPlaces
+        });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ msg: 'Server Error' });
+        console.error('Error in GET /places:', err);
+        console.error(err.stack);
+        res.status(500).json({ msg: 'Server Error', error: err.message });
     }
 });
 
@@ -251,15 +275,25 @@ router.get('/places', auth, adminCheck, async (req, res) => {
 // @access  Admin
 router.post('/places', auth, adminCheck, async (req, res) => {
     try {
-        const { name, address, category } = req.body;
-        const newPlace = new Place({
-            name,
+        const { name, address, category, latitude, longitude } = req.body;
+
+        const placeData = {
+            label: name, // Map name to label
+            name, // Keep name too if model allows, for consistency
             address,
             category,
-            createdBy: req.user.id
-        });
+            latitude: parseFloat(latitude),
+            longitude: parseFloat(longitude),
+            user: req.user.id
+        };
+
+        const newPlace = new Place(placeData);
         const place = await newPlace.save();
-        res.json(place);
+
+        // Populate user before sending back
+        const populatedPlace = await Place.findById(place._id).populate('user', 'fullName email photoURL phone role');
+
+        res.json(populatedPlace);
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ msg: 'Server Error' });

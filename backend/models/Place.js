@@ -1,24 +1,35 @@
 const mongoose = require('mongoose');
 
 const PlaceSchema = new mongoose.Schema({
-    name: {
+    label: {
         type: String,
-        required: true
+        // required: true // DB data had label "Home", looks like a name
+    },
+    name: { // Keeping name as alias or for new places if we want
+        type: String
     },
     address: {
         type: String,
         required: true
     },
-    location: {
-        type: { type: String, default: 'Point' },
-        coordinates: [Number] // [longitude, latitude]
+    latitude: {
+        type: Number,
+        required: true
+    },
+    longitude: {
+        type: Number,
+        required: true
+    },
+    icon: {
+        type: String,
+        default: 'map-pin'
     },
     category: {
         type: String,
         enum: ['station', 'airport', 'hospital', 'school', 'other'],
         default: 'other'
     },
-    createdBy: {
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
@@ -27,7 +38,5 @@ const PlaceSchema = new mongoose.Schema({
         default: Date.now
     }
 });
-
-PlaceSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Place', PlaceSchema);
