@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { API_URL } from '../services/apiConfig';
+import api from '../services/api';
 
 export type Role = 'driver' | 'client' | null;
 
@@ -78,28 +78,9 @@ export const useAuthStore = create<AuthState>()(
             login: async (email, password) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/login`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Bypass-Tunnel-Reminder': 'true'
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
+                    const res = await api.post('/auth/login', { email, password });
+                    const data = res.data;
 
-                    if (!res.ok) {
-                        const text = await res.text();
-                        let errorMsg = 'Login failed';
-                        try {
-                            const error = JSON.parse(text);
-                            errorMsg = error.msg || error.message || errorMsg;
-                        } catch (e) {
-                            errorMsg = text || errorMsg;
-                        }
-                        throw new Error(errorMsg);
-                    }
-
-                    const data = await res.json();
                     set({
                         user: data.user,
                         token: data.token,
@@ -107,37 +88,19 @@ export const useAuthStore = create<AuthState>()(
                         verificationStatus: data.user.verificationStatus,
                         isLoading: false
                     });
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
-                    throw error;
+                    const errorMsg = error.response?.data?.msg || error.response?.data?.message || 'Login failed';
+                    throw new Error(errorMsg);
                 }
             },
 
             register: async (email, password, fullName, role) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/signup`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Bypass-Tunnel-Reminder': 'true'
-                        },
-                        body: JSON.stringify({ email, password, fullName, role })
-                    });
+                    const res = await api.post('/auth/signup', { email, password, fullName, role });
+                    const data = res.data;
 
-                    if (!res.ok) {
-                        const text = await res.text();
-                        let errorMsg = 'Registration failed';
-                        try {
-                            const error = JSON.parse(text);
-                            errorMsg = error.msg || error.message || errorMsg;
-                        } catch (e) {
-                            errorMsg = text || errorMsg;
-                        }
-                        throw new Error(errorMsg);
-                    }
-
-                    const data = await res.json();
                     set({
                         user: data.user,
                         token: data.token,
@@ -145,61 +108,36 @@ export const useAuthStore = create<AuthState>()(
                         verificationStatus: data.user.verificationStatus,
                         isLoading: false
                     });
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
-                    throw error;
+                    const errorMsg = error.response?.data?.msg || error.response?.data?.message || 'Registration failed';
+                    throw new Error(errorMsg);
                 }
             },
 
             forgotPassword: async (email) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/forgot-password`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email })
-                    });
-
-                    if (!res.ok) {
-                        const text = await res.text();
-                        let errorMsg = 'Failed to request password reset';
-                        try {
-                            const error = JSON.parse(text);
-                            errorMsg = error.msg || errorMsg;
-                        } catch (e) { errorMsg = text || errorMsg; }
-                        throw new Error(errorMsg);
-                    }
-
-                    const data = await res.json();
+                    const res = await api.post('/auth/forgot-password', { email });
+                    const data = res.data;
                     set({ isLoading: false });
                     return data.token; // Return token for dev flow
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
-                    throw error;
+                    const errorMsg = error.response?.data?.msg || error.response?.data?.message || 'Failed to request password reset';
+                    throw new Error(errorMsg);
                 }
             },
 
             resetPassword: async (token, newPassword) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/reset-password`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token, newPassword })
-                    });
-                    if (!res.ok) {
-                        const text = await res.text();
-                        let errorMsg = 'Failed to reset password';
-                        try {
-                            const error = JSON.parse(text);
-                            errorMsg = error.msg || errorMsg;
-                        } catch (e) { errorMsg = text || errorMsg; }
-                        throw new Error(errorMsg);
-                    }
+                    await api.post('/auth/reset-password', { token, newPassword });
                     set({ isLoading: false });
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
-                    throw error;
+                    const errorMsg = error.response?.data?.msg || error.response?.data?.message || 'Failed to reset password';
+                    throw new Error(errorMsg);
                 }
             },
 
@@ -220,29 +158,22 @@ export const useAuthStore = create<AuthState>()(
                 }
 
                 try {
-                    const res = await fetch(`${API_URL}/auth/me`, {
-                        method: 'GET',
-                        headers: {
-                            'x-auth-token': token,
-                            'Bypass-Tunnel-Reminder': 'true'
-                        }
-                    });
+                    // API interceptor adds token automatically if it exists in store/storage usually,
+                    // but here we are reading FROM store directly to check correctness.
+                    // api.ts reads from AsyncStorage 'auth-storage'.
+                    // So we rely on api.ts interceptor.
 
-                    if (res.ok) {
-                        const user = await res.json();
-                        set({
-                            user: { ...user, id: user._id },
-                            role: user.role,
-                            verificationStatus: user.verificationStatus,
-                            isLoading: false
-                        });
-                    } else {
-                        console.log('Token invalid, logging out');
-                        get().logout();
-                    }
+                    const res = await api.get('/auth/me');
+                    const user = res.data;
+
+                    set({
+                        user: { ...user, id: user._id },
+                        role: user.role,
+                        verificationStatus: user.verificationStatus,
+                        isLoading: false
+                    });
                 } catch (error) {
                     console.error('Auth check failed:', error);
-                    // Force logout on error to clear stale state during dev
                     get().logout();
                     set({ isLoading: false });
                 }
@@ -251,44 +182,26 @@ export const useAuthStore = create<AuthState>()(
             deleteAccount: async () => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/delete`, {
-                        method: 'DELETE',
-                        headers: {
-                            'x-auth-token': get().token || '',
-                        }
-                    });
-
-                    if (!res.ok) throw new Error('Failed to delete account');
-
-                    // Logout after successful deletion
+                    await api.delete('/auth/delete');
                     get().logout();
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
                     throw error;
                 }
             },
+
             submitVerification: async (docs) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/verify`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-auth-token': get().token || ''
-                        },
-                        body: JSON.stringify(docs)
-                    });
-
-                    if (!res.ok) throw new Error('Failed to submit verification');
-
-                    const updatedUser = await res.json();
+                    const res = await api.post('/auth/verify', docs);
+                    const updatedUser = res.data;
 
                     set((state) => ({
                         user: { ...state.user!, ...updatedUser },
                         verificationStatus: 'pending',
                         isLoading: false
                     }));
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
                     throw error;
                 }
@@ -300,25 +213,14 @@ export const useAuthStore = create<AuthState>()(
             updateProfile: async (data) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/update`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-auth-token': get().token || ''
-                        },
-                        body: JSON.stringify(data)
-                    });
+                    const res = await api.put('/auth/update', data);
+                    const updatedUser = res.data;
 
-                    if (!res.ok) throw new Error('Failed to update profile');
-
-                    const updatedUser = await res.json();
-
-                    // Merge with existing user to keep fields like role/id if not returned
                     set((state) => ({
                         user: { ...state.user!, ...updatedUser },
                         isLoading: false
                     }));
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
                     throw error;
                 }
@@ -327,51 +229,25 @@ export const useAuthStore = create<AuthState>()(
             changePassword: async (oldPassword, newPassword) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/change-password`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-auth-token': get().token || ''
-                        },
-                        body: JSON.stringify({ oldPassword, newPassword })
-                    });
-
-                    if (!res.ok) {
-                        const text = await res.text();
-                        let errorMsg = 'Failed to change password';
-                        try {
-                            const error = JSON.parse(text);
-                            errorMsg = error.msg || error.message || errorMsg;
-                        } catch (e) { errorMsg = text || errorMsg; }
-                        throw new Error(errorMsg);
-                    }
+                    await api.post('/auth/change-password', { oldPassword, newPassword });
                     set({ isLoading: false });
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
-                    throw error;
+                    const errorMsg = error.response?.data?.msg || error.response?.data?.message || 'Failed to change password';
+                    throw new Error(errorMsg);
                 }
             },
 
             addSavedPlace: async (place) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/places`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-auth-token': get().token || ''
-                        },
-                        body: JSON.stringify(place)
-                    });
-
-                    if (!res.ok) throw new Error('Failed to add saved place');
-
-                    const savedPlaces = await res.json();
+                    const res = await api.post('/auth/places', place);
+                    const savedPlaces = res.data;
                     set((state) => ({
                         user: { ...state.user!, savedPlaces },
                         isLoading: false
                     }));
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
                     throw error;
                 }
@@ -380,21 +256,13 @@ export const useAuthStore = create<AuthState>()(
             removeSavedPlace: async (placeId) => {
                 set({ isLoading: true });
                 try {
-                    const res = await fetch(`${API_URL}/auth/places/${placeId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'x-auth-token': get().token || ''
-                        }
-                    });
-
-                    if (!res.ok) throw new Error('Failed to remove saved place');
-
-                    const savedPlaces = await res.json();
+                    const res = await api.delete(`/auth/places/${placeId}`);
+                    const savedPlaces = res.data;
                     set((state) => ({
                         user: { ...state.user!, savedPlaces },
                         isLoading: false
                     }));
-                } catch (error) {
+                } catch (error: any) {
                     set({ isLoading: false });
                     throw error;
                 }

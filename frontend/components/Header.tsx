@@ -44,6 +44,9 @@ export default function Header() {
     // Helper to determine if we should show back button
     // We hide it on main tab screens and auth roots
     const isMainTab = () => {
+        // Home
+        if (pathname === '/' || pathname === '/index') return true;
+
         // Driver Tabs
         if (pathname === '/(driver)' || pathname === '/(driver)/' || pathname === '/(driver)/index') return true;
         if (pathname.includes('/(driver)/cars') && !pathname.includes('/add-car') && !pathname.includes('/assign-car')) return true; // Main cars list is tab

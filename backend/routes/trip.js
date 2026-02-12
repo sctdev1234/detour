@@ -3,8 +3,11 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const tripController = require('../controllers/tripController');
 
+const validate = require('../middleware/validate');
+const { createRouteSchema, joinRequestSchema, handleRequestSchema } = require('../validation/tripSchemas');
+
 // Routes (Created by both drivers and clients)
-router.post('/route', auth, tripController.createRoute);
+router.post('/route', [auth, validate(createRouteSchema)], tripController.createRoute);
 router.get('/route', auth, tripController.getRoutes);
 router.delete('/route/:id', auth, tripController.deleteRoute);
 
@@ -12,8 +15,8 @@ router.delete('/route/:id', auth, tripController.deleteRoute);
 router.get('/matches/:routeId', auth, tripController.searchMatches);
 
 // Join Requests
-router.post('/request-join', auth, tripController.sendJoinRequest);
-router.post('/handle-request', auth, tripController.handleJoinRequest);
+router.post('/request-join', [auth, validate(joinRequestSchema)], tripController.sendJoinRequest);
+router.post('/handle-request', [auth, validate(handleRequestSchema)], tripController.handleJoinRequest);
 router.get('/requests/driver', auth, tripController.getDriverRequests);
 router.get('/requests/client', auth, tripController.getClientRequests);
 

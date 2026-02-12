@@ -1,11 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { ArrowUpRight, Bell, Calendar, Car, MapPin, Plus, Star, TrendingUp, User } from 'lucide-react-native';
-import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Dimensions, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlassCard } from '../../components/GlassCard';
 import { Colors } from '../../constants/theme';
-
-import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useClientRequestStore } from '../../store/useClientRequestStore';
 import { useRatingStore } from '../../store/useRatingStore';
@@ -25,19 +25,6 @@ const SectionHeader = ({ title, action, onAction, theme }: any) => (
     </View>
 );
 
-const Card = ({ children, style, theme, onPress }: any) => {
-    const Component = onPress ? TouchableOpacity : View;
-    return (
-        <Component
-            style={[styles.card, { backgroundColor: theme.card, shadowColor: theme.shadow }, style]}
-            onPress={onPress}
-            activeOpacity={0.7}
-        >
-            {children}
-        </Component>
-    );
-}
-
 export default function DriverDashboard() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
@@ -52,48 +39,71 @@ export default function DriverDashboard() {
     const avgRating = getAverageRating(user?.id || '');
 
     // Real Data from TripStore
-    const trips = useTripStore((state) => state.trips.filter(t => t.driverId === user?.id || t.driverId === 'me'));
+    const trips = useTripStore((state) => state.trips.filter(t => t.driverId?._id === user?.id || (t.driverId as any) === 'me'));
 
-    // Calculate Stats
     const activeRoutes = trips.length;
     const totalDistance = trips.reduce((acc, t) => acc + (t.routeId?.distanceKm || 0), 0);
-    // Weekly potential: Sum of (price * days per week)
     const weeklyPotential = trips.reduce((acc, t) => acc + ((t.routeId?.price || 0) * (t.routeId?.days?.length || 0)), 0);
 
-    // Get Today's Routes
     const daysMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const todayIndex = new Date().getDay();
     const todayName = daysMap[todayIndex];
     const dateNum = new Date().getDate();
 
     const todaysTrips = trips.filter(t => t.routeId?.days?.includes(todayName));
-
-    // Sort by time
     todaysTrips.sort((a, b) => (a.routeId?.timeStart || '').localeCompare(b.routeId?.timeStart || ''));
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.container}>
             <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+
+            <LinearGradient
+                colors={[theme.background, theme.surface]}
+                style={StyleSheet.absoluteFill}
+            />
 
             <ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: 60 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
                 showsVerticalScrollIndicator={false}
             >
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerLeft}>
+                        <View style={[styles.avatarContainer, { borderColor: theme.border }]}>
+                            {user?.photoURL ? (
+                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                            ) : (
+                                <Text style={[styles.avatarText, { color: theme.text }]}>
+                                    {user?.fullName?.charAt(0) || 'D'}
+                                </Text>
+                            )}
+                        </View>
+                        <View>
+                            <Text style={[styles.greeting, { color: theme.icon }]}>Welcome back,</Text>
+                            <Text style={[styles.userName, { color: theme.text }]}>{user?.fullName?.split(' ')[0]}</Text>
+                        </View>
+                    </View>
+                    <View style={[styles.statusPill, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                        <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
+                        <Text style={[styles.statusText, { color: theme.text }]}>Online</Text>
+                    </View>
+                </View>
 
-                {/* 2. Notifications - Subtle but visible */}
+                {/* Notifications */}
                 {pendingRequestsCount > 0 && (
                     <Animated.View entering={FadeInDown.delay(200)} style={styles.notificationWrapper}>
                         <TouchableOpacity
                             style={[styles.notificationCard, { backgroundColor: theme.primary }]}
                             onPress={() => router.push('/(driver)/requests')}
+                            activeOpacity={0.9}
                         >
                             <View style={styles.notificationContent}>
                                 <View style={[styles.notificationIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                                     <Bell size={16} color="#fff" />
                                 </View>
                                 <Text style={styles.notificationText}>
-                                    <Text style={{ fontWeight: '700' }}>{pendingRequestsCount} new requests</Text> waiting for you
+                                    <Text style={{ fontWeight: '700' }}>{pendingRequestsCount} new requests</Text> waiting
                                 </Text>
                             </View>
                             <ArrowUpRight size={18} color="rgba(255,255,255,0.8)" />
@@ -101,9 +111,9 @@ export default function DriverDashboard() {
                     </Animated.View>
                 )}
 
-                {/* 3. KPI Section - Financials First */}
+                {/* KPI Section */}
                 <Animated.View entering={FadeInDown.delay(300)} style={styles.kpiContainer}>
-                    <Card theme={theme} style={styles.heroCard}>
+                    <GlassCard style={styles.heroCard} intensity={40}>
                         <LinearGradient
                             colors={[theme.primary, theme.secondary]}
                             start={{ x: 0, y: 0 }}
@@ -120,7 +130,6 @@ export default function DriverDashboard() {
                                 <Text style={styles.heroValue}>${weeklyPotential.toLocaleString()}</Text>
                             </View>
                             <View style={styles.heroGraph}>
-                                {/* Abstract visual decoration representing growth */}
                                 <View style={[styles.graphBar, { height: 12, opacity: 0.3 }]} />
                                 <View style={[styles.graphBar, { height: 20, opacity: 0.5 }]} />
                                 <View style={[styles.graphBar, { height: 16, opacity: 0.4 }]} />
@@ -129,35 +138,34 @@ export default function DriverDashboard() {
                                 <View style={[styles.graphBar, { height: 32, opacity: 1.0 }]} />
                             </View>
                         </LinearGradient>
-                    </Card>
+                    </GlassCard>
 
-                    {/* Secondary Metrics - Minimal Grid */}
                     <View style={styles.metricsGrid}>
-                        <Card theme={theme} style={styles.metricCard}>
+                        <GlassCard style={styles.metricCard}>
                             <Text style={[styles.metricLabel, { color: theme.icon }]}>ACTIVE ROUTES</Text>
                             <View style={styles.metricContent}>
                                 <Car size={18} color={theme.text} />
                                 <Text style={[styles.metricValue, { color: theme.text }]}>{activeRoutes}</Text>
                             </View>
-                        </Card>
-                        <Card theme={theme} style={styles.metricCard}>
+                        </GlassCard>
+                        <GlassCard style={styles.metricCard}>
                             <Text style={[styles.metricLabel, { color: theme.icon }]}>DISTANCE (KM)</Text>
                             <View style={styles.metricContent}>
                                 <MapPin size={18} color={theme.text} />
                                 <Text style={[styles.metricValue, { color: theme.text }]}>{totalDistance}</Text>
                             </View>
-                        </Card>
-                        <Card theme={theme} style={styles.metricCard}>
+                        </GlassCard>
+                        <GlassCard style={styles.metricCard}>
                             <Text style={[styles.metricLabel, { color: theme.icon }]}>RATING</Text>
                             <View style={styles.metricContent}>
                                 <Star size={18} color="#EAB308" fill="#EAB308" />
                                 <Text style={[styles.metricValue, { color: theme.text }]}>{avgRating.toFixed(1)}</Text>
                             </View>
-                        </Card>
+                        </GlassCard>
                     </View>
                 </Animated.View>
 
-                {/* 4. Today's Routes - The Core Workflow */}
+                {/* Today's Routes */}
                 <View style={styles.section}>
                     <SectionHeader
                         title={`Today, ${todayName} ${dateNum}`}
@@ -172,51 +180,67 @@ export default function DriverDashboard() {
                                 key={trip.id}
                                 entering={FadeInDown.delay(400 + (index * 100))}
                             >
-                                <Card theme={theme} style={styles.routeCard} onPress={() => router.push('/(driver)/routes')}>
-                                    <View style={[styles.timeColumn, { borderColor: theme.border }]}>
-                                        <Text style={[styles.timeText, { color: theme.text }]}>
-                                            {trip.routeId?.timeStart?.split(':')[0]}
-                                        </Text>
-                                        <Text style={[styles.timeMin, { color: theme.icon }]}>
-                                            {trip.routeId?.timeStart?.split(':')[1] || '00'}
-                                        </Text>
-                                    </View>
-
-                                    <View style={styles.routeInfo}>
-                                        <View style={styles.routeAddresses}>
-                                            <View style={styles.addressRow}>
-                                                <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
-                                                <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
-                                                    {trip.routeId?.startPoint?.address || 'Start Location'}
-                                                </Text>
-                                            </View>
-                                            <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
-                                            <View style={styles.addressRow}>
-                                                <View style={[styles.timelineDot, { backgroundColor: theme.secondary }]} />
-                                                <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
-                                                    {trip.routeId?.endPoint?.address || 'End Location'}
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        <View style={[styles.routeFooter, { borderColor: theme.border }]}>
-                                            <View style={styles.paxInfo}>
-                                                <User size={14} color={theme.icon} />
-                                                <Text style={[styles.paxText, { color: theme.icon }]}>
-                                                    {trip.clients?.length || 0}/{trip.routeId?.maxPassengers || 4}
-                                                </Text>
-                                            </View>
-                                            <Text style={[styles.priceTag, { color: '#16a34a' }]}>
-                                                ${trip.routeId?.price}
+                                <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
+                                    <GlassCard style={{ marginBottom: 12, flexDirection: 'row', padding: 0 }}>
+                                        {/* Override GlassCard content padding to 0 for this specific card layout if needed, 
+                                        but GlassCard component doesn't easily allow overriding content style via ref. 
+                                        Let's update GlassCard to accept contentStyle or just assume default padding is fine 
+                                        OR update these children to remove their own padding?
+                                        
+                                        Original route card had:
+                                        timeColumn: padding 16
+                                        routeInfo: padding 16
+                                        
+                                        GlassCard has content padding: 20.
+                                        Double padding will look bad.
+                                        
+                                        I should probably modify GlassCard to allow overriding content style.
+                                    */}
+                                        <View style={[styles.timeColumn, { borderColor: theme.border }]}>
+                                            <Text style={[styles.timeText, { color: theme.text }]}>
+                                                {trip.routeId?.timeStart?.split(':')[0]}
+                                            </Text>
+                                            <Text style={[styles.timeMin, { color: theme.icon }]}>
+                                                {trip.routeId?.timeStart?.split(':')[1] || '00'}
                                             </Text>
                                         </View>
-                                    </View>
-                                </Card>
+
+                                        <View style={styles.routeInfo}>
+                                            <View style={styles.routeAddresses}>
+                                                <View style={styles.addressRow}>
+                                                    <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
+                                                    <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
+                                                        {trip.routeId?.startPoint?.address || 'Start Location'}
+                                                    </Text>
+                                                </View>
+                                                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                                                <View style={styles.addressRow}>
+                                                    <View style={[styles.timelineDot, { backgroundColor: theme.secondary }]} />
+                                                    <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
+                                                        {trip.routeId?.endPoint?.address || 'End Location'}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            <View style={[styles.routeFooter, { borderColor: theme.border }]}>
+                                                <View style={styles.paxInfo}>
+                                                    <User size={14} color={theme.icon} />
+                                                    <Text style={[styles.paxText, { color: theme.icon }]}>
+                                                        {trip.clients?.length || 0}/{(trip.routeId as any)?.maxPassengers || 4}
+                                                    </Text>
+                                                </View>
+                                                <Text style={[styles.priceTag, { color: '#16a34a' }]}>
+                                                    ${trip.routeId?.price}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </GlassCard>
+                                </TouchableOpacity>
                             </Animated.View>
                         ))
                     ) : (
                         <Animated.View entering={FadeInDown.delay(400)}>
-                            <Card theme={theme} style={styles.emptyStateCard}>
+                            <GlassCard style={styles.emptyStateCard}>
                                 <View style={[styles.emptyIcon, { backgroundColor: theme.background }]}>
                                     <Calendar size={32} color={theme.icon} />
                                 </View>
@@ -224,19 +248,18 @@ export default function DriverDashboard() {
                                 <Text style={[styles.emptySub, { color: theme.icon }]}>
                                     Your schedule is clear for today. Add a route to start receiving requests.
                                 </Text>
-                            </Card>
+                            </GlassCard>
                         </Animated.View>
                     )}
                 </View>
 
-                {/* Bottom Spacer for Floating Action */}
+                {/* Bottom Spacer */}
                 <View style={{ height: 120 }} />
             </ScrollView>
 
-            {/* 5. Floating Primary Action - "The One Thing" */}
             <View style={[styles.fabContainer, { paddingBottom: insets.bottom + 16 }]}>
                 <TouchableOpacity
-                    style={[styles.fab, { backgroundColor: theme.text, shadowColor: theme.shadow }]}
+                    style={[styles.fab, { backgroundColor: theme.text }]}
                     onPress={() => router.push('/(driver)/add-route')}
                     activeOpacity={0.8}
                 >
@@ -443,19 +466,16 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
     },
-    card: {
-        borderRadius: 16,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+    sectionAction: {
+        fontSize: 13,
+        fontWeight: '600',
     },
+    // card: { ... }, // Removed generic card style in favor of GlassCard default styles
     routeCard: {
-        flexDirection: 'row',
         marginBottom: 12,
         overflow: 'hidden',
     },
-    timeColumn: {
+    avatarImage: {
         padding: 16,
         alignItems: 'center',
         justifyContent: 'center',

@@ -3,7 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -89,20 +90,12 @@ export default function LoginScreen() {
                             <Text style={{ color: theme.primary, fontWeight: '600' }}>Forgot Password?</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={[styles.loginButton, { backgroundColor: theme.primary }]}
+                        <PremiumButton
+                            title="Sign In"
                             onPress={handleLogin}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <>
-                                    <LogIn size={20} color="#fff" />
-                                    <Text style={styles.loginButtonText}>Sign In</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
+                            loading={loading}
+                            icon={LogIn}
+                        />
                     </View>
 
                     <View style={[styles.quickLoginContainer, { borderTopColor: theme.border }]}>

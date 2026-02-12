@@ -3,7 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Car, CheckCircle, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -128,17 +129,11 @@ export default function SignupScreen() {
                             secureTextEntry
                         />
 
-                        <TouchableOpacity
-                            style={[styles.signupButton, { backgroundColor: theme.primary }]}
+                        <PremiumButton
+                            title="Create Account"
                             onPress={handleSignup}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.signupButtonText}>Create Account</Text>
-                            )}
-                        </TouchableOpacity>
+                            loading={loading}
+                        />
                     </View>
 
                     <View style={styles.footer}>

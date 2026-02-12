@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
     ArrowRight,
@@ -23,6 +24,7 @@ import {
     View
 } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import { GlassCard } from '../../components/GlassCard';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -92,214 +94,234 @@ export default function ClientDashboard() {
     );
 
     return (
-        <ScrollView
-            style={[styles.container, { backgroundColor: theme.background }]}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
-        >
-            {/* 1. Header Section - Clean & Personal */}
-            <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
-                <View>
-                    <Text style={[styles.greeting, { color: theme.icon }]}>{greeting},</Text>
-                    <Text style={[styles.userName, { color: theme.text }]}>{user?.fullName || 'Traveler'}</Text>
-                </View>
-                <TouchableOpacity onPress={() => router.push('/(client)/profile')}>
-                    <Image
-                        source={{ uri: user?.photoURL || 'https://ui-avatars.com/api/?name=' + (user?.fullName || 'User') }}
-                        style={styles.avatar}
-                    />
-                </TouchableOpacity>
-            </View>
-
-            {/* 2. Primary Action / Active State */}
-            <View style={styles.section}>
-                {activeRequest ? (
-                    <Animated.View entering={FadeInDown.springify()} style={[styles.activeCard, { backgroundColor: theme.primary }]}>
-                        <View style={styles.activeCardHeader}>
-                            <Text style={styles.activeCardTitle}>Current Trip</Text>
-                            <View style={styles.activeStatusBadge}>
-                                <Text style={styles.activeStatusText}>{activeRequest.status}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.activeCardContent}>
-                            <View style={styles.TripLocations}>
-                                <Text style={styles.tripLocationText} numberOfLines={1}>📍 {activeRequest.startPoint.address}</Text>
-                                <View style={styles.verticalLine} />
-                                <Text style={styles.tripLocationText} numberOfLines={1}>🏁 {activeRequest.endPoint.address}</Text>
-                            </View>
-                            <TouchableOpacity
-                                style={styles.trackBtn}
-                                onPress={() => router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } })}
-                            >
-                                <Text style={styles.trackBtnText}>Track Driver</Text>
-                                <ArrowRight size={16} color={theme.primary} />
-                            </TouchableOpacity>
-                        </View>
-                    </Animated.View>
-                ) : (
-                    <Animated.View entering={FadeInDown.springify()}>
-                        <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Where are you going?</Text>
-
-                        <TouchableOpacity
-                            style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                            onPress={() => router.push('/(client)/add-route')}
-                        >
-                            <Search size={20} color={theme.icon} />
-                            <Text style={[styles.searchPlaceholder, { color: theme.icon }]}>Search destination...</Text>
-                        </TouchableOpacity>
-
-                        <View style={[styles.dashboardMapContainer, { borderColor: theme.border, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }]}>
-                            <DetourMap
-                                mode="picker"
-                                readOnly={true}
-                                theme={theme}
-                                height={180}
-                                savedPlaces={user?.savedPlaces}
-                                initialPoints={[]}
-                            />
-                        </View>
-
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{ gap: 12, paddingRight: 24 }}
-                            style={{ overflow: 'visible' }}
-                        >
-                            {user?.savedPlaces && user.savedPlaces.length > 0 ? (
-                                user.savedPlaces.map((place, index) => (
-                                    <View key={place._id || index} style={{ width: 140 }}>
-                                        <QuickDestinationBtn
-                                            icon={place.icon === 'home' ? Home : place.icon === 'work' ? Briefcase : MapPin}
-                                            label={place.label}
-                                            subLabel={place.address.split(',')[0]}
-                                            color={place.icon === 'home' ? (theme.secondary || '#10b981') : theme.primary}
-                                            onPress={() => router.push({
-                                                pathname: '/(client)/add-route',
-                                                params: {
-                                                    destLat: place.latitude,
-                                                    destLng: place.longitude,
-                                                    destAddress: place.address,
-                                                    fromCurrent: 'true'
-                                                }
-                                            })}
-                                        />
-                                    </View>
-                                ))
-                            ) : (
-                                <>
-                                    <View style={{ width: '48%' }}>
-                                        <QuickDestinationBtn
-                                            icon={Briefcase}
-                                            label="Work"
-                                            subLabel="Commute"
-                                            onPress={() => handleQuickAction('work')}
-                                        />
-                                    </View>
-                                    <View style={{ width: '48%' }}>
-                                        <QuickDestinationBtn
-                                            icon={Home}
-                                            label="Home"
-                                            subLabel="Return"
-                                            color={theme.secondary || '#10b981'}
-                                            onPress={() => handleQuickAction('home')}
-                                        />
-                                    </View>
-                                </>
-                            )}
-                        </ScrollView>
-                    </Animated.View>
-                )}
-            </View>
-
-            {/* 3. My Commutes (Recurring Routes) */}
-            <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>My Commutes</Text>
-                    <TouchableOpacity onPress={() => router.push('/(client)/routes')}>
-                        <Text style={{ color: theme.primary, fontWeight: '600' }}>Manage</Text>
+        <View style={styles.container}>
+            <LinearGradient
+                colors={[theme.background, theme.surface]}
+                style={StyleSheet.absoluteFill}
+            />
+            <ScrollView
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+            >
+                {/* 1. Header Section - Clean & Personal */}
+                <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
+                    <View>
+                        <Text style={[styles.greeting, { color: theme.icon }]}>{greeting},</Text>
+                        <Text style={[styles.userName, { color: theme.text }]}>{user?.fullName || 'Traveler'}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => router.push('/(client)/profile')}>
+                        <Image
+                            source={{ uri: user?.photoURL || 'https://ui-avatars.com/api/?name=' + (user?.fullName || 'User') }}
+                            style={styles.avatar}
+                        />
                     </TouchableOpacity>
                 </View>
 
-                {myRoutes.length > 0 ? (
-                    <View style={styles.routesList}>
-                        {myRoutes.map((route, index) => (
-                            <Animated.View
-                                key={route.id}
-                                entering={FadeInRight.delay(index * 100).springify()}
-                                style={[styles.routeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                            >
-                                <View style={[styles.routeIcon, { backgroundColor: theme.background }]}>
-                                    <Clock size={20} color={theme.primary} />
+                {/* 2. Primary Action / Active State */}
+                <View style={styles.section}>
+                    {activeRequest ? (
+                        <Animated.View entering={FadeInDown.springify()}>
+                            <GlassCard style={[styles.activeCard, { backgroundColor: theme.primary }]}>
+                                <View style={styles.activeCardHeader}>
+                                    <Text style={styles.activeCardTitle}>Current Trip</Text>
+                                    <View style={styles.activeStatusBadge}>
+                                        <Text style={styles.activeStatusText}>{activeRequest.status}</Text>
+                                    </View>
                                 </View>
-                                <View style={styles.routeInfo}>
-                                    <View style={styles.routeHeader}>
-                                        <Text style={[styles.routeTime, { color: theme.text }]}>{route.timeStart}</Text>
-                                        <View style={[styles.daysBadge, { backgroundColor: theme.background }]}>
-                                            <Text style={[styles.daysText, { color: theme.icon }]}>
-                                                {route.days.length > 5 ? 'Daily' : `${route.days.length} days`}
+                                <View style={styles.activeCardContent}>
+                                    <View style={styles.TripLocations}>
+                                        <Text style={styles.tripLocationText} numberOfLines={1}>📍 {activeRequest.startPoint.address}</Text>
+                                        <View style={styles.verticalLine} />
+                                        <Text style={styles.tripLocationText} numberOfLines={1}>🏁 {activeRequest.endPoint.address}</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.trackBtn}
+                                        onPress={() => router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } })}
+                                    >
+                                        <Text style={styles.trackBtnText}>Track Driver</Text>
+                                        <ArrowRight size={16} color={theme.primary} />
+                                    </TouchableOpacity>
+                                </View>
+                            </GlassCard>
+                        </Animated.View>
+                    ) : (
+                        <Animated.View entering={FadeInDown.springify()}>
+                            <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Where are you going?</Text>
+
+                            <TouchableOpacity
+                                onPress={() => router.push('/(client)/add-route')}
+                                activeOpacity={0.9}
+                            >
+                                <GlassCard style={styles.searchBar}>
+                                    <Search size={20} color={theme.icon} />
+                                    <Text style={[styles.searchPlaceholder, { color: theme.icon }]}>Search destination...</Text>
+                                </GlassCard>
+                            </TouchableOpacity>
+
+                            <View style={[styles.dashboardMapContainer, { borderColor: theme.border, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }]}>
+                                <DetourMap
+                                    mode="picker"
+                                    readOnly={true}
+                                    theme={theme}
+                                    height={180}
+                                    savedPlaces={user?.savedPlaces}
+                                    initialPoints={[]}
+                                />
+                            </View>
+
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ gap: 12, paddingRight: 24 }}
+                                style={{ overflow: 'visible' }}
+                            >
+                                {user?.savedPlaces && user.savedPlaces.length > 0 ? (
+                                    user.savedPlaces.map((place, index) => (
+                                        <View key={place._id || index} style={{ width: 140 }}>
+                                            <QuickDestinationBtn
+                                                icon={place.icon === 'home' ? Home : place.icon === 'work' ? Briefcase : MapPin}
+                                                label={place.label}
+                                                subLabel={place.address.split(',')[0]}
+                                                color={place.icon === 'home' ? (theme.secondary || '#10b981') : theme.primary}
+                                                onPress={() => router.push({
+                                                    pathname: '/(client)/add-route',
+                                                    params: {
+                                                        destLat: place.latitude,
+                                                        destLng: place.longitude,
+                                                        destAddress: place.address,
+                                                        fromCurrent: 'true'
+                                                    }
+                                                })}
+                                            />
+                                        </View>
+                                    ))
+                                ) : (
+                                    <>
+                                        <View style={{ width: 140 }}>
+                                            <QuickDestinationBtn
+                                                icon={Briefcase}
+                                                label="Work"
+                                                subLabel="Commute"
+                                                onPress={() => handleQuickAction('work')}
+                                            />
+                                        </View>
+                                        <View style={{ width: 140 }}>
+                                            <QuickDestinationBtn
+                                                icon={Home}
+                                                label="Home"
+                                                subLabel="Return"
+                                                color={theme.secondary || '#10b981'}
+                                                onPress={() => handleQuickAction('home')}
+                                            />
+                                        </View>
+                                    </>
+                                )}
+                            </ScrollView>
+                        </Animated.View>
+                    )}
+                </View>
+
+                {/* 3. My Commutes (Recurring Routes) */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>My Commutes</Text>
+                        <TouchableOpacity onPress={() => router.push('/(client)/routes')}>
+                            <Text style={{ color: theme.primary, fontWeight: '600' }}>Manage</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {myRoutes.length > 0 ? (
+                        <View style={styles.routesList}>
+                            {myRoutes.map((route, index) => (
+                                <Animated.View
+                                    key={route.id}
+                                    entering={FadeInRight.delay(index * 100).springify()}
+                                >
+                                    <GlassCard style={styles.routeCard}>
+                                        <View style={[styles.routeIcon, { backgroundColor: theme.background }]}>
+                                            <Clock size={20} color={theme.primary} />
+                                        </View>
+                                        <View style={styles.routeInfo}>
+                                            <View style={styles.routeHeader}>
+                                                <Text style={[styles.routeTime, { color: theme.text }]}>{route.timeStart}</Text>
+                                                <View style={[styles.daysBadge, { backgroundColor: theme.background }]}>
+                                                    <Text style={[styles.daysText, { color: theme.icon }]}>
+                                                        {route.days.length > 5 ? 'Daily' : `${route.days.length} days`}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <Text style={[styles.routeAddress, { color: theme.icon }]} numberOfLines={1}>
+                                                To {route.endPoint.address}
                                             </Text>
                                         </View>
-                                    </View>
-                                    <Text style={[styles.routeAddress, { color: theme.icon }]} numberOfLines={1}>
-                                        To {route.endPoint.address}
-                                    </Text>
+                                        <TouchableOpacity
+                                            style={[styles.findMatchBtn, { backgroundColor: theme.primary + '20' }]}
+                                            onPress={() => router.push({ pathname: '/(client)/find-matches', params: { routeId: route.id } })}
+                                        >
+                                            <Text style={[styles.findMatchText, { color: theme.primary }]}>Find</Text>
+                                        </TouchableOpacity>
+                                    </GlassCard>
+                                </Animated.View>
+                            ))}
+                        </View>
+                    ) : (
+                        <TouchableOpacity onPress={() => router.push('/(client)/add-route')}>
+                            <GlassCard style={styles.emptyState}>
+                                <View style={[styles.emptyIconData, { backgroundColor: theme.primary + '15' }]}>
+                                    <Navigation size={24} color={theme.primary} />
                                 </View>
-                                <TouchableOpacity
-                                    style={[styles.findMatchBtn, { backgroundColor: theme.primary + '20' }]}
-                                    onPress={() => router.push({ pathname: '/(client)/find-matches', params: { routeId: route.id } })}
-                                >
-                                    <Text style={[styles.findMatchText, { color: theme.primary }]}>Find</Text>
-                                </TouchableOpacity>
-                            </Animated.View>
-                        ))}
-                    </View>
-                ) : (
-                    <TouchableOpacity
-                        style={[styles.emptyState, { borderColor: theme.border }]}
-                        onPress={() => router.push('/(client)/add-route')}
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.emptyTitle, { color: theme.text }]}>Set up your commute</Text>
+                                    <Text style={[styles.emptyDesc, { color: theme.icon }]}>Get matches for your daily route.</Text>
+                                </View>
+                                <ArrowRight size={20} color={theme.icon} />
+                            </GlassCard>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* 4. Weekly Activity / Stats */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>This Week</Text>
+                    <GlassCard style={styles.statsContainer}>
+                        <StatItem label="Rides" value="0" icon={Navigation} />
+                        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+                        <StatItem label="Saved" value="$0" icon={Star} />
+                        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+                        <StatItem label="Hours" value="0" icon={Clock} />
+                    </GlassCard>
+                </View>
+
+                {/* 5. Marketing / Pro Tip */}
+                <Animated.View entering={FadeInDown.delay(400)} style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+                    <LinearGradient
+                        colors={[theme.secondary || '#5856D6', '#8E8CFF']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.proTip}
                     >
-                        <View style={[styles.emptyIconData, { backgroundColor: theme.primary + '15' }]}>
-                            <Navigation size={24} color={theme.primary} />
+                        <View style={styles.proContent}>
+                            <Zap size={24} color="#FFF" fill="#FFF" />
+                            <View>
+                                <Text style={styles.proTitle}>Go Premium</Text>
+                                <Text style={styles.proDesc}>Get priority matching & lower fees.</Text>
+                            </View>
                         </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.emptyTitle, { color: theme.text }]}>Set up your commute</Text>
-                            <Text style={[styles.emptyDesc, { color: theme.icon }]}>Get matches for your daily route.</Text>
-                        </View>
-                        <ArrowRight size={20} color={theme.icon} />
-                    </TouchableOpacity>
-                )}
-            </View>
+                        <ChevronRight size={20} color="#FFF" />
+                    </LinearGradient>
+                </Animated.View>
 
-            {/* 4. Weekly Activity / Stats */}
-            <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>This Week</Text>
-                <View style={[styles.statsContainer, { backgroundColor: theme.surface }]}>
-                    <StatItem label="Rides" value="0" icon={Navigation} />
-                    <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                    <StatItem label="Saved" value="$0" icon={Star} />
-                    <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                    <StatItem label="Hours" value="0" icon={Clock} />
-                </View>
-            </View>
-
-            {/* 5. Marketing / Pro Tip */}
-            <Animated.View entering={FadeInDown.delay(400)} style={[styles.proTip, { backgroundColor: theme.secondary || '#5856D6' }]}>
-                <View style={styles.proContent}>
-                    <Zap size={24} color="#FFF" fill="#FFF" />
-                    <View>
-                        <Text style={styles.proTitle}>Go Premium</Text>
-                        <Text style={styles.proDesc}>Get priority matching & lower fees.</Text>
-                    </View>
-                </View>
-                <ChevronRight size={20} color="#FFF" />
-            </Animated.View>
-
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+    },
+    scrollView: {
         flex: 1,
     },
     header: {
@@ -346,11 +368,13 @@ const styles = StyleSheet.create({
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
         borderRadius: 16,
-        borderWidth: 1,
         marginBottom: 16,
         gap: 12,
+        // Remove padding/border/bg as GlassCard handles container styles
+        // But GlassCard adds padding.
+        // We need to ensure inner content is aligned.
+        padding: 0, // Reset
     },
     searchPlaceholder: {
         fontSize: 16,
@@ -361,12 +385,11 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     quickDestBtn: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
         borderRadius: 20,
         gap: 12,
+        padding: 0,
     },
     quickDestIcon: {
         width: 40,
@@ -387,7 +410,6 @@ const styles = StyleSheet.create({
 
     // Active Card
     activeCard: {
-        padding: 20,
         borderRadius: 24,
     },
     activeCardHeader: {
@@ -455,10 +477,9 @@ const styles = StyleSheet.create({
     routeCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
         borderRadius: 20,
-        borderWidth: 1,
         gap: 14,
+        // Remove bg/border
     },
     routeIcon: {
         width: 44,
@@ -507,11 +528,10 @@ const styles = StyleSheet.create({
     emptyState: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 20,
         borderRadius: 20,
-        borderWidth: 1,
-        borderStyle: 'dashed',
         gap: 16,
+        // Remove border dashed for glass look? Or keep it? GlassCard doesn't support dashed easily.
+        // Let's rely on GlassCard styles.
     },
     emptyIconData: {
         width: 48,
@@ -533,13 +553,14 @@ const styles = StyleSheet.create({
     // Stats
     statsContainer: {
         flexDirection: 'row',
-        padding: 24,
         borderRadius: 24,
         justifyContent: 'space-between',
+        // Padding is handled by GlassCard
     },
     statItem: {
         alignItems: 'center',
         gap: 6,
+        flex: 1, // Distribute evenly
     },
     statValue: {
         fontSize: 20,
@@ -551,18 +572,18 @@ const styles = StyleSheet.create({
     },
     statDivider: {
         width: 1,
-        height: '100%',
+        height: '80%', // reduce height slightly
+        alignSelf: 'center',
     },
 
     // Pro Tip
     proTip: {
-        marginHorizontal: 24,
         padding: 20,
         borderRadius: 24,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 8,
+        // marginTop: 8, // Removed margin from style, handled in view
     },
     proContent: {
         flexDirection: 'row',

@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight, Car, User } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
@@ -14,48 +15,58 @@ export default function RoleSelection() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <Text style={[styles.title, { color: theme.text }]}>Welcome to Detour</Text>
-            <Text style={[styles.subtitle, { color: theme.icon }]}>Choose your role to get started</Text>
+        <LinearGradient
+            colors={[theme.background, theme.surface]}
+            style={styles.container}
+        >
+            <View style={styles.content}>
+                <Text style={[styles.title, { color: theme.text }]}>Welcome to Detour</Text>
+                <Text style={[styles.subtitle, { color: theme.icon }]}>Choose your role to get started</Text>
 
-            <View style={styles.rolesContainer}>
-                <TouchableOpacity
-                    style={[styles.roleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                    onPress={() => handleSelectRole('driver')}
-                >
-                    <View style={[styles.iconContainer, { backgroundColor: theme.primary }]}>
-                        <Car size={32} color="#fff" />
-                    </View>
-                    <View style={styles.roleInfo}>
-                        <Text style={[styles.roleTitle, { color: theme.text }]}>Driver</Text>
-                        <Text style={[styles.roleDescription, { color: theme.icon }]}>Offer rides and earn profit</Text>
-                    </View>
-                    <ArrowRight size={24} color={theme.border} />
-                </TouchableOpacity>
+                <View style={styles.rolesContainer}>
+                    <TouchableOpacity
+                        style={[styles.roleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => handleSelectRole('driver')}
+                        activeOpacity={0.9}
+                    >
+                        <View style={[styles.iconContainer, { backgroundColor: theme.primary }]}>
+                            <Car size={32} color="#fff" />
+                        </View>
+                        <View style={styles.roleInfo}>
+                            <Text style={[styles.roleTitle, { color: theme.text }]}>Driver</Text>
+                            <Text style={[styles.roleDescription, { color: theme.icon }]}>Offer rides and earn profit</Text>
+                        </View>
+                        <ArrowRight size={24} color={theme.border} />
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.roleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                    onPress={() => handleSelectRole('client')}
-                >
-                    <View style={[styles.iconContainer, { backgroundColor: theme.secondary }]}>
-                        <User size={32} color="#fff" />
-                    </View>
-                    <View style={styles.roleInfo}>
-                        <Text style={[styles.roleTitle, { color: theme.text }]}>Client</Text>
-                        <Text style={[styles.roleDescription, { color: theme.icon }]}>Find rides for your trips</Text>
-                    </View>
-                    <ArrowRight size={24} color={theme.border} />
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.roleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => handleSelectRole('client')}
+                        activeOpacity={0.9}
+                    >
+                        <View style={[styles.iconContainer, { backgroundColor: theme.secondary }]}>
+                            <User size={32} color="#fff" />
+                        </View>
+                        <View style={styles.roleInfo}>
+                            <Text style={[styles.roleTitle, { color: theme.text }]}>Passenger</Text>
+                            <Text style={[styles.roleDescription, { color: theme.icon }]}>Find rides for your trips</Text>
+                        </View>
+                        <ArrowRight size={24} color={theme.border} />
+                    </TouchableOpacity>
+                </View>
             </View>
-        </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 24,
+    },
+    content: {
+        flex: 1,
         justifyContent: 'center',
+        padding: 24,
     },
     title: {
         fontSize: 32,
