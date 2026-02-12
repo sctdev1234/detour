@@ -1,6 +1,7 @@
 import { AlertCircle, Car, CheckCircle, Map, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import api from '../lib/axios';
 
 const StatCard = ({ title, value, icon: Icon, color, trend, to }) => {
@@ -29,6 +30,27 @@ const StatCard = ({ title, value, icon: Icon, color, trend, to }) => {
         Content
     );
 };
+
+// Mock Data for Charts
+const userGrowthData = [
+    { name: 'Mon', users: 400 },
+    { name: 'Tue', users: 300 },
+    { name: 'Wed', users: 550 },
+    { name: 'Thu', users: 450 },
+    { name: 'Fri', users: 700 },
+    { name: 'Sat', users: 850 },
+    { name: 'Sun', users: 1200 },
+];
+
+const activityData = [
+    { name: 'Mon', trips: 24, revenue: 1400 },
+    { name: 'Tue', trips: 18, revenue: 1100 },
+    { name: 'Wed', trips: 35, revenue: 2300 },
+    { name: 'Thu', trips: 28, revenue: 1700 },
+    { name: 'Fri', trips: 45, revenue: 2900 },
+    { name: 'Sat', trips: 55, revenue: 3800 },
+    { name: 'Sun', trips: 60, revenue: 4200 },
+];
 
 export default function DashboardHome() {
     const [stats, setStats] = useState({
@@ -110,13 +132,53 @@ export default function DashboardHome() {
                 />
             </div>
 
-            {/* Placeholder for Recent Activity Chart or Table */}
+            {/* Charts Section */}
             <div className="grid lg:grid-cols-2 gap-6">
-                <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-2xl h-64 flex items-center justify-center text-slate-500">
-                    User Growth Chart Placeholder
+                {/* User Growth Chart */}
+                <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-2xl shadow-lg">
+                    <h3 className="text-lg font-semibold text-slate-200 mb-4">User Growth</h3>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={userGrowthData}>
+                                <defs>
+                                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                <XAxis dataKey="name" stroke="#94a3b8" />
+                                <YAxis stroke="#94a3b8" />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
+                                    itemStyle={{ color: '#f8fafc' }}
+                                />
+                                <Area type="monotone" dataKey="users" stroke="#3b82f6" fillOpacity={1} fill="url(#colorUsers)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
-                <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-2xl h-64 flex items-center justify-center text-slate-500">
-                    Recent Activity Placeholder
+
+                {/* Activity Chart */}
+                <div className="p-6 bg-slate-800/50 border border-slate-700/50 rounded-2xl shadow-lg">
+                    <h3 className="text-lg font-semibold text-slate-200 mb-4">Revenue & Trips</h3>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={activityData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                <XAxis dataKey="name" stroke="#94a3b8" />
+                                <YAxis yAxisId="left" stroke="#94a3b8" />
+                                <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
+                                    itemStyle={{ color: '#f8fafc' }}
+                                />
+                                <Legend />
+                                <Bar yAxisId="left" dataKey="revenue" name="Revenue ($)" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                <Bar yAxisId="right" dataKey="trips" name="Trips" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
         </div>

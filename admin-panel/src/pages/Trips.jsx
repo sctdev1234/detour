@@ -1,20 +1,29 @@
-import { CheckCircle, Clock, Map, XCircle } from 'lucide-react';
+import { Map } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import TripsMap from '../components/TripsMap';
+import TripsTable from '../components/TripsTable';
 import api from '../lib/axios';
 
 export default function Trips() {
     const [trips, setTrips] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedTrip, setSelectedTrip] = useState(null);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [focusCoords, setFocusCoords] = useState(null);
 
     useEffect(() => {
         fetchTrips();
-    }, []);
+    }, [page]);
 
     const fetchTrips = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/admin/trips');
-            setTrips(res.data);
+            const res = await api.get(`/admin/trips?page=${page}&limit=10`);
+            setTrips(res.data.trips);
+            setTotalPages(res.data.totalPages);
+            // Select first trip by default if available? No, let user choose.
+
         } catch (err) {
             console.error("Failed to fetch trips", err);
         } finally {
@@ -22,60 +31,75 @@ export default function Trips() {
         }
     };
 
-    return (
-        <div>
-            <h1 className="text-3xl font-bold mb-6">Trips Management</h1>
+    const handleTripSelect = (trip) => {
+        setSelectedTrip(trip);
+        // Scroll to map
+        // window.scrollTo({ top: 0, behavior: 'smooth' }); // Optional: auto-scroll on select
+    };
 
-            {loading ? (
-                <div className="text-slate-400">Loading...</div>
-            ) : trips.length === 0 ? (
-                <div className="p-12 text-center bg-slate-800/30 rounded-2xl border border-slate-700 border-dashed">
-                    <Map className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-300">No trips recorded</h3>
+    const handleFocusPoint = (coords) => {
+        setFocusCoords(coords);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    return (
+        <div className="relative">
+            {/* Ambient Background */}
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="relative z-10">
+                <h1 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-400">
+                    Trips Management
+                </h1>
+
+                <div className="grid gap-8">
+                    {/* Map Section */}
+                    <div className="w-full">
+                        <TripsMap selectedTrip={selectedTrip} focusCoords={focusCoords} />
+                    </div>
+
+                    {/* Table Section */}
+                    {loading ? (
+                        <div className="text-slate-400">Loading trips...</div>
+                    ) : trips.length === 0 ? (
+                        <div className="p-12 text-center bg-slate-800/30 rounded-2xl border border-slate-700 border-dashed">
+                            <Map className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-slate-300">No trips recorded</h3>
+                        </div>
+                    ) : (
+                        <TripsTable
+                            trips={trips}
+                            onSelectTrip={handleTripSelect}
+                            selectedTripId={selectedTrip?._id}
+                            onFocusPoint={handleFocusPoint}
+                        />
+                    )}
+
+                    {/* Pagination Controls */}
+                    {!loading && trips.length > 0 && (
+                        <div className="flex justify-center items-center gap-4 mt-4">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-50 hover:bg-slate-700 transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <span className="text-slate-400">
+                                Page <span className="text-white font-bold">{page}</span> of <span className="text-white font-bold">{totalPages}</span>
+                            </span>
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-50 hover:bg-slate-700 transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-                            <tr>
-                                <th className="p-4 font-medium">Trip ID</th>
-                                <th className="p-4 font-medium">Driver</th>
-                                <th className="p-4 font-medium">Price</th>
-                                <th className="p-4 font-medium">Date</th>
-                                <th className="p-4 font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700/50 text-sm">
-                            {trips.map(trip => (
-                                <tr key={trip._id} className="hover:bg-slate-800/30 transition-colors">
-                                    <td className="p-4 font-mono text-slate-400 text-xs">
-                                        {trip._id.substring(0, 8)}...
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="font-medium text-slate-200">{trip.driverId?.fullName || 'Unknown'}</div>
-                                        <div className="text-slate-500 text-xs">{trip.driverId?.email}</div>
-                                    </td>
-                                    <td className="p-4 font-bold text-slate-100">${trip.price}</td>
-                                    <td className="p-4 text-slate-400">
-                                        {new Date(trip.createdAt).toLocaleDateString()} {new Date(trip.createdAt).toLocaleTimeString()}
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${trip.status === 'active' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                trip.status === 'completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                    'bg-red-500/10 text-red-500 border-red-500/20'
-                                            }`}>
-                                            {trip.status === 'active' && <Clock className="w-3 h-3" />}
-                                            {trip.status === 'completed' && <CheckCircle className="w-3 h-3" />}
-                                            {trip.status === 'cancelled' && <XCircle className="w-3 h-3" />}
-                                            <span className="capitalize">{trip.status}</span>
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            </div>
         </div>
     );
 }

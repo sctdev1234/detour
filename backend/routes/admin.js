@@ -495,11 +495,27 @@ router.get('/stats', auth, adminCheck, async (req, res) => {
 // @access  Admin
 router.get('/trips', auth, adminCheck, async (req, res) => {
     try {
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
         const Trip = require('../models/Trip');
+
+        const totalTrips = await Trip.countDocuments();
         const trips = await Trip.find()
             .populate('driverId', 'fullName email')
-            .sort({ createdAt: -1 });
-        res.json(trips);
+            .populate('routeId')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum);
+
+        res.json({
+            trips,
+            totalPages: Math.ceil(totalTrips / limitNum),
+            currentPage: pageNum,
+            totalTrips
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ msg: 'Server Error' });
