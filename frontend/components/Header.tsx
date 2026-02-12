@@ -62,6 +62,7 @@ export default function Header() {
         // Auth
         if (pathname.includes('/(auth)/login')) return true;
         if (pathname.includes('/(auth)/role-selection')) return true;
+        if (pathname.includes('/tasks')) return true; // Tasks is a root-like screen
         if (pathname.includes('/(auth)/signup')) return false; // Signup usually has back to login
 
         return false;
