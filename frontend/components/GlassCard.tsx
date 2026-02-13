@@ -1,14 +1,15 @@
 import { Colors } from '@/constants/theme';
 import { BlurView } from 'expo-blur';
 import React from 'react';
-import { Platform, StyleSheet, useColorScheme, View, ViewProps } from 'react-native';
+import { Platform, StyleProp, StyleSheet, useColorScheme, View, ViewProps, ViewStyle } from 'react-native';
 
 interface GlassCardProps extends ViewProps {
     intensity?: number;
     variant?: 'default' | 'highlight';
+    contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
-export function GlassCard({ children, style, intensity = 20, variant = 'default', ...props }: GlassCardProps) {
+export function GlassCard({ children, style, intensity = 20, variant = 'default', contentContainerStyle, ...props }: GlassCardProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
@@ -28,7 +29,8 @@ export function GlassCard({ children, style, intensity = 20, variant = 'default'
                         ? (variant === 'highlight' ? 'rgba(255,255,255,0.08)' : 'rgba(30,30,30,0.4)')
                         : (variant === 'highlight' ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)'),
                     borderColor: theme.border,
-                }
+                },
+                contentContainerStyle
             ]}>
                 {children}
             </View>

@@ -1,62 +1,7 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
-export type LatLng = {
-    latitude: number;
-    longitude: number;
-    address?: string;
-};
-
-export type RouteData = {
-    role: 'driver' | 'client';
-    carId?: string;
-    startPoint: LatLng;
-    endPoint: LatLng;
-    waypoints: LatLng[];
-    timeStart: string;
-    timeArrival: string;
-    days: string[];
-    price: number;
-    priceType: 'fix' | 'km';
-    status: string;
-    routeGeometry?: string;
-    distanceKm?: number;
-    estimatedDurationMin?: number;
-};
-
-export type Route = RouteData & {
-    id: string;
-    userId: string;
-};
-
-export type Trip = {
-    id: string;
-    driverId: {
-        _id: string;
-        fullName: string;
-        photoURL?: string;
-    };
-    routeId: Route;
-    clients: Array<{
-        userId: {
-            _id: string;
-            fullName: string;
-            photoURL?: string;
-        };
-        routeId: Route;
-    }>;
-    status: 'pending' | 'active' | 'completed' | 'cancelled';
-    createdAt: string;
-};
-
-export type JoinRequest = {
-    id: string;
-    clientId: any;
-    clientRouteId: any;
-    tripId: any;
-    status: 'pending' | 'accepted' | 'rejected';
-    createdAt: string;
-};
+import { JoinRequest, LatLng, Route, RouteData, Trip } from '../types';
 
 interface TripState {
     routes: Route[];

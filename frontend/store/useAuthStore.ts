@@ -3,35 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import api from '../services/api';
 
-export type Role = 'driver' | 'client' | null;
-
-interface User {
-    id: string;
-    email: string;
-    fullName: string;
-    role: Role;
-    verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
-    photoURL?: string;
-    documents?: any[]; // Array of document submissions
-    savedPlaces?: {
-        _id: string;
-        label: string;
-        address: string;
-        latitude: number;
-        longitude: number;
-        icon: string;
-    }[];
-    onboardingStatus?: {
-        completed: boolean;
-        steps: {
-            id: string;
-            label: string;
-            status: 'pending' | 'in-progress' | 'completed';
-            required: boolean;
-        }[];
-    };
-}
-
+import { Role, User } from '../types';
 
 interface AuthState {
     user: User | null;
@@ -193,7 +165,24 @@ export const useAuthStore = create<AuthState>()(
             submitVerification: async (docs) => {
                 set({ isLoading: true });
                 try {
-                    const res = await api.post('/auth/verify', docs);
+                    // Upload images first
+                    const uploadedDocs: any = { ...docs };
+                    const uploadPromises = Object.keys(docs).map(async (key) => {
+                        const uri = (docs as any)[key];
+                        if (uri && !uri.startsWith('http') && !uri.startsWith('data:')) { // Only upload if local URI
+                            try {
+                                const url = await require('../services/uploadService').uploadImage(uri);
+                                uploadedDocs[key] = url;
+                            } catch (err) {
+                                console.error(`Failed to upload ${key}`, err);
+                                throw new Error(`Failed to upload ${key}`);
+                            }
+                        }
+                    });
+
+                    await Promise.all(uploadPromises);
+
+                    const res = await api.post('/auth/verify', uploadedDocs);
                     const updatedUser = res.data;
 
                     set((state) => ({

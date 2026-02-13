@@ -1,10 +1,11 @@
 import { useUIStore } from '@/store/useUIStore';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { AlertCircle, Camera, CheckCircle, Clock, Upload, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -97,13 +98,12 @@ export default function VerificationScreen() {
             mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
-            quality: 0.8, // Reduced quality slightly for base64 size
-            base64: true,
+            quality: 0.8,
+            base64: false, // Changed to false
         });
 
-        if (!result.canceled && result.assets[0].base64) {
-            const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
-            updateDocuments({ [type]: base64Img });
+        if (!result.canceled && result.assets[0].uri) {
+            updateDocuments({ [type]: result.assets[0].uri });
         }
     };
 
@@ -117,13 +117,9 @@ export default function VerificationScreen() {
 
     const handleCameraCapture = async () => {
         if (cameraRef) {
-            const photo = await cameraRef.takePictureAsync({ base64: true, quality: 0.8 });
-            if (photo && photo.base64) {
-                let base64Img = photo.base64;
-                if (!base64Img.startsWith('data:image')) {
-                    base64Img = `data:image/jpeg;base64,${photo.base64}`;
-                }
-                updateDocuments({ facePhoto: base64Img });
+            const photo = await cameraRef.takePictureAsync({ base64: false, quality: 0.8 }); // Changed to false
+            if (photo && photo.uri) {
+                updateDocuments({ facePhoto: photo.uri });
                 setCameraVisible(false);
             }
         }
@@ -184,7 +180,7 @@ export default function VerificationScreen() {
 
                 {hasDoc ? (
                     <View style={styles.previewContainer}>
-                        <Image source={{ uri: documents[type] }} style={styles.docPreview} />
+                        <Image source={{ uri: documents.facePhoto }} style={styles.docPreview} contentFit="cover" transition={500} />
                         <TouchableOpacity
                             style={styles.removeButton}
                             onPress={() => updateDocuments({ [type]: undefined })}

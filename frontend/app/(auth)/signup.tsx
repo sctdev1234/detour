@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { Car, CheckCircle, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { GlassCard } from '../../components/GlassCard';
 import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
@@ -55,12 +57,18 @@ export default function SignupScreen() {
                 style={styles.container}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    <View style={styles.header}>
+                    <Animated.View
+                        entering={FadeInDown.delay(200).duration(1000).springify()}
+                        style={styles.header}
+                    >
                         <Text style={[styles.title, { color: theme.text }]}>Start Your Journey</Text>
                         <Text style={[styles.subtitle, { color: theme.icon }]}>Create your account today</Text>
-                    </View>
+                    </Animated.View>
 
-                    <View style={styles.roleContainer}>
+                    <Animated.View
+                        entering={FadeInUp.delay(300).duration(1000).springify()}
+                        style={styles.roleContainer}
+                    >
                         <TouchableOpacity
                             style={[
                                 styles.roleButton,
@@ -90,58 +98,65 @@ export default function SignupScreen() {
                                 { color: role === 'driver' ? '#fff' : theme.text }
                             ]}>Driver</Text>
                         </TouchableOpacity>
-                    </View>
+                    </Animated.View>
 
-                    <View style={styles.form}>
-                        <PremiumInput
-                            label="Full Name"
-                            value={name}
-                            onChangeText={setName}
-                            placeholder="John Doe"
-                            icon={User}
-                        />
+                    <Animated.View entering={FadeInUp.delay(500).duration(1000).springify()}>
+                        <GlassCard intensity={80} variant="default" style={styles.glassForm}>
+                            <View style={styles.form}>
+                                <PremiumInput
+                                    label="Full Name"
+                                    value={name}
+                                    onChangeText={setName}
+                                    placeholder="John Doe"
+                                    icon={User}
+                                />
 
-                        <PremiumInput
-                            label="Email"
-                            value={email}
-                            onChangeText={setEmail}
-                            placeholder="name@email.com"
-                            icon={Mail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                        />
+                                <PremiumInput
+                                    label="Email"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    placeholder="name@email.com"
+                                    icon={Mail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                />
 
-                        <PremiumInput
-                            label="Password"
-                            value={password}
-                            onChangeText={setPassword}
-                            placeholder="Min 8 characters"
-                            icon={Lock}
-                            secureTextEntry
-                        />
+                                <PremiumInput
+                                    label="Password"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    placeholder="Min 8 characters"
+                                    icon={Lock}
+                                    secureTextEntry
+                                />
 
-                        <PremiumInput
-                            label="Confirm Password"
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            placeholder="Re-enter password"
-                            icon={CheckCircle}
-                            secureTextEntry
-                        />
+                                <PremiumInput
+                                    label="Confirm Password"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    placeholder="Re-enter password"
+                                    icon={CheckCircle}
+                                    secureTextEntry
+                                />
 
-                        <PremiumButton
-                            title="Create Account"
-                            onPress={handleSignup}
-                            loading={loading}
-                        />
-                    </View>
+                                <PremiumButton
+                                    title="Create Account"
+                                    onPress={handleSignup}
+                                    loading={loading}
+                                />
+                            </View>
+                        </GlassCard>
+                    </Animated.View>
 
-                    <View style={styles.footer}>
+                    <Animated.View
+                        entering={FadeInUp.delay(700).duration(1000).springify()}
+                        style={styles.footer}
+                    >
                         <Text style={{ color: theme.icon }}>Already have an account? </Text>
                         <TouchableOpacity onPress={() => router.back()}>
                             <Text style={{ color: theme.primary, fontWeight: '700' }}>Sign In</Text>
                         </TouchableOpacity>
-                    </View>
+                    </Animated.View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </LinearGradient>
@@ -159,8 +174,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     header: {
-        marginBottom: 40,
-        marginTop: 60,
+        marginBottom: 32,
+        marginTop: 40,
     },
     title: {
         fontSize: 34,
@@ -177,7 +192,7 @@ const styles = StyleSheet.create({
     roleContainer: {
         flexDirection: 'row',
         gap: 16,
-        marginBottom: 32,
+        marginBottom: 24,
     },
     roleButton: {
         flex: 1,
@@ -195,28 +210,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
-    form: {
-        gap: 8,
-    },
-    signupButton: {
-        height: 60,
+    glassForm: {
         borderRadius: 30,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 24,
-        elevation: 6,
-        boxShadow: '0px 8px 20px rgba(0,0,0,0.2)',
+        marginBottom: 24,
     },
-    signupButtonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '800',
+    form: {
+        gap: 16,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 32,
+        marginTop: 8,
         marginBottom: 20,
         gap: 4,
     },

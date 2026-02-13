@@ -1,12 +1,14 @@
 import L from 'leaflet';
 import { Car, MapPin, Navigation, Star, Trash2, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
+// @ts-ignore
 import { renderToStaticMarkup } from 'react-dom/server';
+
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLocationStore } from '../store/useLocationStore';
-import { LatLng } from '../store/useTripStore';
+import { LatLng } from '../types';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
 import { MapProps } from './Map';
 
@@ -58,7 +60,7 @@ const MapCenterUpdater = ({ center }: { center?: LatLng }) => {
     return null;
 };
 
-export default function MapLeaflet({
+const MapLeaflet = React.memo(({
     mode = 'view',
     theme,
     height = 300,
@@ -73,7 +75,7 @@ export default function MapLeaflet({
     driverLocation,
     maxPoints,
     savedPlaces = [] // Default to empty array if not provided
-}: MapProps) {
+}: MapProps) => {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
 
@@ -88,7 +90,7 @@ export default function MapLeaflet({
 
     // Initialize Picker Points
     useEffect(() => {
-        if (mode === 'picker' && initialPoints.length > 0) {
+        if (mode === 'picker' && initialPoints && initialPoints.length > 0) {
             setPoints(initialPoints);
         }
     }, [initialPoints, mode]);
@@ -259,7 +261,7 @@ export default function MapLeaflet({
     return (
         <View style={styles.container}>
             <LeafletStyles />
-            <div style={{ height: (typeof height === 'number' ? `${height}px` : height), width: '100%', borderRadius: 20, overflow: 'hidden', zIndex: 1, position: 'relative' }}>
+            <div style={{ height: (typeof height === 'number' ? `${height}px` : (height as string || '300px')), width: '100%', borderRadius: 20, overflow: 'hidden', zIndex: 1, position: 'relative' }}>
                 <MapContainer
                     center={defaultCenter}
                     zoom={13}
@@ -487,7 +489,9 @@ export default function MapLeaflet({
             )}
         </View>
     );
-}
+});
+
+export default MapLeaflet;
 
 const styles = StyleSheet.create({
     container: {

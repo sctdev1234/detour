@@ -52,4 +52,7 @@ const UserSchema = new mongoose.Schema({
     }
 });
 
+// Add 2d index for location-based queries (supports legacy { latitude, longitude })
+UserSchema.index({ location: '2d' });
+
 module.exports = mongoose.model('User', UserSchema);

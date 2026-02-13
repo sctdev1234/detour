@@ -3,7 +3,7 @@ import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Tras
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import MapView, { Callout, Marker, Polyline } from 'react-native-maps';
-import { LatLng, Trip } from '../store/useTripStore';
+import { LatLng, Trip } from '../types';
 import { decodePolyline, getRegionForCoordinates } from '../utils/location';
 
 
@@ -40,7 +40,7 @@ export interface MapProps {
     savedPlaces?: any[]; // Keep flexible or use SavedPlace type if imported
 }
 
-export default function Map({
+const Map = React.memo(({
     mode = 'view',
     theme,
     height = 300,
@@ -56,7 +56,7 @@ export default function Map({
     maxPoints,
     savedPlaces = [],
     driverLocation
-}: MapProps) {
+}: MapProps) => {
     const mapRef = React.useRef<MapView>(null);
     const [points, setPoints] = React.useState<LatLng[]>(initialPoints);
     const [location, setLocation] = React.useState<Location.LocationObject | null>(null);
@@ -75,7 +75,7 @@ export default function Map({
     }, []);
 
     React.useEffect(() => {
-        if (initialPoints) {
+        if (initialPoints && initialPoints.length > 0) {
             setPoints(initialPoints);
         }
     }, [initialPoints]);
@@ -471,7 +471,9 @@ export default function Map({
             )}
         </View>
     );
-}
+});
+
+export default Map;
 
 const styles = StyleSheet.create({
     container: {

@@ -2,8 +2,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight, Car, User } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { GlassCard } from '../../components/GlassCard';
 import { Colors } from '../../constants/theme';
-import { Role, useAuthStore } from '../../store/useAuthStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { Role } from '../../types';
 
 export default function RoleSelection() {
     const colorScheme = useColorScheme() ?? 'light';
@@ -20,39 +23,51 @@ export default function RoleSelection() {
             style={styles.container}
         >
             <View style={styles.content}>
-                <Text style={[styles.title, { color: theme.text }]}>Welcome to Detour</Text>
-                <Text style={[styles.subtitle, { color: theme.icon }]}>Choose your role to get started</Text>
+                <Animated.View entering={FadeInDown.delay(200).duration(1000).springify()}>
+                    <Text style={[styles.title, { color: theme.text }]}>Welcome to Detour</Text>
+                    <Text style={[styles.subtitle, { color: theme.icon }]}>Choose your role to get started</Text>
+                </Animated.View>
 
                 <View style={styles.rolesContainer}>
-                    <TouchableOpacity
-                        style={[styles.roleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                        onPress={() => handleSelectRole('driver')}
-                        activeOpacity={0.9}
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: theme.primary }]}>
-                            <Car size={32} color="#fff" />
-                        </View>
-                        <View style={styles.roleInfo}>
-                            <Text style={[styles.roleTitle, { color: theme.text }]}>Driver</Text>
-                            <Text style={[styles.roleDescription, { color: theme.icon }]}>Offer rides and earn profit</Text>
-                        </View>
-                        <ArrowRight size={24} color={theme.border} />
-                    </TouchableOpacity>
+                    <Animated.View entering={FadeInUp.delay(400).duration(1000).springify()}>
+                        <TouchableOpacity
+                            onPress={() => handleSelectRole('driver')}
+                            activeOpacity={0.9}
+                        >
+                            <GlassCard intensity={60} style={styles.roleCardGlass}>
+                                <View style={styles.roleContent}>
+                                    <View style={[styles.iconContainer, { backgroundColor: theme.primary }]}>
+                                        <Car size={32} color="#fff" />
+                                    </View>
+                                    <View style={styles.roleInfo}>
+                                        <Text style={[styles.roleTitle, { color: theme.text }]}>Driver</Text>
+                                        <Text style={[styles.roleDescription, { color: theme.icon }]}>Offer rides and earn profit</Text>
+                                    </View>
+                                    <ArrowRight size={24} color={theme.border} />
+                                </View>
+                            </GlassCard>
+                        </TouchableOpacity>
+                    </Animated.View>
 
-                    <TouchableOpacity
-                        style={[styles.roleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                        onPress={() => handleSelectRole('client')}
-                        activeOpacity={0.9}
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: theme.secondary }]}>
-                            <User size={32} color="#fff" />
-                        </View>
-                        <View style={styles.roleInfo}>
-                            <Text style={[styles.roleTitle, { color: theme.text }]}>Passenger</Text>
-                            <Text style={[styles.roleDescription, { color: theme.icon }]}>Find rides for your trips</Text>
-                        </View>
-                        <ArrowRight size={24} color={theme.border} />
-                    </TouchableOpacity>
+                    <Animated.View entering={FadeInUp.delay(600).duration(1000).springify()}>
+                        <TouchableOpacity
+                            onPress={() => handleSelectRole('client')}
+                            activeOpacity={0.9}
+                        >
+                            <GlassCard intensity={60} style={styles.roleCardGlass}>
+                                <View style={styles.roleContent}>
+                                    <View style={[styles.iconContainer, { backgroundColor: theme.secondary }]}>
+                                        <User size={32} color="#fff" />
+                                    </View>
+                                    <View style={styles.roleInfo}>
+                                        <Text style={[styles.roleTitle, { color: theme.text }]}>Passenger</Text>
+                                        <Text style={[styles.roleDescription, { color: theme.icon }]}>Find rides for your trips</Text>
+                                    </View>
+                                    <ArrowRight size={24} color={theme.border} />
+                                </View>
+                            </GlassCard>
+                        </TouchableOpacity>
+                    </Animated.View>
                 </View>
             </View>
         </LinearGradient>
@@ -84,24 +99,23 @@ const styles = StyleSheet.create({
     rolesContainer: {
         gap: 20,
     },
-    roleCard: {
+    roleCardGlass: {
+        borderRadius: 28,
+        overflow: 'hidden',
+    },
+    roleContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 24,
-        borderRadius: 28,
-        borderWidth: 1,
-        elevation: 4,
-        boxShadow: '0px 4px 16px rgba(0,0,0,0.06)',
     },
     iconContainer: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 20,
-        elevation: 2,
-        boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.2)',
     },
     roleInfo: {
         flex: 1,

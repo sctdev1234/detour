@@ -21,7 +21,10 @@ api.interceptors.request.use(
         if (storageData) {
             try {
                 const parsed = JSON.parse(storageData);
-                token = parsed.state?.token;
+                // Check if the structure matches expected zustand persist format: { state: { token: string, ... }, version: number }
+                if (parsed && typeof parsed === 'object' && parsed.state && typeof parsed.state === 'object') {
+                    token = parsed.state.token;
+                }
             } catch (e) {
                 console.error('[API] Failed to parse auth-storage', e);
             }

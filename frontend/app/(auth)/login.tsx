@@ -1,9 +1,12 @@
 import { useUIStore } from '@/store/useUIStore';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Lock, LogIn, Mail, ShieldCheck, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { GlassCard } from '../../components/GlassCard';
 import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
@@ -51,86 +54,96 @@ export default function LoginScreen() {
                     contentContainerStyle={styles.contentContainer}
                     showsVerticalScrollIndicator={false}
                 >
-                    <View style={styles.header}>
+                    <Animated.View
+                        entering={FadeInDown.delay(200).duration(1000).springify()}
+                        style={styles.header}
+                    >
                         <View style={[styles.logoContainer, { backgroundColor: theme.surface }]}>
                             <Image
                                 source={require('../../assets/images/logo.png')}
                                 style={styles.logo}
-                                resizeMode="contain"
+                                contentFit="contain"
+                                transition={500}
                             />
                         </View>
                         <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
                         <Text style={[styles.subtitle, { color: theme.icon }]}>Sign in to continue to Detour</Text>
-                    </View>
+                    </Animated.View>
 
-                    <View style={styles.form}>
-                        <PremiumInput
-                            label="Email"
-                            value={email}
-                            onChangeText={setEmail}
-                            placeholder="name@email.com"
-                            icon={Mail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                        />
+                    <Animated.View entering={FadeInUp.delay(400).duration(1000).springify()}>
+                        <GlassCard intensity={80} variant="default" style={styles.glassForm}>
+                            <View style={styles.form}>
+                                <PremiumInput
+                                    label="Email"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    placeholder="name@email.com"
+                                    icon={Mail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                />
 
-                        <PremiumInput
-                            label="Password"
-                            value={password}
-                            onChangeText={setPassword}
-                            placeholder="••••••••"
-                            icon={Lock}
-                            secureTextEntry
-                        />
+                                <PremiumInput
+                                    label="Password"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    placeholder="••••••••"
+                                    icon={Lock}
+                                    secureTextEntry
+                                />
 
-                        <TouchableOpacity
-                            style={styles.forgotPassword}
-                            onPress={() => router.push('/(auth)/forgot-password')}
-                        >
-                            <Text style={{ color: theme.primary, fontWeight: '600' }}>Forgot Password?</Text>
-                        </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.forgotPassword}
+                                    onPress={() => router.push('/(auth)/forgot-password')}
+                                >
+                                    <Text style={{ color: theme.primary, fontWeight: '600' }}>Forgot Password?</Text>
+                                </TouchableOpacity>
 
-                        <PremiumButton
-                            title="Sign In"
-                            onPress={handleLogin}
-                            loading={loading}
-                            icon={LogIn}
-                        />
-                    </View>
+                                <PremiumButton
+                                    title="Sign In"
+                                    onPress={handleLogin}
+                                    loading={loading}
+                                    icon={LogIn}
+                                />
+                            </View>
+                        </GlassCard>
+                    </Animated.View>
 
-                    <View style={[styles.quickLoginContainer, { borderTopColor: theme.border }]}>
-                        <Text style={[styles.quickLoginTitle, { color: theme.icon }]}>Quick Login (Dev)</Text>
-                        <View style={styles.quickLoginRow}>
-                            <TouchableOpacity
-                                style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                                onPress={() => {
-                                    setEmail('client@gmail.com');
-                                    setPassword('12345678');
-                                }}
-                            >
-                                <User size={16} color={theme.primary} />
-                                <Text style={[styles.quickLoginText, { color: theme.primary }]}>Client</Text>
-                            </TouchableOpacity>
+                    <Animated.View entering={FadeInUp.delay(600).duration(1000).springify()}>
+                        <View style={[styles.quickLoginContainer, { borderTopColor: theme.border }]}>
+                            <Text style={[styles.quickLoginTitle, { color: theme.icon }]}>Quick Login (Dev)</Text>
+                            <View style={styles.quickLoginRow}>
+                                <TouchableOpacity
+                                    style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                                    onPress={() => {
+                                        setEmail('client@gmail.com');
+                                        setPassword('12345678');
+                                    }}
+                                >
+                                    <User size={16} color={theme.primary} />
+                                    <Text style={[styles.quickLoginText, { color: theme.primary }]}>Client</Text>
+                                </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                                onPress={() => {
-                                    setEmail('driver@gmail.com');
-                                    setPassword('12345678');
-                                }}
-                            >
-                                <ShieldCheck size={16} color={theme.secondary} />
-                                <Text style={[styles.quickLoginText, { color: theme.secondary }]}>Driver</Text>
+                                <TouchableOpacity
+                                    style={[styles.quickLoginChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                                    onPress={() => {
+                                        setEmail('driver@gmail.com');
+                                        setPassword('12345678');
+                                    }}
+                                >
+                                    <ShieldCheck size={16} color={theme.secondary} />
+                                    <Text style={[styles.quickLoginText, { color: theme.secondary }]}>Driver</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <View style={styles.footer}>
+                            <Text style={{ color: theme.icon }}>Don't have an account? </Text>
+                            <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+                                <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
-
-                    <View style={styles.footer}>
-                        <Text style={{ color: theme.icon }}>Don't have an account? </Text>
-                        <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                            <Text style={{ color: theme.primary, fontWeight: '700' }}>Create Account</Text>
-                        </TouchableOpacity>
-                    </View>
+                    </Animated.View>
 
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -151,7 +164,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     header: {
-        marginBottom: 40,
+        marginBottom: 32,
         alignItems: 'center',
     },
     logoContainer: {
@@ -179,38 +192,28 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         opacity: 0.7,
     },
+    glassForm: {
+        borderRadius: 30,
+        marginBottom: 24,
+    },
     form: {
-        gap: 8,
+        gap: 16,
     },
     forgotPassword: {
         alignSelf: 'flex-end',
         paddingVertical: 4,
-        marginBottom: 24,
-    },
-    loginButton: {
-        height: 60,
-        borderRadius: 30,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 12,
-        elevation: 6,
-        boxShadow: '0px 8px 20px rgba(0,0,0,0.2)',
-    },
-    loginButtonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: '800',
+        marginTop: -8,
+        marginBottom: 8,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 32,
+        marginTop: 16,
         gap: 4,
     },
     quickLoginContainer: {
-        marginTop: 48,
+        marginTop: 24,
         borderTopWidth: 1,
         paddingTop: 24,
         alignItems: 'center',

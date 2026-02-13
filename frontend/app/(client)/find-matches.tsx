@@ -1,7 +1,8 @@
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Info, MapPin, Send, User } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useTripStore } from '../../store/useTripStore';
 
@@ -35,7 +36,7 @@ export default function FindMatchesScreen() {
             <View style={[styles.matchCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <View style={styles.driverInfo}>
                     {item.route.userId?.photoURL ? (
-                        <Image source={{ uri: item.route.userId.photoURL }} style={styles.avatar} />
+                        <Image source={{ uri: item.route.userId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
                     ) : (
                         <View style={[styles.avatar, { backgroundColor: theme.border, justifyContent: 'center', alignItems: 'center' }]}>
                             <User size={24} color={theme.icon} />

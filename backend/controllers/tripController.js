@@ -2,10 +2,16 @@ const tripService = require('../services/tripService');
 
 exports.createRoute = async (req, res) => {
     try {
-        const route = await tripService.createRoute(req.user.id, req.body);
+        const { createRouteSchema } = require('../validation/tripSchemas');
+        const validatedData = createRouteSchema.parse(req.body);
+
+        const route = await tripService.createRoute(req.user.id, validatedData);
         res.json(route);
     } catch (err) {
         console.error("Error in createRoute:", err.message);
+        if (err.name === 'ZodError') {
+            return res.status(400).json({ msg: err.errors[0].message });
+        }
         if (err.message === 'Valid role (driver/client) is required') return res.status(400).json({ msg: err.message });
         res.status(500).send('Server Error');
     }
@@ -46,10 +52,16 @@ exports.searchMatches = async (req, res) => {
 
 exports.sendJoinRequest = async (req, res) => {
     try {
-        const request = await tripService.sendJoinRequest(req.user.id, req.body);
+        const { joinRequestSchema } = require('../validation/tripSchemas');
+        const validatedData = joinRequestSchema.parse(req.body);
+
+        const request = await tripService.sendJoinRequest(req.user.id, validatedData);
         res.json(request);
     } catch (err) {
         console.error("Error in sendJoinRequest:", err.message);
+        if (err.name === 'ZodError') {
+            return res.status(400).json({ msg: err.errors[0].message });
+        }
         if (err.message === 'Request already sent') return res.status(400).json({ msg: err.message });
         res.status(500).send('Server Error');
     }
@@ -57,10 +69,16 @@ exports.sendJoinRequest = async (req, res) => {
 
 exports.handleJoinRequest = async (req, res) => {
     try {
-        const request = await tripService.handleJoinRequest(req.user.id, req.body);
+        const { handleRequestSchema } = require('../validation/tripSchemas');
+        const validatedData = handleRequestSchema.parse(req.body);
+
+        const request = await tripService.handleJoinRequest(req.user.id, validatedData);
         res.json(request);
     } catch (err) {
         console.error("Error in handleJoinRequest:", err.message);
+        if (err.name === 'ZodError') {
+            return res.status(400).json({ msg: err.errors[0].message });
+        }
         if (err.message === 'Request not found') return res.status(404).json({ msg: err.message });
         if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
         res.status(500).send('Server Error');

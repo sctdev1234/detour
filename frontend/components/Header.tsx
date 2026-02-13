@@ -1,8 +1,9 @@
 import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { usePathname, useRouter, useSegments } from 'expo-router';
 import { Bell, ChevronLeft } from 'lucide-react-native';
 import React from 'react';
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
@@ -59,8 +60,9 @@ export default function Header() {
         if (pathname === '/(client)' || pathname === '/(client)/' || pathname === '/(client)/index') return true;
         if (pathname.includes('/(client)/requests')) return true;
         if (pathname.includes('/(client)/profile')) return true;
-        // if (pathname.includes('/(client)/search')) return true;
+        if (pathname.includes('/(client)/routes') && !pathname.includes('/add-route')) return true;
         if (pathname.includes('/(client)/trips')) return true;
+        if (pathname.includes('/(client)/places')) return true;
 
         // Auth
         if (pathname.includes('/(auth)/login')) return true;
@@ -79,6 +81,11 @@ export default function Header() {
         else if (role === 'client') router.push('/(client)/profile');
         else router.push('/(auth)/login');
     };
+
+    // Hide global header on main tabs as they implement their own custom headers
+    if (isMainTab()) {
+        return null;
+    }
 
     return (
         <Container intensity={90} tint={colorScheme} style={containerStyle}>
@@ -104,7 +111,7 @@ export default function Header() {
                         {/* Avatar */}
                         <View style={[styles.avatarContainer, { borderColor: 'rgba(0,0,0,0.05)', backgroundColor: theme.background }]}>
                             {user?.photoURL ? (
-                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} contentFit="cover" transition={500} />
                             ) : (
                                 <Text style={[styles.avatarFallbackText, { color: theme.primary }]}>
                                     {user?.fullName?.[0] || 'U'}

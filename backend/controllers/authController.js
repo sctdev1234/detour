@@ -3,14 +3,11 @@ const User = require('../models/User');
 
 class AuthController {
     async signup(req, res) {
-        const { email, password, fullName, role, photoURL } = req.body;
-
         try {
-            if (!email || !password || !fullName) {
-                return res.status(400).json({ msg: 'Please enter all fields' });
-            }
+            const { signupSchema } = require('../validation/authSchemas');
+            const validatedData = signupSchema.parse(req.body);
 
-            const { user, token } = await authService.signup({ email, password, fullName, role, photoURL });
+            const { user, token } = await authService.signup(validatedData);
 
             res.json({
                 token,
@@ -23,10 +20,12 @@ class AuthController {
                     photoURL: user.photoURL,
                     onboardingStatus: user.onboardingStatus
                 }
-
             });
         } catch (err) {
             console.error(err.message);
+            if (err.name === 'ZodError') {
+                return res.status(400).json({ msg: err.errors[0].message });
+            }
             if (err.message === 'User already exists') {
                 return res.status(400).json({ msg: err.message });
             }
@@ -35,14 +34,11 @@ class AuthController {
     }
 
     async login(req, res) {
-        const { email, password } = req.body;
-
         try {
-            if (!email || !password) {
-                return res.status(400).json({ msg: 'Please enter all fields' });
-            }
+            const { loginSchema } = require('../validation/authSchemas');
+            const validatedData = loginSchema.parse(req.body);
 
-            const { user, token } = await authService.login({ email, password });
+            const { user, token } = await authService.login(validatedData);
 
             res.json({
                 token,
@@ -54,10 +50,12 @@ class AuthController {
                     verificationStatus: user.verificationStatus,
                     onboardingStatus: user.onboardingStatus
                 }
-
             });
         } catch (err) {
             console.error(err.message);
+            if (err.name === 'ZodError') {
+                return res.status(400).json({ msg: err.errors[0].message });
+            }
             if (err.message === 'Invalid Credentials') {
                 return res.status(400).json({ msg: err.message });
             }
@@ -66,12 +64,17 @@ class AuthController {
     }
 
     async forgotPassword(req, res) {
-        const { email } = req.body;
         try {
+            const { forgotPasswordSchema } = require('../validation/authSchemas');
+            const { email } = forgotPasswordSchema.parse(req.body);
+
             const { token } = await authService.forgotPassword({ email });
             res.json({ msg: 'Reset link sent (simulated)', token });
         } catch (err) {
             console.error(err.message);
+            if (err.name === 'ZodError') {
+                return res.status(400).json({ msg: err.errors[0].message });
+            }
             if (err.message === 'User not found') {
                 return res.status(404).json({ msg: err.message });
             }
@@ -80,12 +83,17 @@ class AuthController {
     }
 
     async resetPassword(req, res) {
-        const { token, newPassword } = req.body;
         try {
+            const { resetPasswordSchema } = require('../validation/authSchemas');
+            const { token, newPassword } = resetPasswordSchema.parse(req.body);
+
             await authService.resetPassword({ token, newPassword });
             res.json({ msg: 'Password has been updated' });
         } catch (err) {
             console.error(err.message);
+            if (err.name === 'ZodError') {
+                return res.status(400).json({ msg: err.errors[0].message });
+            }
             if (err.message === 'Password reset token is invalid or has expired') {
                 return res.status(400).json({ msg: err.message });
             }
@@ -95,10 +103,16 @@ class AuthController {
 
     async update(req, res) {
         try {
-            const user = await authService.updateProfile(req.user.id, req.body);
+            const { updateProfileSchema } = require('../validation/authSchemas');
+            const validatedData = updateProfileSchema.parse(req.body);
+
+            const user = await authService.updateProfile(req.user.id, validatedData);
             res.json(user);
         } catch (err) {
             console.error(err.message);
+            if (err.name === 'ZodError') {
+                return res.status(400).json({ msg: err.errors[0].message });
+            }
             if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
             res.status(500).send('Server Error');
         }
@@ -127,7 +141,6 @@ class AuthController {
     }
 
     async changePassword(req, res) {
-        const { oldPassword, newPassword } = req.body;
         try {
             if (!oldPassword || !newPassword) {
                 return res.status(400).json({ msg: 'Please provide both old and new passwords' });

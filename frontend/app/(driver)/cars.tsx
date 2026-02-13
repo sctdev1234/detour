@@ -1,8 +1,9 @@
 import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Car as CarIcon, Plus, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useEffect } from 'react'; // Added import
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore'; // Added import
@@ -29,7 +30,7 @@ export default function CarsScreen() {
             {/* Image / Icon Header */}
             <View style={styles.imageContainer}>
                 {item.images && item.images.length > 0 ? (
-                    <Image source={{ uri: item.images[0] }} style={styles.carImage} resizeMode="cover" />
+                    <Image source={{ uri: item.images[0] }} style={styles.carImage} contentFit="cover" transition={500} />
                 ) : (
                     <View style={[styles.placeholderImage, { backgroundColor: theme.background }]}>
                         <CarIcon size={48} color={theme.icon} />

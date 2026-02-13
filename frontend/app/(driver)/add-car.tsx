@@ -1,8 +1,9 @@
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Calendar, Camera, Car as CarIcon, Palette, Plus, Upload, Users, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useCarStore } from '../../store/useCarStore';
@@ -215,7 +216,7 @@ export default function AddCarScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
                         {form.images.map((uri, index) => (
                             <View key={index} style={[styles.photoItem, { borderColor: theme.border }]}>
-                                <Image source={{ uri }} style={styles.photoThumb} />
+                                <Image source={{ uri }} style={styles.photoThumb} contentFit="cover" transition={500} />
                                 <TouchableOpacity
                                     style={styles.removePhoto}
                                     onPress={() => removeImage(index)}

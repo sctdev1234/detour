@@ -1,4 +1,5 @@
 import { useUIStore } from '@/store/useUIStore';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -6,7 +7,6 @@ import { Camera, Check, ChevronRight, Lock, Mail, User } from 'lucide-react-nati
 import { useState } from 'react';
 import {
     ActivityIndicator,
-    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -121,7 +121,7 @@ export default function EditProfileScreen() {
                         >
                             <TouchableOpacity onPress={pickImage} style={[styles.avatarContainer, { backgroundColor: theme.surface }]}>
                                 {user?.photoURL ? (
-                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} contentFit="cover" transition={500} />
                                 ) : (
                                     <User size={40} color={theme.icon} />
                                 )}

@@ -1,7 +1,8 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowUpRight, Bell, Calendar, Car, MapPin, Plus, Star, TrendingUp, User } from 'lucide-react-native';
-import { Dimensions, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/GlassCard';
@@ -72,7 +73,7 @@ export default function DriverDashboard() {
                     <View style={styles.headerLeft}>
                         <View style={[styles.avatarContainer, { borderColor: theme.border }]}>
                             {user?.photoURL ? (
-                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} contentFit="cover" transition={500} />
                             ) : (
                                 <Text style={[styles.avatarText, { color: theme.text }]}>
                                     {user?.fullName?.charAt(0) || 'D'}
@@ -181,21 +182,7 @@ export default function DriverDashboard() {
                                 entering={FadeInDown.delay(400 + (index * 100))}
                             >
                                 <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
-                                    <GlassCard style={{ marginBottom: 12, flexDirection: 'row', padding: 0 }}>
-                                        {/* Override GlassCard content padding to 0 for this specific card layout if needed, 
-                                        but GlassCard component doesn't easily allow overriding content style via ref. 
-                                        Let's update GlassCard to accept contentStyle or just assume default padding is fine 
-                                        OR update these children to remove their own padding?
-                                        
-                                        Original route card had:
-                                        timeColumn: padding 16
-                                        routeInfo: padding 16
-                                        
-                                        GlassCard has content padding: 20.
-                                        Double padding will look bad.
-                                        
-                                        I should probably modify GlassCard to allow overriding content style.
-                                    */}
+                                    <GlassCard style={{ marginBottom: 12 }} contentContainerStyle={{ flexDirection: 'row', padding: 0 }}>
                                         <View style={[styles.timeColumn, { borderColor: theme.border }]}>
                                             <Text style={[styles.timeText, { color: theme.text }]}>
                                                 {trip.routeId?.timeStart?.split(':')[0]}
@@ -466,22 +453,23 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
     },
-    sectionAction: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
     // card: { ... }, // Removed generic card style in favor of GlassCard default styles
     routeCard: {
         marginBottom: 12,
         overflow: 'hidden',
     },
-    avatarImage: {
+    timeColumn: {
         padding: 16,
         alignItems: 'center',
         justifyContent: 'center',
         borderRightWidth: 1,
         width: 70,
         backgroundColor: 'rgba(0,0,0,0.01)',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 22,
     },
     timeText: {
         fontSize: 18,

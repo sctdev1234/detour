@@ -1,8 +1,9 @@
 import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Check, User, X } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useTripStore } from '../../store/useTripStore';
@@ -36,7 +37,7 @@ export default function DriverRequestsScreen() {
                 <BlurView intensity={20} tint="light" style={styles.reqCard}>
                     <View style={styles.clientInfo}>
                         {item.clientId?.photoURL ? (
-                            <Image source={{ uri: item.clientId.photoURL }} style={styles.avatar} />
+                            <Image source={{ uri: item.clientId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
                         ) : (
                             <View style={[styles.avatar, { backgroundColor: 'rgba(0,0,0,0.05)', justifyContent: 'center', alignItems: 'center' }]}>
                                 <User size={24} color={theme.icon} />

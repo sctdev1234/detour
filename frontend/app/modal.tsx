@@ -1,8 +1,9 @@
 import { useUIStore } from '@/store/useUIStore';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Clock, Edit3, Navigation, Save, Trash2, User, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import DetourMap from '../components/Map';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
 import { Colors } from '../constants/theme';
@@ -292,7 +293,7 @@ export default function ModalScreen() {
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Driver</Text>
         <View style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           {trip.driverId?.photoURL ? (
-            <Image source={{ uri: trip.driverId.photoURL }} style={styles.avatar} />
+            <Image source={{ uri: trip.driverId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
           ) : (
             <View style={[styles.avatar, { backgroundColor: theme.border }]}>
               <User size={20} color={theme.icon} />

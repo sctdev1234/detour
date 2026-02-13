@@ -115,12 +115,21 @@ class TripService {
         }).populate('userId', 'fullName email photoURL');
 
         // Link with their active Trips
-        return await Promise.all(matches.map(async (route) => {
-            const trip = await Trip.findOne({ routeId: route._id, status: { $ne: 'completed' } });
-            return {
-                route,
-                trip
-            };
+        const routeIds = matches.map(m => m._id);
+        const trips = await Trip.find({
+            routeId: { $in: routeIds },
+            status: { $ne: 'completed' }
+        });
+
+        // Map trips by routeId for O(1) lookup
+        const tripMap = trips.reduce((acc, trip) => {
+            acc[trip.routeId.toString()] = trip;
+            return acc;
+        }, {});
+
+        return matches.map(route => ({
+            route,
+            trip: tripMap[route._id.toString()] || null
         }));
     }
 

@@ -59,4 +59,9 @@ const RouteSchema = new mongoose.Schema({
 RouteSchema.index({ "startPoint.coordinates": "2dsphere" });
 RouteSchema.index({ "endPoint.coordinates": "2dsphere" });
 
+// Add Geospatial Indices for searching
+RouteSchema.index({ 'startPoint.coordinates': '2dsphere' });
+RouteSchema.index({ 'endPoint.coordinates': '2dsphere' });
+RouteSchema.index({ role: 1, status: 1 }); // Compound index for filtering
+
 module.exports = mongoose.model('Route', RouteSchema);

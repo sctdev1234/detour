@@ -1,9 +1,10 @@
 import { useUIStore } from '@/store/useUIStore';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, FileText, Type, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -137,7 +138,7 @@ export default function NewReclamationScreen() {
                         <Text style={[styles.label, { color: theme.text }]}>Evidence (Optional)</Text>
                         {image ? (
                             <View style={[styles.imagePreview, { borderColor: theme.border }]}>
-                                <Image source={{ uri: image }} style={styles.thumb} />
+                                <Image source={{ uri: image }} style={styles.thumb} contentFit="cover" transition={500} />
                                 <TouchableOpacity style={styles.removeBtn} onPress={() => setImage(null)}>
                                     <X size={16} color="#fff" />
                                 </TouchableOpacity>

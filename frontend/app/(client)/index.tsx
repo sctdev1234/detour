@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -14,7 +15,6 @@ import {
 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    Image,
     Platform,
     ScrollView,
     StyleSheet,
@@ -69,17 +69,18 @@ export default function ClientDashboard() {
 
     const QuickDestinationBtn = ({ icon: Icon, label, subLabel, onPress, color = theme.primary }: any) => (
         <TouchableOpacity
-            style={[styles.quickDestBtn, { backgroundColor: theme.surface }]}
             onPress={onPress}
             activeOpacity={0.7}
         >
-            <View style={[styles.quickDestIcon, { backgroundColor: color + '15' }]}>
-                <Icon size={24} color={color} />
-            </View>
-            <View>
-                <Text style={[styles.quickDestLabel, { color: theme.text }]}>{label}</Text>
-                <Text style={[styles.quickDestSub, { color: theme.icon }]}>{subLabel}</Text>
-            </View>
+            <GlassCard style={styles.quickDestBtn} contentContainerStyle={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={[styles.quickDestIcon, { backgroundColor: color + '15' }]}>
+                    <Icon size={24} color={color} />
+                </View>
+                <View>
+                    <Text style={[styles.quickDestLabel, { color: theme.text }]}>{label}</Text>
+                    <Text style={[styles.quickDestSub, { color: theme.icon }]}>{subLabel}</Text>
+                </View>
+            </GlassCard>
         </TouchableOpacity>
     );
 
@@ -114,6 +115,8 @@ export default function ClientDashboard() {
                         <Image
                             source={{ uri: user?.photoURL || 'https://ui-avatars.com/api/?name=' + (user?.fullName || 'User') }}
                             style={styles.avatar}
+                            contentFit="cover"
+                            transition={500}
                         />
                     </TouchableOpacity>
                 </View>
@@ -122,26 +125,28 @@ export default function ClientDashboard() {
                 <View style={styles.section}>
                     {activeRequest ? (
                         <Animated.View entering={FadeInDown.springify()}>
-                            <GlassCard style={[styles.activeCard, { backgroundColor: theme.primary }]}>
-                                <View style={styles.activeCardHeader}>
-                                    <Text style={styles.activeCardTitle}>Current Trip</Text>
-                                    <View style={styles.activeStatusBadge}>
-                                        <Text style={styles.activeStatusText}>{activeRequest.status}</Text>
+                            <GlassCard style={[styles.activeCard]} contentContainerStyle={{ backgroundColor: theme.primary, padding: 0 }}>
+                                <View style={{ padding: 20 }}>
+                                    <View style={styles.activeCardHeader}>
+                                        <Text style={styles.activeCardTitle}>Current Trip</Text>
+                                        <View style={styles.activeStatusBadge}>
+                                            <Text style={styles.activeStatusText}>{activeRequest.status}</Text>
+                                        </View>
                                     </View>
-                                </View>
-                                <View style={styles.activeCardContent}>
-                                    <View style={styles.TripLocations}>
-                                        <Text style={styles.tripLocationText} numberOfLines={1}>📍 {activeRequest.startPoint.address}</Text>
-                                        <View style={styles.verticalLine} />
-                                        <Text style={styles.tripLocationText} numberOfLines={1}>🏁 {activeRequest.endPoint.address}</Text>
+                                    <View style={styles.activeCardContent}>
+                                        <View style={styles.TripLocations}>
+                                            <Text style={styles.tripLocationText} numberOfLines={1}>📍 {activeRequest.startPoint.address}</Text>
+                                            <View style={styles.verticalLine} />
+                                            <Text style={styles.tripLocationText} numberOfLines={1}>🏁 {activeRequest.endPoint.address}</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            style={styles.trackBtn}
+                                            onPress={() => router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } })}
+                                        >
+                                            <Text style={styles.trackBtnText}>Track Driver</Text>
+                                            <ArrowRight size={16} color={theme.primary} />
+                                        </TouchableOpacity>
                                     </View>
-                                    <TouchableOpacity
-                                        style={styles.trackBtn}
-                                        onPress={() => router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } })}
-                                    >
-                                        <Text style={styles.trackBtnText}>Track Driver</Text>
-                                        <ArrowRight size={16} color={theme.primary} />
-                                    </TouchableOpacity>
                                 </View>
                             </GlassCard>
                         </Animated.View>
@@ -153,20 +158,19 @@ export default function ClientDashboard() {
                                 onPress={() => router.push('/(client)/add-route')}
                                 activeOpacity={0.9}
                             >
-                                <GlassCard style={styles.searchBar}>
+                                <GlassCard style={styles.searchBar} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 }}>
                                     <Search size={20} color={theme.icon} />
                                     <Text style={[styles.searchPlaceholder, { color: theme.icon }]}>Search destination...</Text>
                                 </GlassCard>
                             </TouchableOpacity>
 
-                            <View style={[styles.dashboardMapContainer, { borderColor: theme.border, borderRadius: 16, overflow: 'hidden', marginBottom: 16 }]}>
+                            <View style={[styles.dashboardMapContainer, { borderColor: theme.border, borderRadius: 24, overflow: 'hidden', marginBottom: 16 }]}>
                                 <DetourMap
                                     mode="picker"
                                     readOnly={true}
                                     theme={theme}
                                     height={180}
                                     savedPlaces={user?.savedPlaces}
-                                    initialPoints={[]}
                                 />
                             </View>
 
@@ -178,7 +182,7 @@ export default function ClientDashboard() {
                             >
                                 {user?.savedPlaces && user.savedPlaces.length > 0 ? (
                                     user.savedPlaces.map((place, index) => (
-                                        <View key={place._id || index} style={{ width: 140 }}>
+                                        <View key={place._id || index} style={{ width: 160 }}>
                                             <QuickDestinationBtn
                                                 icon={place.icon === 'home' ? Home : place.icon === 'work' ? Briefcase : MapPin}
                                                 label={place.label}
@@ -198,7 +202,7 @@ export default function ClientDashboard() {
                                     ))
                                 ) : (
                                     <>
-                                        <View style={{ width: 140 }}>
+                                        <View style={{ width: 160 }}>
                                             <QuickDestinationBtn
                                                 icon={Briefcase}
                                                 label="Work"
@@ -206,7 +210,7 @@ export default function ClientDashboard() {
                                                 onPress={() => handleQuickAction('work')}
                                             />
                                         </View>
-                                        <View style={{ width: 140 }}>
+                                        <View style={{ width: 160 }}>
                                             <QuickDestinationBtn
                                                 icon={Home}
                                                 label="Home"
@@ -238,7 +242,7 @@ export default function ClientDashboard() {
                                     key={route.id}
                                     entering={FadeInRight.delay(index * 100).springify()}
                                 >
-                                    <GlassCard style={styles.routeCard}>
+                                    <GlassCard style={styles.routeCard} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                                         <View style={[styles.routeIcon, { backgroundColor: theme.background }]}>
                                             <Clock size={20} color={theme.primary} />
                                         </View>
@@ -267,7 +271,7 @@ export default function ClientDashboard() {
                         </View>
                     ) : (
                         <TouchableOpacity onPress={() => router.push('/(client)/add-route')}>
-                            <GlassCard style={styles.emptyState}>
+                            <GlassCard style={styles.emptyState} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                                 <View style={[styles.emptyIconData, { backgroundColor: theme.primary + '15' }]}>
                                     <Navigation size={24} color={theme.primary} />
                                 </View>
@@ -284,7 +288,7 @@ export default function ClientDashboard() {
                 {/* 4. Weekly Activity / Stats */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>This Week</Text>
-                    <GlassCard style={styles.statsContainer}>
+                    <GlassCard style={styles.statsContainer} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <StatItem label="Rides" value="0" icon={Navigation} />
                         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
                         <StatItem label="Saved" value="$0" icon={Star} />
@@ -366,15 +370,8 @@ const styles = StyleSheet.create({
 
     // Search & Quick Destinations
     searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
         borderRadius: 16,
         marginBottom: 16,
-        gap: 12,
-        // Remove padding/border/bg as GlassCard handles container styles
-        // But GlassCard adds padding.
-        // We need to ensure inner content is aligned.
-        padding: 0, // Reset
     },
     searchPlaceholder: {
         fontSize: 16,
@@ -385,11 +382,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     quickDestBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
         borderRadius: 20,
-        gap: 12,
-        padding: 0,
     },
     quickDestIcon: {
         width: 40,
@@ -411,6 +404,7 @@ const styles = StyleSheet.create({
     // Active Card
     activeCard: {
         borderRadius: 24,
+        overflow: 'hidden',
     },
     activeCardHeader: {
         flexDirection: 'row',
@@ -475,11 +469,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     routeCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
         borderRadius: 20,
-        gap: 14,
-        // Remove bg/border
     },
     routeIcon: {
         width: 44,
@@ -526,12 +516,7 @@ const styles = StyleSheet.create({
 
     // Empty State
     emptyState: {
-        flexDirection: 'row',
-        alignItems: 'center',
         borderRadius: 20,
-        gap: 16,
-        // Remove border dashed for glass look? Or keep it? GlassCard doesn't support dashed easily.
-        // Let's rely on GlassCard styles.
     },
     emptyIconData: {
         width: 48,
@@ -552,10 +537,7 @@ const styles = StyleSheet.create({
 
     // Stats
     statsContainer: {
-        flexDirection: 'row',
         borderRadius: 24,
-        justifyContent: 'space-between',
-        // Padding is handled by GlassCard
     },
     statItem: {
         alignItems: 'center',

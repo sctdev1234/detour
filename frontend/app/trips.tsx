@@ -1,11 +1,13 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Calendar, Navigation, User } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
-import { Trip, useTripStore } from '../store/useTripStore';
+import { useTripStore } from '../store/useTripStore';
+import { Trip } from '../types';
 
 export default function TripsScreen() {
     const router = useRouter();
@@ -49,7 +51,7 @@ export default function TripsScreen() {
                         <View style={styles.avatars}>
                             <View style={[styles.avatarBox, { zIndex: 10 }]}>
                                 {item.driverId?.photoURL ? (
-                                    <Image source={{ uri: item.driverId.photoURL }} style={styles.avatar} />
+                                    <Image source={{ uri: item.driverId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
                                 ) : (
                                     <View style={[styles.avatar, { backgroundColor: theme.border }]}>
                                         <User size={14} color={theme.icon} />
@@ -62,7 +64,7 @@ export default function TripsScreen() {
                             {item.clients.map((c: any, i: number) => (
                                 <View key={i} style={[styles.avatarBox, { marginLeft: -12, zIndex: 5 - i }]}>
                                     {c.userId?.photoURL ? (
-                                        <Image source={{ uri: c.userId.photoURL }} style={styles.avatar} />
+                                        <Image source={{ uri: c.userId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
                                     ) : (
                                         <View style={[styles.avatar, { backgroundColor: theme.border }]}>
                                             <User size={14} color={theme.icon} />

@@ -1,5 +1,6 @@
 import { useUIStore } from '@/store/useUIStore';
 import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -17,7 +18,6 @@ import {
     Zap
 } from 'lucide-react-native';
 import {
-    Image,
     Platform,
     ScrollView,
     StyleSheet,
@@ -153,7 +153,7 @@ export default function DriverProfileScreen() {
                         >
                             <View style={[styles.avatar, { backgroundColor: theme.surface }]}>
                                 {user?.photoURL ? (
-                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} />
+                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} contentFit="cover" transition={500} />
                                 ) : (
                                     <Text style={[styles.avatarInitials, { color: theme.primary }]}>
                                         {user?.fullName
