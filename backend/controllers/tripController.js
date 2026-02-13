@@ -3,7 +3,7 @@ const tripService = require('../services/tripService');
 exports.createRoute = async (req, res) => {
     try {
         const { createRouteSchema } = require('../validation/tripSchemas');
-        const validatedData = createRouteSchema.parse(req.body);
+        const { body: validatedData } = createRouteSchema.parse({ body: req.body });
 
         const route = await tripService.createRoute(req.user.id, validatedData);
         res.json(route);
@@ -53,7 +53,7 @@ exports.searchMatches = async (req, res) => {
 exports.sendJoinRequest = async (req, res) => {
     try {
         const { joinRequestSchema } = require('../validation/tripSchemas');
-        const validatedData = joinRequestSchema.parse(req.body);
+        const { body: validatedData } = joinRequestSchema.parse({ body: req.body });
 
         const request = await tripService.sendJoinRequest(req.user.id, validatedData);
         res.json(request);
@@ -70,7 +70,7 @@ exports.sendJoinRequest = async (req, res) => {
 exports.handleJoinRequest = async (req, res) => {
     try {
         const { handleRequestSchema } = require('../validation/tripSchemas');
-        const validatedData = handleRequestSchema.parse(req.body);
+        const { body: validatedData } = handleRequestSchema.parse({ body: req.body });
 
         const request = await tripService.handleJoinRequest(req.user.id, validatedData);
         res.json(request);

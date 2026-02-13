@@ -8,7 +8,7 @@ import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { useAddRoute } from '../../hooks/api/useTripQueries';
 import { RouteService } from '../../services/RouteService';
-import { LatLng } from '../../store/useTripStore';
+import { LatLng } from '../../types';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -93,9 +93,9 @@ export default function AddClientRouteScreen() {
         try {
             const newRoute = await addRoute({
                 role: 'client',
-                startPoint: { ...points[0], address: pointAddresses[0] },
-                endPoint: { ...points[points.length - 1], address: pointAddresses[points.length - 1] },
-                waypoints: points.slice(1, -1).map((p, i) => ({ ...p, address: pointAddresses[i + 1] })),
+                startPoint: { ...points[0], address: pointAddresses[0] || 'Unknown Location' },
+                endPoint: { ...points[points.length - 1], address: pointAddresses[points.length - 1] || 'Unknown Location' },
+                waypoints: points.slice(1, -1).map((p, i) => ({ ...p, address: pointAddresses[i + 1] || 'Unknown Waypoint' })),
                 timeStart,
                 timeArrival: '', // Not needed for client
                 days: selectedDays,
@@ -105,8 +105,9 @@ export default function AddClientRouteScreen() {
             });
             showToast('Route created! finding matches...', 'success');
             router.push({ pathname: '/(client)/find-matches', params: { routeId: newRoute.id } });
-        } catch (error) {
-            showToast('Failed to create route', 'error');
+        } catch (error: any) {
+            console.error(error);
+            showToast(error.response?.data?.msg || 'Failed to create route', 'error');
         }
     };
 
