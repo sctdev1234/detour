@@ -1,23 +1,21 @@
 import { useRouter } from 'expo-router';
 import { Clock, MapPin, Plus, Search, Trash2 } from 'lucide-react-native';
-import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
+import { useRemoveRoute, useRoutes } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
-import { Route, useTripStore } from '../store/useTripStore';
+import { Route } from '../types';
+
 console.log('Routes Screen - StyleSheet imported:', !!StyleSheet);
 
 export default function RoutesScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { routes, removeRoute, fetchRoutes, isLoading } = useTripStore();
+    const { data: routes, isLoading, refetch } = useRoutes();
+    const { mutateAsync: removeRoute } = useRemoveRoute();
     const user = useAuthStore((state: any) => state.user);
-
-    useEffect(() => {
-        fetchRoutes();
-    }, []);
 
     const handleDelete = async (id: string) => {
         try {
@@ -110,13 +108,13 @@ export default function RoutesScreen() {
                 </TouchableOpacity>
             </View>
 
-            {isLoading && !routes.length ? (
+            {isLoading && !routes?.length ? (
                 <View style={styles.emptyContainer}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : (
                 <FlatList
-                    data={routes}
+                    data={routes || []}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item, index }) => renderRouteItem({ item, index })}
                     contentContainerStyle={styles.listContent}
@@ -292,5 +290,3 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
 });
-
-

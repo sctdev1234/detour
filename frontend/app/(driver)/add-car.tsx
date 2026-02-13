@@ -1,3 +1,4 @@
+import { useUIStore } from '@/store/useUIStore';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -6,27 +7,21 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
-import { useCarStore } from '../../store/useCarStore';
-
-import { useUIStore } from '@/store/useUIStore';
+import { useAddCar, useCars } from '../../hooks/api/useCarQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function AddCarScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { addCar, fetchCars, cars } = useCarStore();
+
     const user = useAuthStore((state) => state.user);
+    const { data: cars = [] } = useCars(user?.id);
+    const { mutateAsync: addCar, isPending: isAdding } = useAddCar();
     const { showToast } = useUIStore();
 
     // Check if it's the user's first car
     const isFirstCar = cars.length === 0;
-
-    React.useEffect(() => {
-        if (user?.id) {
-            fetchCars(user.id);
-        }
-    }, [user?.id]);
 
     // Force isDefault to true if it's the first car
     React.useEffect(() => {
@@ -94,7 +89,6 @@ export default function AddCarScreen() {
     const handleSave = async () => {
         console.log('Saving car with form:', form);
         if (!form.marque || !form.model || !form.year || !form.color) {
-            console.log('Validation failed:', { marque: !!form.marque, model: !!form.model, year: !!form.year, color: !!form.color });
             showToast('Please fill in all fields', 'warning');
             return;
         }
@@ -110,7 +104,6 @@ export default function AddCarScreen() {
             const uploadedImages = await Promise.all(
                 form.images.map(async (uri, index) => {
                     const id = Math.random().toString(36).substring(7);
-                    // Use a flatter structure or just let storageService handle names
                     return await import('../../services/storageService').then(m =>
                         m.uploadImage(uri, `cars/${id}/images/${index}.jpg`)
                     );
@@ -138,9 +131,11 @@ export default function AddCarScreen() {
                 isDefault: isFirstCar ? true : form.isDefault,
                 images: uploadedImages,
                 documents: uploadedDocs,
-            }, user.id); // Pass user.id
+                ownerId: user.id
+            });
 
             router.back();
+            showToast('Car added successfully', 'success');
         } catch (error: any) {
             showToast('Failed to save car. ' + (error.message || ''), 'error');
             console.error(error);
@@ -148,6 +143,8 @@ export default function AddCarScreen() {
             setUploading(false);
         }
     };
+
+    const isLoading = isAdding || uploading;
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -277,11 +274,11 @@ export default function AddCarScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.saveButton, { backgroundColor: theme.primary, opacity: uploading ? 0.7 : 1 }]}
+                    style={[styles.saveButton, { backgroundColor: theme.primary, opacity: isLoading ? 0.7 : 1 }]}
                     onPress={handleSave}
-                    disabled={uploading}
+                    disabled={isLoading}
                 >
-                    <Text style={styles.saveButtonText}>{uploading ? 'Uploading...' : 'Save Car'}</Text>
+                    <Text style={styles.saveButtonText}>{isLoading ? 'Saving...' : 'Save Car'}</Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>
@@ -301,14 +298,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
-    },
-    backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
         fontSize: 24,
@@ -444,4 +433,3 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
 });
-

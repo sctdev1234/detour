@@ -7,6 +7,7 @@ import { AlertCircle, Camera, CheckCircle, Clock, Upload, X } from 'lucide-react
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
+import { useSubmitVerification } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 type DocType = 'cinFront' | 'cinBack' | 'license' | 'carRegistration' | 'facePhoto';
@@ -15,17 +16,16 @@ export default function VerificationScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { documents, updateDocuments, verificationStatus, setRole, user } = useAuthStore();
+    const { documents, updateDocuments, verificationStatus, user } = useAuthStore();
+    const { mutateAsync: submitVerification, isPending: isSubmitting } = useSubmitVerification();
     const { showToast } = useUIStore();
 
     const [permission, requestPermission] = useCameraPermissions();
     const [cameraVisible, setCameraVisible] = useState(false);
     const [cameraRef, setCameraRef] = useState<CameraView | null>(null);
 
-    // ... pickImage, takeSelfie, handleCameraCapture ...
-
     const [isEditing, setIsEditing] = useState(false);
-    const submissionCount = user?.documents?.length || 0;
+    const submissionCount = user?.documents ? Object.keys(user.documents).length : 0;
 
     if (verificationStatus === 'pending' && !isEditing) {
         return (
@@ -90,16 +90,13 @@ export default function VerificationScreen() {
         );
     }
 
-    // ... existing pickImage etc functions ...
-
     const pickImage = async (type: DocType) => {
-        // No permissions request is necessary for launching the image library
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.8,
-            base64: false, // Changed to false
+            base64: false,
         });
 
         if (!result.canceled && result.assets[0].uri) {
@@ -117,7 +114,7 @@ export default function VerificationScreen() {
 
     const handleCameraCapture = async () => {
         if (cameraRef) {
-            const photo = await cameraRef.takePictureAsync({ base64: false, quality: 0.8 }); // Changed to false
+            const photo = await cameraRef.takePictureAsync({ base64: false, quality: 0.8 });
             if (photo && photo.uri) {
                 updateDocuments({ facePhoto: photo.uri });
                 setCameraVisible(false);
@@ -130,7 +127,7 @@ export default function VerificationScreen() {
 
         if (cinFront && cinBack && license && carRegistration && facePhoto) {
             try {
-                await useAuthStore.getState().submitVerification(documents);
+                await submitVerification(documents);
                 setIsEditing(false); // Return to pending view
             } catch (error) {
                 showToast('Failed to submit documents. Please try again.', 'error');
@@ -268,10 +265,11 @@ export default function VerificationScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.submitButton, { backgroundColor: theme.primary }]}
+                    style={[styles.submitButton, { backgroundColor: theme.primary, opacity: isSubmitting ? 0.7 : 1 }]}
                     onPress={handleSubmit}
+                    disabled={isSubmitting}
                 >
-                    <Text style={styles.submitButtonText}>Submit for Review</Text>
+                    <Text style={styles.submitButtonText}>{isSubmitting ? 'Submitting...' : 'Submit for Review'}</Text>
                 </TouchableOpacity>
             </ScrollView>
         </View>
@@ -282,27 +280,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    header: {
-        padding: 24,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 60,
-    },
-    backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    switchButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     title: {
         fontSize: 24,
         fontWeight: '800',
@@ -311,6 +288,7 @@ const styles = StyleSheet.create({
         padding: 24,
         gap: 32,
         paddingBottom: 40,
+        paddingTop: 60,
     },
     infoBox: {
         padding: 20,
@@ -543,4 +521,3 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
 });
-

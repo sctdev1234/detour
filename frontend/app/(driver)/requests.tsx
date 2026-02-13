@@ -2,25 +2,22 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Check, User, X } from 'lucide-react-native';
-import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
-import { useTripStore } from '../../store/useTripStore';
+import { useDriverRequests, useHandleJoinRequest } from '../../hooks/api/useTripQueries';
 
 export default function DriverRequestsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { driverRequests, fetchDriverRequests, handleJoinRequest, isLoading } = useTripStore();
 
-    useEffect(() => {
-        fetchDriverRequests();
-    }, []);
+    const { data: driverRequests, isLoading } = useDriverRequests();
+    const { mutateAsync: handleJoinRequest } = useHandleJoinRequest();
 
     const onRespond = async (requestId: string, status: 'accepted' | 'rejected') => {
         try {
-            await handleJoinRequest(requestId, status);
+            await handleJoinRequest({ requestId, status });
             alert(`Request ${status}`);
         } catch (error) {
             console.error(error);
@@ -74,16 +71,24 @@ export default function DriverRequestsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            {isLoading && !driverRequests.length ? (
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                    <X size={24} color={theme.text} />
+                </TouchableOpacity>
+                <Text style={[styles.title, { color: theme.text }]}>Requests</Text>
+                <View style={{ width: 44 }} />
+            </View>
+
+            {isLoading && !driverRequests?.length ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : (
                 <FlatList
-                    data={driverRequests}
+                    data={driverRequests || []}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item, index }) => renderRequestItem({ item, index })}
-                    contentContainerStyle={[styles.list, { paddingTop: 84 }]}
+                    contentContainerStyle={[styles.list]}
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <User size={48} color={theme.icon} />
@@ -100,13 +105,11 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 20,
+        paddingTop: 60,
         paddingBottom: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32,
     },
     backBtn: {
         width: 44,
@@ -114,7 +117,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)'
+        backgroundColor: 'rgba(120,120,120,0.1)'
     },
     title: { fontSize: 20, fontWeight: '800' },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },

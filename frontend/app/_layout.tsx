@@ -5,12 +5,14 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import 'react-native-reanimated';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Header from '../components/Header';
 import LocationTracker from '../components/LocationTracker';
 import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
+import { useUser } from '../hooks/api/useAuthQueries';
 import { useRouteGuard } from '../hooks/useRouteGuard';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -18,6 +20,7 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
+
 if (Platform.OS === 'web') {
   require('leaflet/dist/leaflet.css');
 }
@@ -26,15 +29,32 @@ export const unstable_settings = {
   initialRouteName: '(auth)',
 };
 
-export default function RootLayout() {
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 1000 * 60, // 1 minute
+    },
+  },
+});
+
+function AppContent() {
   const colorScheme = useColorScheme() ?? 'light';
-  const { role, user, isLoading, checkAuth } = useAuthStore();
+  // Use useUser to fetch/validate user session on app start
+  const { data: qUser, isLoading: isUserLoading } = useUser();
+  const { user, setLoading } = useAuthStore();
+
+  useEffect(() => {
+    // When useUser settles, we can stop the global loading state
+    if (!isUserLoading) {
+      setLoading(false);
+    }
+  }, [isUserLoading, setLoading]);
+
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
-
     // Register for push notifications
     registerForPushNotificationsAsync();
 
@@ -54,7 +74,7 @@ export default function RootLayout() {
     return () => {
       notificationListener && notificationListener.remove();
     };
-  }, [checkAuth]);
+  }, []);
 
   useRouteGuard();
 
@@ -104,5 +124,13 @@ export default function RootLayout() {
         <StatusBar style="auto" />
       </SafeAreaProvider>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
   );
 }

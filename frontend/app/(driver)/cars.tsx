@@ -2,25 +2,21 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Car as CarIcon, Plus, ShieldCheck, Trash2 } from 'lucide-react-native';
-import { useEffect } from 'react'; // Added import
 import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore'; // Added import
-import { Car, useCarStore } from '../../store/useCarStore';
+import { Car, useCars, useRemoveCar, useSetDefaultCar } from '../../hooks/api/useCarQueries';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function CarsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { cars, removeCar, setDefaultCar, fetchCars } = useCarStore(); // Added fetchCars
-    const user = useAuthStore((state) => state.user); // Get user
 
-    useEffect(() => {
-        if (user?.id) {
-            fetchCars(user.id);
-        }
-    }, [user, fetchCars]);
+    const user = useAuthStore((state) => state.user);
+    const { data: cars = [] } = useCars(user?.id);
+    const { mutate: removeCar } = useRemoveCar();
+    const { mutate: setDefaultCar } = useSetDefaultCar();
 
     const renderCarItem = ({ item, index }: { item: Car, index: number }) => (
         <Animated.View
@@ -130,14 +126,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
-    },
-    backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)'
     },
     title: {
         fontSize: 24,
@@ -283,4 +271,3 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
 });
-

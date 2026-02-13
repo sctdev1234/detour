@@ -14,6 +14,22 @@ export interface User {
         completed: boolean;
         steps: OnboardingStep[];
     };
+    // Financials
+    balance?: number;
+    earnings?: {
+        today: number;
+        total: number;
+    };
+    spending?: {
+        today: number;
+        total: number;
+    };
+    stats?: {
+        tripsDone: number;
+        clientsServed?: number;
+        hoursOnline?: number;
+        rating?: number;
+    };
 }
 
 export interface SavedPlace {

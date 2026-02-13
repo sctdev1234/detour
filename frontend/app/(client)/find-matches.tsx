@@ -1,28 +1,23 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Info, MapPin, Send, User } from 'lucide-react-native';
-import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useTripStore } from '../../store/useTripStore';
+import { useMatches, useSendJoinRequest } from '../../hooks/api/useTripQueries';
 
 export default function FindMatchesScreen() {
     const { routeId } = useLocalSearchParams<{ routeId: string }>();
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { matches, findMatches, sendJoinRequest, isLoading } = useTripStore();
 
-    useEffect(() => {
-        if (routeId) {
-            findMatches(routeId);
-        }
-    }, [routeId]);
+    const { data: matches, isLoading } = useMatches(routeId ?? null);
+    const { mutateAsync: sendJoinRequest } = useSendJoinRequest();
 
     const handleJoin = async (tripId: string) => {
         if (!routeId) return;
         try {
-            await sendJoinRequest(routeId, tripId);
+            await sendJoinRequest({ clientRouteId: routeId, tripId });
             alert('Request sent!');
             router.back();
         } catch (error) {
@@ -90,7 +85,7 @@ export default function FindMatchesScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={matches}
+                    data={matches || []}
                     keyExtractor={(item) => item.route.id}
                     renderItem={renderMatchItem}
                     contentContainerStyle={styles.list}

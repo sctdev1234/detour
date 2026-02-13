@@ -49,6 +49,26 @@ const UserSchema = new mongoose.Schema({
         speed: Number,
         timestamp: Number,
         updatedAt: { type: Date, default: Date.now }
+    },
+    // Financials
+    balance: {
+        type: Number,
+        default: 0
+    },
+    earnings: {
+        today: { type: Number, default: 0 },
+        total: { type: Number, default: 0 }
+    },
+    spending: {
+        today: { type: Number, default: 0 },
+        total: { type: Number, default: 0 }
+    },
+    // Stats
+    stats: {
+        tripsDone: { type: Number, default: 0 }, // For both client (rides) and driver (drives)
+        clientsServed: { type: Number, default: 0 }, // For driver
+        hoursOnline: { type: Number, default: 0 },
+        rating: { type: Number, default: 5.0, min: 0, max: 5 } // Moving rating to user model for easier access
     }
 });
 

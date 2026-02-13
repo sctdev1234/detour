@@ -4,17 +4,17 @@ import { ArrowLeft, Mail, Send } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useForgotPassword } from '../../hooks/api/useAuthQueries';
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const forgotPassword = useAuthStore((state) => state.forgotPassword);
+
+    const { mutateAsync: forgotPassword, isPending: loading } = useForgotPassword();
     const { showToast, showConfirm } = useUIStore();
 
     const [email, setEmail] = useState('');
-    const [loading, setLoading] = useState(false);
 
     const handleReset = async () => {
         if (!email) {
@@ -22,21 +22,18 @@ export default function ForgotPasswordScreen() {
             return;
         }
 
-        setLoading(true);
         try {
             const token = await forgotPassword(email);
             // In a real app, you would tell the user to check their email.
-            // For this dev setup, we simulate the next step.
+            // For this dev setup, we simulate the next step using the returned token.
             showConfirm({
                 title: 'Check your Email',
-                message: `We have sent a reset link to ${email}. \n\n(Dev Token: ${token.substring(0, 8)}...)`,
+                message: `We have sent a reset link to ${email}. \n\n(Dev Token: ${token ? token.substring(0, 8) + '...' : 'sent'})`,
                 confirmText: 'Enter Reset Code',
                 onConfirm: () => router.push({ pathname: '/(auth)/reset-password', params: { token } })
             });
         } catch (error: any) {
             showToast(error.message || 'Error occurred', 'error');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -173,4 +170,3 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
 });
-

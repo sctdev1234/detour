@@ -6,8 +6,9 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
+import { useAddRoute } from '../../hooks/api/useTripQueries';
 import { RouteService } from '../../services/RouteService';
-import { LatLng, useTripStore } from '../../store/useTripStore';
+import { LatLng } from '../../store/useTripStore';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -16,7 +17,8 @@ export default function AddClientRouteScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const addRoute = useTripStore((state) => state.addRoute);
+
+    const { mutateAsync: addRoute } = useAddRoute();
     const { showToast } = useUIStore();
 
     const [points, setPoints] = useState<LatLng[]>([]);

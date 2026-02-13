@@ -1,14 +1,16 @@
 import { useUIStore } from '@/store/useUIStore';
 import { useRouter } from 'expo-router';
 import { Car, Check, Clock, DollarSign, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import DetourMap from '../../components/Map';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
+import { useCars } from '../../hooks/api/useCarQueries';
+import { useAddRoute } from '../../hooks/api/useTripQueries';
 import { RouteService } from '../../services/RouteService';
-import { useCarStore } from '../../store/useCarStore';
-import { LatLng, useTripStore } from '../../store/useTripStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { LatLng } from '../../store/useTripStore';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -16,8 +18,10 @@ export default function AddRouteScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const addRoute = useTripStore((state) => state.addRoute);
-    const cars = useCarStore((state) => state.cars);
+
+    const { user } = useAuthStore();
+    const { mutateAsync: addRoute, isPending: isAddingRoute } = useAddRoute();
+    const { data: cars = [] } = useCars(user?.id);
 
     const { showToast } = useUIStore();
 
@@ -27,10 +31,18 @@ export default function AddRouteScreen() {
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
     const [price, setPrice] = useState('50');
     const [priceType, setPriceType] = useState<'fix' | 'km'>('fix');
-    const [selectedCarId, setSelectedCarId] = useState(cars.find(c => c.isDefault)?.id || cars[0]?.id || '');
+    const [selectedCarId, setSelectedCarId] = useState('');
     const [routeMetrics, setRouteMetrics] = useState<{ distance: number; duration: number; geometry: string } | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
     const [pointAddresses, setPointAddresses] = useState<string[]>([]);
+
+    // Initialize selected car when cars are loaded
+    useEffect(() => {
+        if (cars.length > 0 && !selectedCarId) {
+            const defaultCar = cars.find(c => c.isDefault);
+            setSelectedCarId(defaultCar ? defaultCar.id : cars[0].id);
+        }
+    }, [cars, selectedCarId]);
 
     const toggleDay = (day: string) => {
         setSelectedDays(prev =>
@@ -247,24 +259,34 @@ export default function AddRouteScreen() {
                         </View>
 
                         <Text style={[styles.label, { color: theme.icon, marginBottom: 12 }]}>Vehicle</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carsScroll}>
-                            {cars.map(car => (
-                                <TouchableOpacity
-                                    key={car.id}
-                                    style={[
-                                        styles.carCard,
-                                        { backgroundColor: theme.surface, borderColor: selectedCarId === car.id ? theme.primary : theme.border, borderWidth: selectedCarId === car.id ? 2 : 1 }
-                                    ]}
-                                    onPress={() => setSelectedCarId(car.id)}
-                                >
-                                    <Car size={20} color={selectedCarId === car.id ? theme.primary : theme.icon} />
-                                    <View>
-                                        <Text style={[styles.carName, { color: theme.text }]}>{car.model}</Text>
-                                        <Text style={{ fontSize: 10, color: theme.icon }}>{car.marque}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+
+                        {cars.length === 0 ? (
+                            <TouchableOpacity
+                                style={[styles.carCard, { backgroundColor: theme.surface, borderColor: theme.border, justifyContent: 'center', height: 80 }]}
+                                onPress={() => router.push('/(driver)/add-car')}
+                            >
+                                <Text style={{ color: theme.primary, fontWeight: '700' }}>+ Add a Car First</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carsScroll}>
+                                {cars.map(car => (
+                                    <TouchableOpacity
+                                        key={car.id}
+                                        style={[
+                                            styles.carCard,
+                                            { backgroundColor: theme.surface, borderColor: selectedCarId === car.id ? theme.primary : theme.border, borderWidth: selectedCarId === car.id ? 2 : 1 }
+                                        ]}
+                                        onPress={() => setSelectedCarId(car.id)}
+                                    >
+                                        <Car size={20} color={selectedCarId === car.id ? theme.primary : theme.icon} />
+                                        <View>
+                                            <Text style={[styles.carName, { color: theme.text }]}>{car.model}</Text>
+                                            <Text style={{ fontSize: 10, color: theme.icon }}>{car.marque}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        )}
 
                         <View style={[styles.row, { marginTop: 16 }]}>
                             <View style={{ flex: 1 }}>
@@ -298,11 +320,12 @@ export default function AddRouteScreen() {
                     </View>
 
                     <TouchableOpacity
-                        style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                        style={[styles.saveButton, { backgroundColor: theme.primary, opacity: isAddingRoute || isCalculating ? 0.7 : 1 }]}
                         onPress={handleSave}
+                        disabled={isAddingRoute || isCalculating}
                     >
                         <Check size={20} color="#fff" />
-                        <Text style={styles.saveButtonText}>Publish Route</Text>
+                        <Text style={styles.saveButtonText}>{isAddingRoute ? 'Publishing...' : 'Publish Route'}</Text>
                     </TouchableOpacity>
                     <View style={{ height: 40 }} />
                 </ScrollView>

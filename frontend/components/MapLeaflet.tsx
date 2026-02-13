@@ -60,6 +60,60 @@ const MapCenterUpdater = ({ center }: { center?: LatLng }) => {
     return null;
 };
 
+// --- Icon Helpers (moved outside to prevent recreation) ---
+const createIcon = (html: string, size: number = 32) => {
+    return L.divIcon({
+        html: html,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+    });
+};
+
+const createStarIcon = (theme: any) => {
+    const iconMarkup = renderToStaticMarkup(<Star size={16} color="#FFD700" fill="#FFD700" />);
+    const html = `
+    <div style="background-color: ${theme.surface || '#fff'}; width: 32px; height: 32px; border-radius: 16px; display: flex; justify-content: center; align-items: center; border: 2px solid #FFD700; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+        ${iconMarkup}
+    </div>`;
+    return createIcon(html, 32);
+};
+
+const createNumberIcon = (number: number, color: string) => {
+    const html = `
+    <div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 12px; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+        <span style="color: white; font-size: 10px; font-weight: bold; font-family: sans-serif;">${number}</span>
+    </div>`;
+    return createIcon(html, 24);
+};
+
+const createCarIcon = (rotation: number, theme: any) => {
+    const iconMarkup = renderToStaticMarkup(<Car size={20} color="#fff" />);
+    const html = `
+    <div style="background-color: ${theme.primary || '#007AFF'}; width: 32px; height: 32px; border-radius: 16px; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: rotate(${rotation}deg);">
+        ${iconMarkup}
+    </div>`;
+    return createIcon(html, 32);
+};
+
+const createGenericIcon = (iconNode: React.ReactNode, bgColor: string, size: number = 28) => {
+    const iconMarkup = renderToStaticMarkup(iconNode);
+    const html = `
+    <div style="background-color: ${bgColor}; width: ${size}px; height: ${size}px; border-radius: ${size / 2}px; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+        ${iconMarkup}
+    </div>`;
+    return createIcon(html, size);
+};
+
+const createProfileIcon = (photoURL: string, borderColor: string) => {
+    const html = `
+    <div style="width: 32px; height: 32px; border-radius: 16px; border: 3px solid ${borderColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.3); overflow: hidden; background-color: #eee;">
+        <img src="${photoURL}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'"/>
+    </div>`;
+    return createIcon(html, 32);
+};
+
+
 const MapLeaflet = React.memo(({
     mode = 'view',
     theme,
@@ -106,7 +160,6 @@ const MapLeaflet = React.memo(({
                     latitude: s.latitude,
                     longitude: s.longitude
                 }));
-                // For custom order, we treat them as just a sequence of coordinates
                 setRouteCoordinates(coords);
             } else {
                 const { sortedPoints, routeCoordinates: computedRoute } = optimizeRoute(
@@ -148,8 +201,7 @@ const MapLeaflet = React.memo(({
 
         // Mode: Trip
         if (mode === 'trip' && trip) {
-            // Driver Location
-            if (driverLocation) markersToFit.push({ latitude: driverLocation.latitude, longitude: driverLocation.longitude });
+            // REMOVED driverLocation from fitting logic to prevent constant re-zooming
 
             // Trip Points (using helper or direct properties)
             const tripPoints = getAllPointsFromTrip(trip);
@@ -168,7 +220,8 @@ const MapLeaflet = React.memo(({
             setAllPointsToFit(markersToFit);
         }
 
-    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, driverLocation, savedPlaces, routeCoordinates]);
+    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, savedPlaces, routeCoordinates]);
+    // NOTE: Removed driverLocation from dependencies
 
     // Handlers
     const handleMapClick = (e: L.LeafletMouseEvent) => {
@@ -202,59 +255,6 @@ const MapLeaflet = React.memo(({
         }
     };
 
-    // Icons
-    const createIcon = (html: string, size: number = 32) => {
-        return L.divIcon({
-            html: html,
-            className: '',
-            iconSize: [size, size],
-            iconAnchor: [size / 2, size / 2],
-        });
-    };
-
-    const createStarIcon = () => {
-        const iconMarkup = renderToStaticMarkup(<Star size={16} color="#FFD700" fill="#FFD700" />);
-        const html = `
-        <div style="background-color: ${theme.surface || '#fff'}; width: 32px; height: 32px; border-radius: 16px; display: flex; justify-content: center; align-items: center; border: 2px solid #FFD700; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-            ${iconMarkup}
-        </div>`;
-        return createIcon(html, 32);
-    };
-
-    const createNumberIcon = (number: number, color: string) => {
-        const html = `
-        <div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 12px; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-            <span style="color: white; font-size: 10px; font-weight: bold; font-family: sans-serif;">${number}</span>
-        </div>`;
-        return createIcon(html, 24);
-    };
-
-    const createCarIcon = (rotation: number) => {
-        const iconMarkup = renderToStaticMarkup(<Car size={20} color="#fff" />);
-        const html = `
-        <div style="background-color: ${theme.primary || '#007AFF'}; width: 32px; height: 32px; border-radius: 16px; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: rotate(${rotation}deg);">
-            ${iconMarkup}
-        </div>`;
-        return createIcon(html, 32);
-    };
-
-    const createGenericIcon = (iconNode: React.ReactNode, bgColor: string, size: number = 28) => {
-        const iconMarkup = renderToStaticMarkup(iconNode);
-        const html = `
-        <div style="background-color: ${bgColor}; width: ${size}px; height: ${size}px; border-radius: ${size / 2}px; display: flex; justify-content: center; align-items: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-            ${iconMarkup}
-        </div>`;
-        return createIcon(html, size);
-    };
-
-    const createProfileIcon = (photoURL: string, borderColor: string) => {
-        const html = `
-        <div style="width: 32px; height: 32px; border-radius: 16px; border: 3px solid ${borderColor}; box-shadow: 0 2px 6px rgba(0,0,0,0.3); overflow: hidden; background-color: #eee;">
-            <img src="${photoURL}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'"/>
-        </div>`;
-        return createIcon(html, 32);
-    };
-
     // Default center (Casablanca)
     const defaultCenter: [number, number] = [33.5731, -7.5898];
 
@@ -284,7 +284,7 @@ const MapLeaflet = React.memo(({
                                 <Marker
                                     key={`saved-${index}`}
                                     position={[place.latitude, place.longitude]}
-                                    icon={createStarIcon()}
+                                    icon={createStarIcon(theme)}
                                     eventHandlers={{
                                         click: () => {
                                             if (readOnly) return;
@@ -437,7 +437,7 @@ const MapLeaflet = React.memo(({
                     {driverLocation && (
                         <Marker
                             position={[driverLocation.latitude, driverLocation.longitude]}
-                            icon={createCarIcon(driverLocation.heading)}
+                            icon={createCarIcon(driverLocation.heading, theme)}
                         />
                     )}
 

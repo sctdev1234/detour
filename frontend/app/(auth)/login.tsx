@@ -10,19 +10,18 @@ import { GlassCard } from '../../components/GlassCard';
 import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useLogin } from '../../hooks/api/useAuthQueries';
 
 export default function LoginScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const login = useAuthStore((state) => state.login);
 
+    const { mutateAsync: login, isPending: loading } = useLogin();
     const { showToast } = useUIStore();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -30,14 +29,11 @@ export default function LoginScreen() {
             return;
         }
 
-        setLoading(true);
         try {
-            await login(email, password);
+            await login({ email, password });
             // Router automatic redirection in _layout will handle the rest
         } catch (error: any) {
             showToast(error.message || 'Login Failed', 'error');
-        } finally {
-            setLoading(false);
         }
     };
 

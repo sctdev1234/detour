@@ -7,19 +7,23 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacit
 import DetourMap from '../components/Map';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
 import { Colors } from '../constants/theme';
+import { useCompleteTrip, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
-import { useTripStore } from '../store/useTripStore';
 
 export default function ModalScreen() {
-  const { type, id } = useLocalSearchParams();
+  const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { user } = useAuthStore();
-  const { trips, startTrip, completeTrip, removeClient, isLoading } = useTripStore();
+
+  const { data: trips } = useTrips();
+  const { mutateAsync: startTrip } = useStartTrip();
+  const { mutateAsync: completeTrip } = useCompleteTrip();
+  const { mutateAsync: removeClient } = useRemoveClient();
 
   // Find the trip
-  const trip = trips.find(t => t.id === id); // id from params is string
+  const trip = trips?.find((t: any) => t.id === id);
   const [actionLoading, setActionLoading] = useState(false);
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [customStopOrder, setCustomStopOrder] = useState<StopItem[] | null>(null);
@@ -107,16 +111,17 @@ export default function ModalScreen() {
   if (!trip) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.text }}>Trip not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
-          <Text style={{ color: theme.primary }}>Go Back</Text>
-        </TouchableOpacity>
+        <View style={styles.header}>
+          <Text style={{ color: theme.text }}>Trip not found</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+            <X size={24} color={theme.text} />
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
-  const isDriver = trip.driverId._id === user?.id; // Check ID match (ensure types match string vs ObjectId)
-  // Actually trip.driverId._id is usually string in JSON, user.id is string.
+  const isDriver = trip.driverId._id === user?.id || (trip.driverId as any) === user?.id;
 
   const handleStartTrip = async () => {
     setActionLoading(true);
@@ -151,7 +156,7 @@ export default function ModalScreen() {
       onConfirm: async () => {
         setActionLoading(true);
         try {
-          await removeClient(trip.id, clientId);
+          await removeClient({ tripId: trip.id, clientId });
         } catch (e) {
           console.error(e);
           Alert.alert("Error", "Failed to remove passenger");
@@ -178,7 +183,7 @@ export default function ModalScreen() {
             trip.status === 'completed' ? '#3b82f6' :
               trip.status === 'cancelled' ? '#ef4444' : '#f59e0b'
         }]}>
-          <Text style={styles.statusText}>{trip.status.toUpperCase()}</Text>
+          <Text style={styles.statusText}>{trip.status ? trip.status.toUpperCase() : 'PENDING'}</Text>
           {trip.status === 'active' && <Text style={styles.liveText}> • LIVE</Text>}
         </View>
 

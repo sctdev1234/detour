@@ -9,13 +9,14 @@ import { GlassCard } from '../../components/GlassCard';
 import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useRegister } from '../../hooks/api/useAuthQueries';
 
 export default function SignupScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const register = useAuthStore((state) => state.register);
+
+    const { mutateAsync: register, isPending: loading } = useRegister();
     const { showToast } = useUIStore();
 
     const [name, setName] = useState('');
@@ -23,7 +24,6 @@ export default function SignupScreen() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [role, setRole] = useState<'client' | 'driver'>('client');
-    const [loading, setLoading] = useState(false);
 
     const handleSignup = async () => {
         if (!name || !email || !password || !confirmPassword) {
@@ -36,14 +36,11 @@ export default function SignupScreen() {
             return;
         }
 
-        setLoading(true);
         try {
-            await register(email, password, name, role);
+            await register({ email, password, fullName: name, role });
             // Success - will redirect to role selection via _layout
         } catch (error: any) {
             showToast(error.message || 'Signup Failed', 'error');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -226,4 +223,3 @@ const styles = StyleSheet.create({
         gap: 4,
     },
 });
-

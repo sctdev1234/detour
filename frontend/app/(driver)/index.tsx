@@ -1,16 +1,15 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowUpRight, Bell, Calendar, Car, MapPin, Plus, Star, TrendingUp, User } from 'lucide-react-native';
+import { ArrowUpRight, Bell, Calendar, Car, Plus, Star, TrendingUp, User } from 'lucide-react-native';
 import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/GlassCard';
 import { Colors } from '../../constants/theme';
+import { useDriverRequests, useTrips } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useClientRequestStore } from '../../store/useClientRequestStore';
 import { useRatingStore } from '../../store/useRatingStore';
-import { useTripStore } from '../../store/useTripStore';
 
 const { width } = Dimensions.get('window');
 
@@ -33,26 +32,29 @@ export default function DriverDashboard() {
     const insets = useSafeAreaInsets();
     const { user } = useAuthStore();
 
-    const pendingRequestsCount = useClientRequestStore((state) =>
-        state.requests.filter(r => r.status === 'pending').length
-    );
+    const { data: requests } = useDriverRequests();
+    const { data: allTrips } = useTrips();
+
+    const pendingRequestsCount = requests?.filter((r: any) => r.status === 'pending').length || 0;
+
+    // Determine average rating - keeping store for now unless migration needed
     const getAverageRating = useRatingStore((state) => state.getAverageRating);
     const avgRating = getAverageRating(user?.id || '');
 
-    // Real Data from TripStore
-    const trips = useTripStore((state) => state.trips.filter(t => t.driverId?._id === user?.id || (t.driverId as any) === 'me'));
+    // Filter trips for current driver
+    const trips = allTrips?.filter((t: any) => t.driverId?._id === user?.id || (t.driverId as any) === 'me' || t.driverId?.id === user?.id || t.driverId === user?.id) || [];
 
     const activeRoutes = trips.length;
-    const totalDistance = trips.reduce((acc, t) => acc + (t.routeId?.distanceKm || 0), 0);
-    const weeklyPotential = trips.reduce((acc, t) => acc + ((t.routeId?.price || 0) * (t.routeId?.days?.length || 0)), 0);
+    const totalDistance = trips.reduce((acc: number, t: any) => acc + (t.routeId?.distanceKm || 0), 0);
+    const weeklyPotential = trips.reduce((acc: number, t: any) => acc + ((t.routeId?.price || 0) * (t.routeId?.days?.length || 0)), 0);
 
     const daysMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const todayIndex = new Date().getDay();
     const todayName = daysMap[todayIndex];
     const dateNum = new Date().getDate();
 
-    const todaysTrips = trips.filter(t => t.routeId?.days?.includes(todayName));
-    todaysTrips.sort((a, b) => (a.routeId?.timeStart || '').localeCompare(b.routeId?.timeStart || ''));
+    const todaysTrips = trips.filter((t: any) => t.routeId?.days?.includes(todayName));
+    todaysTrips.sort((a: any, b: any) => (a.routeId?.timeStart || '').localeCompare(b.routeId?.timeStart || ''));
 
     return (
         <View style={styles.container}>
@@ -142,27 +144,39 @@ export default function DriverDashboard() {
                     </GlassCard>
 
                     <View style={styles.metricsGrid}>
-                        <GlassCard style={styles.metricCard}>
-                            <Text style={[styles.metricLabel, { color: theme.icon }]}>ACTIVE ROUTES</Text>
-                            <View style={styles.metricContent}>
-                                <Car size={18} color={theme.text} />
-                                <Text style={[styles.metricValue, { color: theme.text }]}>{activeRoutes}</Text>
-                            </View>
-                        </GlassCard>
-                        <GlassCard style={styles.metricCard}>
-                            <Text style={[styles.metricLabel, { color: theme.icon }]}>DISTANCE (KM)</Text>
-                            <View style={styles.metricContent}>
-                                <MapPin size={18} color={theme.text} />
-                                <Text style={[styles.metricValue, { color: theme.text }]}>{totalDistance}</Text>
-                            </View>
-                        </GlassCard>
-                        <GlassCard style={styles.metricCard}>
-                            <Text style={[styles.metricLabel, { color: theme.icon }]}>RATING</Text>
-                            <View style={styles.metricContent}>
-                                <Star size={18} color="#EAB308" fill="#EAB308" />
-                                <Text style={[styles.metricValue, { color: theme.text }]}>{avgRating.toFixed(1)}</Text>
-                            </View>
-                        </GlassCard>
+                        {/* Row 1: Active Routes & Balance */}
+                        <View style={styles.metricsRow}>
+                            <GlassCard style={styles.metricCard}>
+                                <Text style={[styles.metricLabel, { color: theme.icon }]}>ACTIVE ROUTES</Text>
+                                <View style={styles.metricContent}>
+                                    <Car size={18} color={theme.text} />
+                                    <Text style={[styles.metricValue, { color: theme.text }]}>{activeRoutes}</Text>
+                                </View>
+                            </GlassCard>
+                            <GlassCard style={styles.metricCard}>
+                                <Text style={[styles.metricLabel, { color: theme.icon }]}>WALLET BALANCE</Text>
+                                <View style={styles.metricContent}>
+                                    <Text style={[styles.metricValue, { color: theme.primary }]}>${user?.balance?.toLocaleString() || '0'}</Text>
+                                </View>
+                            </GlassCard>
+                        </View>
+
+                        {/* Row 2: Earnings & Rating */}
+                        <View style={styles.metricsRow}>
+                            <GlassCard style={styles.metricCard}>
+                                <Text style={[styles.metricLabel, { color: theme.icon }]}>TOTAL EARNINGS</Text>
+                                <View style={styles.metricContent}>
+                                    <Text style={[styles.metricValue, { color: theme.text }]}>${user?.earnings?.total?.toLocaleString() || '0'}</Text>
+                                </View>
+                            </GlassCard>
+                            <GlassCard style={styles.metricCard}>
+                                <Text style={[styles.metricLabel, { color: theme.icon }]}>RATING</Text>
+                                <View style={styles.metricContent}>
+                                    <Star size={18} color="#EAB308" fill="#EAB308" />
+                                    <Text style={[styles.metricValue, { color: theme.text }]}>{(user?.stats?.rating || avgRating).toFixed(1)}</Text>
+                                </View>
+                            </GlassCard>
+                        </View>
                     </View>
                 </Animated.View>
 
@@ -176,7 +190,7 @@ export default function DriverDashboard() {
                     />
 
                     {todaysTrips.length > 0 ? (
-                        todaysTrips.map((trip, index) => (
+                        todaysTrips.map((trip: any, index: number) => (
                             <Animated.View
                                 key={trip.id}
                                 entering={FadeInDown.delay(400 + (index * 100))}
@@ -410,6 +424,9 @@ const styles = StyleSheet.create({
         borderRadius: 3,
     },
     metricsGrid: {
+        gap: 12,
+    },
+    metricsRow: {
         flexDirection: 'row',
         gap: 12,
     },

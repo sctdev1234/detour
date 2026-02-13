@@ -29,13 +29,16 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
+import { useDeleteAccount, useLogout } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function ProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { logout, setRole, user, verificationStatus, deleteAccount } = useAuthStore();
+    const { setRole, user, verificationStatus } = useAuthStore();
+    const { mutate: logout } = useLogout();
+    const { mutateAsync: deleteAccount } = useDeleteAccount();
     const { showToast, showConfirm } = useUIStore();
 
     const handleSignOut = async () => {
@@ -466,4 +469,3 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
 });
-

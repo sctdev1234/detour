@@ -2,21 +2,17 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Send, User } from 'lucide-react-native';
-import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
-import { useTripStore } from '../../store/useTripStore';
+import { useClientRequests } from '../../hooks/api/useTripQueries';
 
 export default function ClientRequestsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { clientRequests, fetchClientRequests, isLoading } = useTripStore();
 
-    useEffect(() => {
-        fetchClientRequests();
-    }, []);
+    const { data: clientRequests, isLoading } = useClientRequests();
 
     const renderRequestItem = ({ item, index }: { item: any, index: number }) => {
         const driver = item.tripId?.driverId;
@@ -53,13 +49,13 @@ export default function ClientRequestsScreen() {
                 <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>My Requests</Text>
             </View>
 
-            {isLoading && !clientRequests.length ? (
+            {isLoading && !clientRequests?.length ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : (
                 <FlatList
-                    data={clientRequests}
+                    data={clientRequests || []}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item, index }) => renderRequestItem({ item, index })}
                     contentContainerStyle={styles.list}
@@ -86,14 +82,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
-    },
-    backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)'
     },
     title: { fontSize: 20, fontWeight: '800' },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },

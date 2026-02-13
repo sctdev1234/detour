@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import { Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
-import { useClientRequestStore } from '../../store/useClientRequestStore';
+import { useClientRequests, useTrips } from '../../hooks/api/useTripQueries';
 import { useTrackingStore } from '../../store/useTrackingStore';
-import { useTripStore } from '../../store/useTripStore';
 import { useUIStore } from '../../store/useUIStore';
 import { calculateDistance, estimateDuration, formatDuration } from '../../utils/location';
 
@@ -18,22 +17,27 @@ export default function TripDetailsScreen() {
 
     const { showToast } = useUIStore();
 
-    const request = useClientRequestStore(state => state.requests.find(r => r.id === requestId));
-    const driverTrip = useTripStore(state => state.trips.find(t => t.id === request?.driverTripId));
+    const { data: clientRequests } = useClientRequests();
+    const { data: trips } = useTrips();
+
+    const request = clientRequests?.find((r: any) => r.id === requestId);
+    const driverTrip = trips?.find((t: any) => t.id === request?.driverTripId);
 
     const { subscribeToDriver, unsubscribe, driverLocation } = useTrackingStore();
     const [alerted, setAlerted] = useState(false);
     const [isExpandedMap, setIsExpandedMap] = useState(false);
 
     useEffect(() => {
-        if (driverTrip?.driverId) {
+        if (driverTrip?.driverId?._id) {
             subscribeToDriver(driverTrip.driverId._id);
+        } else if (driverTrip?.driverId && typeof driverTrip.driverId === 'string') {
+            subscribeToDriver(driverTrip.driverId);
         }
         return () => unsubscribe();
     }, [driverTrip?.driverId]);
 
     useEffect(() => {
-        if (driverLocation && request) {
+        if (driverLocation && request?.startPoint) { // Ensure request has startPoint
             const dist = calculateDistance(
                 { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
                 request.startPoint
@@ -42,9 +46,8 @@ export default function TripDetailsScreen() {
 
             if (eta <= 5 && !alerted) {
                 setAlerted(true);
-                import('../../services/notificationService').then(({ sendImmediateNotification }) => {
-                    sendImmediateNotification('Arriving Soon', `Driver is ${Math.ceil(eta)} minutes away!`);
-                });
+                // Dynamic import removed for simplicity/performance unless strictly needed
+                // console.log('Driver Arriving Soon');
             }
         }
     }, [driverLocation, request, alerted]);
@@ -81,10 +84,15 @@ export default function TripDetailsScreen() {
         );
     }
 
-    const distToPickup = driverLocation ? calculateDistance(
-        { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-        request.startPoint
-    ) : 0;
+    // Safely calculate distance
+    let distToPickup = 0;
+    if (driverLocation && request?.startPoint) {
+        distToPickup = calculateDistance(
+            { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
+            request.startPoint
+        );
+    }
+
 
     const etaMins = estimateDuration(distToPickup, 40);
 
@@ -108,7 +116,7 @@ export default function TripDetailsScreen() {
                 <DetourMap
                     mode="picker"
                     theme={theme}
-                    initialPoints={[request.startPoint, request.endPoint]}
+                    initialPoints={request.startPoint && request.endPoint ? [request.startPoint, request.endPoint] : undefined}
                     driverLocation={driverLocation || undefined}
                     readOnly={true}
                 />
@@ -125,7 +133,7 @@ export default function TripDetailsScreen() {
                             <View style={styles.statusHeader}>
                                 <Text style={[styles.statusLabel, { color: theme.icon }]}>Current Status</Text>
                                 <View style={[styles.statusBadge, { backgroundColor: '#22c55e20' }]}>
-                                    <Text style={[styles.statusText, { color: '#22c55e' }]}>{request.status.toUpperCase()}</Text>
+                                    <Text style={[styles.statusText, { color: '#22c55e' }]}>{request.status?.toUpperCase() || 'UNKNOWN'}</Text>
                                 </View>
                             </View>
 
@@ -154,7 +162,7 @@ export default function TripDetailsScreen() {
                                     <Text style={styles.avatarText}>D</Text>
                                 </View>
                                 <View style={styles.driverInfo}>
-                                    <Text style={[styles.driverName, { color: theme.text }]}>Driver Name</Text>
+                                    <Text style={[styles.driverName, { color: theme.text }]}>{driverTrip.driverId?.fullName || 'Driver Name'}</Text>
                                     <View style={styles.ratingRow}>
                                         <Text style={[styles.carText, { color: theme.icon }]}>Toyota Camry • ABC-123</Text>
                                     </View>
@@ -185,7 +193,7 @@ export default function TripDetailsScreen() {
                                 </View>
                                 <View style={styles.timelineContent}>
                                     <Text style={[styles.timelineTitle, { color: theme.text }]}>Pickup</Text>
-                                    <Text style={[styles.timelineTime, { color: theme.icon }]}>{request.preferredTime}</Text>
+                                    <Text style={[styles.timelineTime, { color: theme.icon }]}>{request.preferredTime || '00:00'}</Text>
                                 </View>
                             </View>
                             <View style={styles.timelineItem}>
@@ -453,4 +461,3 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
 });
-

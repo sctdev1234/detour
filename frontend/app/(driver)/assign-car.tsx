@@ -5,20 +5,24 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
-import { useCarStore } from '../../store/useCarStore';
+import { useAssignCar, useCars } from '../../hooks/api/useCarQueries';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function AssignCarScreen() {
     const router = useRouter();
     const { carId } = useLocalSearchParams();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { cars, assignCar } = useCarStore();
+
+    const user = useAuthStore((state) => state.user);
+    const { data: cars = [] } = useCars(user?.id);
+    const { mutateAsync: assignCar, isPending: isAssigning } = useAssignCar();
     const { showToast, showConfirm } = useUIStore();
 
     const car = cars.find(c => c.id === carId);
 
     const [email, setEmail] = useState('');
-    const [split, setSplit] = useState('50');
+    const [split, setSplit] = useState('50'); // Default to 50% for owner
 
     if (!car) {
         return (
@@ -31,7 +35,7 @@ export default function AssignCarScreen() {
         );
     }
 
-    const handleAssign = () => {
+    const handleAssign = async () => {
         if (!email || !email.includes('@')) {
             showToast('Please enter a valid driver email', 'warning');
             return;
@@ -43,19 +47,27 @@ export default function AssignCarScreen() {
             return;
         }
 
-        assignCar(car.id, {
-            driverEmail: email,
-            profitSplit: splitValue,
-            startDate: new Date().toISOString(),
-            status: 'active' // In a real app, this might be 'pending' until accepted
-        });
+        try {
+            await assignCar({
+                id: car.id,
+                assignment: {
+                    driverEmail: email,
+                    profitSplit: splitValue,
+                    startDate: new Date().toISOString(),
+                    status: 'active' // In a real app, this might be 'pending' until accepted
+                }
+            });
 
-        showConfirm({
-            title: 'Success',
-            message: `Car assigned to ${email} with ${splitValue}% profit split.`,
-            confirmText: 'OK',
-            onConfirm: () => router.back()
-        });
+            showConfirm({
+                title: 'Success',
+                message: `Car assigned to ${email} with ${splitValue}% profit split.`,
+                confirmText: 'OK',
+                cancelText: 'Close',
+                onConfirm: () => router.back()
+            });
+        } catch (error: any) {
+            showToast('Failed to assign car', 'error');
+        }
     };
 
     return (
@@ -100,10 +112,11 @@ export default function AssignCarScreen() {
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.submitButton, { backgroundColor: theme.primary }]}
+                            style={[styles.submitButton, { backgroundColor: theme.primary, opacity: isAssigning ? 0.7 : 1 }]}
                             onPress={handleAssign}
+                            disabled={isAssigning}
                         >
-                            <Text style={styles.submitButtonText}>Confirm Assignment</Text>
+                            <Text style={styles.submitButtonText}>{isAssigning ? 'Assigning...' : 'Confirm Assignment'}</Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
@@ -125,14 +138,6 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
-    },
-    backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
         fontSize: 20,

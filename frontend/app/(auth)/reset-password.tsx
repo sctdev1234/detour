@@ -4,20 +4,20 @@ import { ArrowLeft, CheckCircle, Key, Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useResetPassword } from '../../hooks/api/useAuthQueries';
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const resetPassword = useAuthStore((state) => state.resetPassword);
+
+    const { mutateAsync: resetPassword, isPending: loading } = useResetPassword();
     const { showToast, showConfirm } = useUIStore();
 
     // Auto-fill token if passed via params
     const [token, setToken] = useState(params.token ? params.token.toString() : '');
     const [newPassword, setNewPassword] = useState('');
-    const [loading, setLoading] = useState(false);
 
     const handleUpdate = async () => {
         if (!token || !newPassword) {
@@ -25,9 +25,8 @@ export default function ResetPasswordScreen() {
             return;
         }
 
-        setLoading(true);
         try {
-            await resetPassword(token, newPassword);
+            await resetPassword({ token, password: newPassword });
             showConfirm({
                 title: 'Success',
                 message: 'Your password has been reset. Please log in.',
@@ -37,8 +36,6 @@ export default function ResetPasswordScreen() {
             });
         } catch (error: any) {
             showToast(error.message || 'Reset Failed', 'error');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -189,4 +186,3 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
 });
-

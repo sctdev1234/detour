@@ -1,24 +1,19 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Calendar, Navigation, User } from 'lucide-react-native';
-import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
+import { useTrips } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
-import { useTripStore } from '../store/useTripStore';
 import { Trip } from '../types';
 
 export default function TripsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { trips, fetchTrips, isLoading } = useTripStore();
+    const { data: trips, isLoading } = useTrips();
     const user = useAuthStore((state: any) => state.user);
-
-    useEffect(() => {
-        fetchTrips();
-    }, []);
 
     const renderTripItem = ({ item, index }: { item: Trip, index: number }) => {
         return (
@@ -84,13 +79,13 @@ export default function TripsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            {isLoading && !trips.length ? (
+            {isLoading && !trips?.length ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : (
                 <FlatList
-                    data={trips}
+                    data={trips || []}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item, index }) => renderTripItem({ item, index })}
                     contentContainerStyle={[styles.list, { paddingTop: 84 }]}
@@ -133,6 +128,7 @@ const styles = StyleSheet.create({
     tripHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.03)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusDot: { width: 6, height: 6, borderRadius: 3 },
+    statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
     statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
     dateText: { fontSize: 12, fontWeight: '600' },
     trajectory: { flexDirection: 'row', gap: 16, alignItems: 'center' },

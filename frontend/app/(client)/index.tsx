@@ -27,23 +27,22 @@ import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { GlassCard } from '../../components/GlassCard';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
+import { useClientRequests, useRoutes } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useClientRequestStore } from '../../store/useClientRequestStore';
-import { useTripStore } from '../../store/useTripStore';
 
 export default function ClientDashboard() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
-    const { routes, fetchRoutes, isLoading } = useTripStore();
-    const { requests } = useClientRequestStore();
+    const { data: routes } = useRoutes();
+    const { data: requests } = useClientRequests();
 
     const [greeting, setGreeting] = useState('Hello');
 
     // Filter for client routes and active trips
-    const myRoutes = routes.filter(r => r.role === 'client').slice(0, 3);
-    const activeRequest = requests.find(r => ['accepted', 'started'].includes(r.status));
+    const myRoutes = React.useMemo(() => routes?.filter(r => r.role === 'client').slice(0, 3) || [], [routes]);
+    const activeRequest = React.useMemo(() => requests?.find(r => ['accepted', 'started'].includes(r.status)), [requests]);
     const nextRoute = myRoutes[0]; // Logic to be improved for "Next" based on time
 
     useEffect(() => {
@@ -51,9 +50,6 @@ export default function ClientDashboard() {
         if (hour < 12) setGreeting('Good Morning');
         else if (hour < 18) setGreeting('Good Afternoon');
         else setGreeting('Good Evening');
-
-        fetchRoutes();
-        // fetchClientRequests(); // Ensure we have latest requests
     }, []);
 
     const handleQuickAction = (action: string) => {
@@ -135,9 +131,9 @@ export default function ClientDashboard() {
                                     </View>
                                     <View style={styles.activeCardContent}>
                                         <View style={styles.TripLocations}>
-                                            <Text style={styles.tripLocationText} numberOfLines={1}>📍 {activeRequest.startPoint.address}</Text>
+                                            <Text style={styles.tripLocationText} numberOfLines={1}>📍 {activeRequest.startPoint?.address || 'Start'}</Text>
                                             <View style={styles.verticalLine} />
-                                            <Text style={styles.tripLocationText} numberOfLines={1}>🏁 {activeRequest.endPoint.address}</Text>
+                                            <Text style={styles.tripLocationText} numberOfLines={1}>🏁 {activeRequest.endPoint?.address || 'End'}</Text>
                                         </View>
                                         <TouchableOpacity
                                             style={styles.trackBtn}
@@ -287,13 +283,13 @@ export default function ClientDashboard() {
 
                 {/* 4. Weekly Activity / Stats */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>This Week</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Your Activity</Text>
                     <GlassCard style={styles.statsContainer} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <StatItem label="Rides" value="0" icon={Navigation} />
+                        <StatItem label="Rides" value={user?.stats?.tripsDone || '0'} icon={Navigation} />
                         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem label="Saved" value="$0" icon={Star} />
+                        <StatItem label="Spent" value={`$${user?.spending?.total || '0'}`} icon={Star} />
                         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem label="Hours" value="0" icon={Clock} />
+                        <StatItem label="Balance" value={`$${user?.balance || '0'}`} icon={Clock} />
                     </GlassCard>
                 </View>
 

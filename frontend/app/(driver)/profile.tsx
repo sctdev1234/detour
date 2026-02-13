@@ -28,13 +28,16 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
+import { useDeleteAccount, useLogout } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function DriverProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { logout, setRole, user, deleteAccount } = useAuthStore();
+    const { setRole, user } = useAuthStore();
+    const { mutate: logout } = useLogout();
+    const { mutateAsync: deleteAccount } = useDeleteAccount();
     const { showConfirm, showToast } = useUIStore();
 
     const handleSignOut = async () => {
@@ -454,4 +457,3 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
 });
-
