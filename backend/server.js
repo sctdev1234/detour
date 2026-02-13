@@ -84,6 +84,7 @@ app.use('/api/places', require('./routes/places'));
 // app.use('/api/trips', require('./routes/trips')); // To be implemented
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/transactions', require('./routes/transactionRoutes'));
 
 // Serve Uploads Static Folder
 const fs = require('fs');

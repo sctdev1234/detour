@@ -4,24 +4,19 @@ import { ArrowDownLeft, ArrowUpRight, CreditCard, DollarSign, History } from 'lu
 import React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
+import { useTransactions } from '../../hooks/api/useWalletQueries';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Transaction, useFinanceStore } from '../../store/useFinanceStore';
 
 export default function WalletScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
-    const { getWallet, wallets, transactions, subscribe } = useFinanceStore();
+    const { data: transactions, isLoading } = useTransactions();
     const { showConfirm } = useUIStore();
 
-    // Force re-render when store updates
-    const wallet = user ? (wallets[user.id] || getWallet(user.id)) : null;
-    const myTransactions = user ? transactions.filter(t => t.userId === user.id) : [];
-
-    {/* Transactions List */ }
-    const renderTransaction = ({ item }: { item: Transaction }) => {
-        const isPositive = item.amount > 0;
+    const renderTransaction = ({ item }: { item: any }) => {
+        const isPositive = item.type === 'credit';
         return (
             <View style={[styles.transactionCard, { backgroundColor: theme.surface }]}>
                 <View style={[styles.iconContainer, { backgroundColor: isPositive ? '#E8F5E9' : '#FFEBEE' }]}>
@@ -33,14 +28,14 @@ export default function WalletScreen() {
                 <View style={styles.transactionInfo}>
                     <Text style={[styles.transactionDesc, { color: theme.text }]}>{item.description}</Text>
                     <Text style={[styles.transactionDate, { color: theme.icon }]}>
-                        {new Date(item.createdAt).toLocaleDateString()}
+                        {new Date(item.timestamp).toLocaleDateString()}
                     </Text>
                 </View>
                 <Text style={[
                     styles.transactionAmount,
                     { color: isPositive ? '#4CD964' : theme.text }
                 ]}>
-                    {isPositive ? '+' : ''}{item.amount.toFixed(2)} DZD
+                    {isPositive ? '+' : '-'}{Math.abs(item.amount).toFixed(2)} MAD
                 </Text>
             </View>
         );
@@ -49,16 +44,17 @@ export default function WalletScreen() {
     const handleSubscribe = () => {
         showConfirm({
             title: 'Upgrade to Pro',
-            message: 'Subscribe for 29.99 DZD/month to unlock exclusive features.',
+            message: 'Subscribe for 29.99 MAD/month to unlock exclusive features.',
             confirmText: 'Subscribe',
             cancelText: 'Cancel',
             onConfirm: () => {
-                if (user) subscribe(user.id);
+                // TODO: Implement subscription logic
+                alert('Subscription coming soon!');
             }
         });
     };
 
-    if (!user || !wallet) return null;
+    if (!user) return null;
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -68,10 +64,10 @@ export default function WalletScreen() {
 
             <View style={styles.balanceCard}>
                 <Text style={styles.balanceLabel}>Total Balance</Text>
-                <Text style={styles.balanceAmount}>{wallet.balance.toFixed(2)} DZD</Text>
-                <View style={[styles.statusBadge, { backgroundColor: wallet.subscriptionStatus === 'pro' ? '#FFD700' : 'rgba(255,255,255,0.2)' }]}>
-                    <Text style={[styles.statusText, { color: wallet.subscriptionStatus === 'pro' ? '#000' : '#fff' }]}>
-                        {wallet.subscriptionStatus === 'pro' ? 'PRO MEMBER' : 'FREE PLAN'}
+                <Text style={styles.balanceAmount}>{user.balance?.toFixed(0) || '0'} MAD</Text>
+                <View style={[styles.statusBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Text style={[styles.statusText, { color: '#fff' }]}>
+                        Standard Plan
                     </Text>
                 </View>
             </View>
@@ -80,7 +76,6 @@ export default function WalletScreen() {
                 <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: theme.surface }]}
                     onPress={handleSubscribe}
-                    disabled={wallet.subscriptionStatus === 'pro'}
                 >
                     <View style={[styles.actionIcon, { backgroundColor: theme.primary + '20' }]}>
                         <CreditCard size={24} color={theme.primary} />
@@ -103,11 +98,14 @@ export default function WalletScreen() {
                 </View>
 
                 <FlatList
-                    data={myTransactions}
-                    keyExtractor={item => item.id}
+                    data={transactions || []}
+                    keyExtractor={item => item._id}
                     renderItem={renderTransaction}
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={
+                        <Text style={{ textAlign: 'center', marginTop: 20, color: theme.icon }}>No transactions yet.</Text>
+                    }
                 />
             </View>
         </View>

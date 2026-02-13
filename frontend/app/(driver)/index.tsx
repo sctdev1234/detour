@@ -92,32 +92,34 @@ export default function DriverDashboard() {
 
                 {/* KPI Section */}
                 <Animated.View entering={FadeInDown.delay(300)} style={styles.kpiContainer}>
-                    <GlassCard style={styles.heroCard} intensity={40}>
-                        <LinearGradient
-                            colors={[theme.primary, theme.secondary]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.heroGradient}
-                        >
-                            <View>
-                                <View style={styles.heroHeader}>
-                                    <View style={[styles.heroIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                        <TrendingUp size={16} color="#fff" />
+                    <TouchableOpacity onPress={() => router.push('/finance/wallet')} activeOpacity={0.9}>
+                        <GlassCard style={styles.heroCard} intensity={40}>
+                            <LinearGradient
+                                colors={[theme.primary, theme.secondary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.heroGradient}
+                            >
+                                <View>
+                                    <View style={styles.heroHeader}>
+                                        <View style={[styles.heroIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                            <TrendingUp size={16} color="#fff" />
+                                        </View>
+                                        <Text style={styles.heroLabel}>WEEKLY POTENTIAL</Text>
                                     </View>
-                                    <Text style={styles.heroLabel}>WEEKLY POTENTIAL</Text>
+                                    <Text style={styles.heroValue}>{weeklyPotential.toLocaleString()} MAD</Text>
                                 </View>
-                                <Text style={styles.heroValue}>{weeklyPotential.toLocaleString()} MAD</Text>
-                            </View>
-                            <View style={styles.heroGraph}>
-                                <View style={[styles.graphBar, { height: 12, opacity: 0.3 }]} />
-                                <View style={[styles.graphBar, { height: 20, opacity: 0.5 }]} />
-                                <View style={[styles.graphBar, { height: 16, opacity: 0.4 }]} />
-                                <View style={[styles.graphBar, { height: 28, opacity: 0.8 }]} />
-                                <View style={[styles.graphBar, { height: 24, opacity: 0.6 }]} />
-                                <View style={[styles.graphBar, { height: 32, opacity: 1.0 }]} />
-                            </View>
-                        </LinearGradient>
-                    </GlassCard>
+                                <View style={styles.heroGraph}>
+                                    <View style={[styles.graphBar, { height: 12, opacity: 0.3 }]} />
+                                    <View style={[styles.graphBar, { height: 20, opacity: 0.5 }]} />
+                                    <View style={[styles.graphBar, { height: 16, opacity: 0.4 }]} />
+                                    <View style={[styles.graphBar, { height: 28, opacity: 0.8 }]} />
+                                    <View style={[styles.graphBar, { height: 24, opacity: 0.6 }]} />
+                                    <View style={[styles.graphBar, { height: 32, opacity: 1.0 }]} />
+                                </View>
+                            </LinearGradient>
+                        </GlassCard>
+                    </TouchableOpacity>
 
                     <View style={styles.metricsGrid}>
                         {/* Row 1: Active Routes & Balance */}
@@ -129,12 +131,14 @@ export default function DriverDashboard() {
                                     <Text style={[styles.metricValue, { color: theme.text }]}>{activeRoutes}</Text>
                                 </View>
                             </GlassCard>
-                            <GlassCard style={styles.metricCard}>
-                                <Text style={[styles.metricLabel, { color: theme.icon }]}>WALLET BALANCE</Text>
-                                <View style={styles.metricContent}>
-                                    <Text style={[styles.metricValue, { color: theme.primary }]}>{user?.balance?.toLocaleString() || '0'} MAD</Text>
-                                </View>
-                            </GlassCard>
+                            <TouchableOpacity onPress={() => router.push('/finance/wallet')} activeOpacity={0.9}>
+                                <GlassCard style={styles.metricCard}>
+                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>WALLET BALANCE</Text>
+                                    <View style={styles.metricContent}>
+                                        <Text style={[styles.metricValue, { color: theme.primary }]}>{user?.balance?.toLocaleString() || '0'} MAD</Text>
+                                    </View>
+                                </GlassCard>
+                            </TouchableOpacity>
                         </View>
 
                         {/* Row 2: Earnings & Rating */}
@@ -165,69 +169,71 @@ export default function DriverDashboard() {
                         onAction={() => router.push('/(driver)/routes')}
                     />
 
-                    {todaysTrips.length > 0 ? (
-                        todaysTrips.map((trip: any, index: number) => (
-                            <Animated.View
-                                key={trip.id}
-                                entering={FadeInDown.delay(400 + (index * 100))}
-                            >
-                                <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
-                                    <GlassCard style={{ marginBottom: 12 }} contentContainerStyle={{ flexDirection: 'row', padding: 0 }}>
-                                        <View style={[styles.timeColumn, { borderColor: theme.border }]}>
-                                            <Text style={[styles.timeText, { color: theme.text }]}>
-                                                {trip.routeId?.timeStart?.split(':')[0]}
-                                            </Text>
-                                            <Text style={[styles.timeMin, { color: theme.icon }]}>
-                                                {trip.routeId?.timeStart?.split(':')[1] || '00'}
-                                            </Text>
-                                        </View>
-
-                                        <View style={styles.routeInfo}>
-                                            <View style={styles.routeAddresses}>
-                                                <View style={styles.addressRow}>
-                                                    <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
-                                                    <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
-                                                        {trip.routeId?.startPoint?.address || 'Start Location'}
-                                                    </Text>
-                                                </View>
-                                                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
-                                                <View style={styles.addressRow}>
-                                                    <View style={[styles.timelineDot, { backgroundColor: theme.secondary }]} />
-                                                    <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
-                                                        {trip.routeId?.endPoint?.address || 'End Location'}
-                                                    </Text>
-                                                </View>
-                                            </View>
-
-                                            <View style={[styles.routeFooter, { borderColor: theme.border }]}>
-                                                <View style={styles.paxInfo}>
-                                                    <User size={14} color={theme.icon} />
-                                                    <Text style={[styles.paxText, { color: theme.icon }]}>
-                                                        {trip.clients?.length || 0}/{(trip.routeId as any)?.maxPassengers || 4}
-                                                    </Text>
-                                                </View>
-                                                <Text style={[styles.priceTag, { color: '#16a34a' }]}>
-                                                    {trip.routeId?.price} MAD
+                    {
+                        todaysTrips.length > 0 ? (
+                            todaysTrips.map((trip: any, index: number) => (
+                                <Animated.View
+                                    key={trip.id}
+                                    entering={FadeInDown.delay(400 + (index * 100))}
+                                >
+                                    <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
+                                        <GlassCard style={{ marginBottom: 12 }} contentContainerStyle={{ flexDirection: 'row', padding: 0 }}>
+                                            <View style={[styles.timeColumn, { borderColor: theme.border }]}>
+                                                <Text style={[styles.timeText, { color: theme.text }]}>
+                                                    {trip.routeId?.timeStart?.split(':')[0]}
+                                                </Text>
+                                                <Text style={[styles.timeMin, { color: theme.icon }]}>
+                                                    {trip.routeId?.timeStart?.split(':')[1] || '00'}
                                                 </Text>
                                             </View>
-                                        </View>
-                                    </GlassCard>
-                                </TouchableOpacity>
+
+                                            <View style={styles.routeInfo}>
+                                                <View style={styles.routeAddresses}>
+                                                    <View style={styles.addressRow}>
+                                                        <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
+                                                        <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
+                                                            {trip.routeId?.startPoint?.address || 'Start Location'}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                                                    <View style={styles.addressRow}>
+                                                        <View style={[styles.timelineDot, { backgroundColor: theme.secondary }]} />
+                                                        <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
+                                                            {trip.routeId?.endPoint?.address || 'End Location'}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+
+                                                <View style={[styles.routeFooter, { borderColor: theme.border }]}>
+                                                    <View style={styles.paxInfo}>
+                                                        <User size={14} color={theme.icon} />
+                                                        <Text style={[styles.paxText, { color: theme.icon }]}>
+                                                            {trip.clients?.length || 0}/{(trip.routeId as any)?.maxPassengers || 4}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={[styles.priceTag, { color: '#16a34a' }]}>
+                                                        {trip.routeId?.price} MAD
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        </GlassCard>
+                                    </TouchableOpacity>
+                                </Animated.View>
+                            ))
+                        ) : (
+                            <Animated.View entering={FadeInDown.delay(400)}>
+                                <GlassCard style={styles.emptyStateCard}>
+                                    <View style={[styles.emptyIcon, { backgroundColor: theme.background }]}>
+                                        <Calendar size={32} color={theme.icon} />
+                                    </View>
+                                    <Text style={[styles.emptyTitle, { color: theme.text }]}>No routes scheduled</Text>
+                                    <Text style={[styles.emptySub, { color: theme.icon }]}>
+                                        Your schedule is clear for today. Add a route to start receiving requests.
+                                    </Text>
+                                </GlassCard>
                             </Animated.View>
-                        ))
-                    ) : (
-                        <Animated.View entering={FadeInDown.delay(400)}>
-                            <GlassCard style={styles.emptyStateCard}>
-                                <View style={[styles.emptyIcon, { backgroundColor: theme.background }]}>
-                                    <Calendar size={32} color={theme.icon} />
-                                </View>
-                                <Text style={[styles.emptyTitle, { color: theme.text }]}>No routes scheduled</Text>
-                                <Text style={[styles.emptySub, { color: theme.icon }]}>
-                                    Your schedule is clear for today. Add a route to start receiving requests.
-                                </Text>
-                            </GlassCard>
-                        </Animated.View>
-                    )}
+                        )
+                    }
                 </View>
 
                 {/* Bottom Spacer */}
@@ -247,6 +253,7 @@ export default function DriverDashboard() {
         </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: {
@@ -578,3 +585,4 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
 });
+

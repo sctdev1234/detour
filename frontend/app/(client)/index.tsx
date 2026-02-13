@@ -79,15 +79,27 @@ export default function ClientDashboard() {
         </TouchableOpacity>
     );
 
-    const StatItem = ({ label, value, icon: Icon }: any) => (
-        <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                {Icon && <Icon size={12} color={theme.icon} />}
-                <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
+    const StatItem = ({ label, value, icon: Icon, onPress }: any) => {
+        const Content = (
+            <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    {Icon && <Icon size={12} color={theme.icon} />}
+                    <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
+                </View>
             </View>
-        </View>
-    );
+        );
+
+        if (onPress) {
+            return (
+                <TouchableOpacity onPress={onPress} style={{ flex: 1 }}>
+                    {Content}
+                </TouchableOpacity>
+            );
+        }
+
+        return Content;
+    };
 
     return (
         <View style={styles.container}>
@@ -270,9 +282,19 @@ export default function ClientDashboard() {
                     <GlassCard style={styles.statsContainer} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <StatItem label="Rides" value={user?.stats?.tripsDone || '0'} icon={Navigation} />
                         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem label="Spent" value={`${user?.spending?.total || '0'} MAD`} icon={Star} />
+                        <StatItem
+                            label="Spent"
+                            value={`${user?.spending?.total || '0'} MAD`}
+                            icon={Star}
+                            onPress={() => router.push('/finance/wallet')}
+                        />
                         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem label="Balance" value={`${user?.balance || '0'} MAD`} icon={Clock} />
+                        <StatItem
+                            label="Balance"
+                            value={`${user?.balance || '0'} MAD`}
+                            icon={Clock}
+                            onPress={() => router.push('/finance/wallet')}
+                        />
                     </GlassCard>
                 </View>
 

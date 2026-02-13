@@ -137,11 +137,15 @@ export default function Header() {
                 {/* Right: Status / Actions */}
                 <View style={styles.actionsContainer}>
                     {/* Balance Badge */}
-                    <View style={[styles.balanceBadge, { backgroundColor: theme.primary + '15' }]}>
+                    <TouchableOpacity
+                        style={[styles.balanceBadge, { backgroundColor: theme.primary + '15' }]}
+                        onPress={() => router.push('/finance/wallet')}
+                        activeOpacity={0.7}
+                    >
                         <Text style={[styles.balanceText, { color: theme.primary }]}>
                             {user?.balance?.toFixed(0) || '0'} MAD
                         </Text>
-                    </View>
+                    </TouchableOpacity>
 
                     {
                         <TouchableOpacity
