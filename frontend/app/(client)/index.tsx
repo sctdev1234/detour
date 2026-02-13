@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
@@ -99,37 +98,8 @@ export default function ClientDashboard() {
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 100, paddingTop: Platform.OS === 'ios' ? 120 : 100 }}
             >
-                {/* 1. Header Section - Clean & Personal */}
-                <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
-                    <View>
-                        <Text style={[styles.greeting, { color: theme.icon }]}>{greeting},</Text>
-                        <Text style={[styles.userName, { color: theme.text }]}>{user?.fullName || 'Traveler'}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        {/* Balance Badge */}
-                        <View style={{
-                            backgroundColor: theme.primary + '15',
-                            paddingHorizontal: 12,
-                            paddingVertical: 6,
-                            borderRadius: 20
-                        }}>
-                            <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>
-                                {user?.balance?.toFixed(0) || '0'} MAD
-                            </Text>
-                        </View>
-                        <TouchableOpacity onPress={() => router.push('/(client)/profile')}>
-                            <Image
-                                source={{ uri: user?.photoURL || 'https://ui-avatars.com/api/?name=' + (user?.fullName || 'User') }}
-                                style={styles.avatar}
-                                contentFit="cover"
-                                transition={500}
-                            />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
                 {/* 2. Primary Action / Active State */}
                 <View style={styles.section}>
                     {activeRequest ? (

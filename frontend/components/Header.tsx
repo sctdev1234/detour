@@ -22,7 +22,7 @@ export default function Header() {
     const Container = Platform.OS === 'ios' ? BlurView : View;
 
     // Compact height calculation
-    const HEADER_CONTENT_HEIGHT = 54;
+    const HEADER_CONTENT_HEIGHT = 60;
     const TOTAL_HEIGHT = HEADER_CONTENT_HEIGHT + insets.top;
 
     const containerStyle = Platform.OS === 'ios'
@@ -83,7 +83,12 @@ export default function Header() {
     };
 
     // Hide global header on main tabs as they implement their own custom headers
-    if (isMainTab()) {
+    // EXCEPT for the main dashboard indexes where we want to use this header
+    const isDashboard = pathname === '/' || pathname === '/index' ||
+        pathname === '/(driver)' || pathname === '/(driver)/' || pathname === '/(driver)/index' ||
+        pathname === '/(client)' || pathname === '/(client)/' || pathname === '/(client)/index';
+
+    if (isMainTab() && !isDashboard) {
         return null;
     }
 

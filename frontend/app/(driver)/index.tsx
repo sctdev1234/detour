@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowUpRight, Bell, Calendar, Car, Plus, Star, TrendingUp, User } from 'lucide-react-native';
@@ -67,49 +66,9 @@ export default function DriverDashboard() {
 
             <ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80 }]}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <View style={[styles.avatarContainer, { borderColor: theme.border }]}>
-                            {user?.photoURL ? (
-                                <Image source={{ uri: user.photoURL }} style={styles.avatarImage} contentFit="cover" transition={500} />
-                            ) : (
-                                <Text style={[styles.avatarText, { color: theme.text }]}>
-                                    {user?.fullName?.charAt(0) || 'D'}
-                                </Text>
-                            )}
-                        </View>
-                        <View>
-                            <Text style={[styles.greeting, { color: theme.icon }]}>Welcome back,</Text>
-                            <Text style={[styles.userName, { color: theme.text }]}>{user?.fullName?.split(' ')[0]}</Text>
-                        </View>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        {/* Balance Badge */}
-                        <View style={{
-                            backgroundColor: theme.surface,
-                            borderColor: theme.border,
-                            borderWidth: 1,
-                            paddingHorizontal: 12,
-                            paddingVertical: 6,
-                            borderRadius: 20
-                        }}>
-                            <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>
-                                {user?.balance?.toFixed(0) || '0'} MAD
-                            </Text>
-                        </View>
-
-                        <View style={[styles.statusPill, { borderColor: theme.border, backgroundColor: theme.surface }]}>
-                            <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
-                            <Text style={[styles.statusText, { color: theme.text }]}>Online</Text>
-                        </View>
-                    </View>
-                </View>
-
                 {/* Notifications */}
                 {pendingRequestsCount > 0 && (
                     <Animated.View entering={FadeInDown.delay(200)} style={styles.notificationWrapper}>
