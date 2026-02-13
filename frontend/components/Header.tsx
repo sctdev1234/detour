@@ -131,6 +131,13 @@ export default function Header() {
 
                 {/* Right: Status / Actions */}
                 <View style={styles.actionsContainer}>
+                    {/* Balance Badge */}
+                    <View style={[styles.balanceBadge, { backgroundColor: theme.primary + '15' }]}>
+                        <Text style={[styles.balanceText, { color: theme.primary }]}>
+                            {user?.balance?.toFixed(0) || '0'} MAD
+                        </Text>
+                    </View>
+
                     {
                         <TouchableOpacity
                             style={[styles.iconButton, { backgroundColor: 'rgba(0,0,0,0.03)' }]}
@@ -270,5 +277,15 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
         borderWidth: 1.5,
+    },
+    balanceBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginRight: 10,
+    },
+    balanceText: {
+        fontSize: 12,
+        fontWeight: '800',
     }
 });

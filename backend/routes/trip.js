@@ -25,5 +25,7 @@ router.get('/all', auth, tripController.getTrips);
 router.patch('/:id/start', auth, tripController.startTrip);
 router.patch('/:id/complete', auth, tripController.completeTrip);
 router.delete('/:tripId/client/:clientId', auth, tripController.removeClient);
+router.patch('/pickup', auth, tripController.confirmPickup);
+router.patch('/dropoff', auth, tripController.confirmDropoff);
 
 module.exports = router;

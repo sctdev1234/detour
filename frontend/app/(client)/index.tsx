@@ -42,7 +42,7 @@ export default function ClientDashboard() {
 
     // Filter for client routes and active trips
     const myRoutes = React.useMemo(() => routes?.filter(r => r.role === 'client').slice(0, 3) || [], [routes]);
-    const activeRequest = React.useMemo(() => requests?.find(r => ['accepted', 'started'].includes(r.status)), [requests]);
+    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['accepted', 'started'].includes(r.status)), [requests]);
     const nextRoute = myRoutes[0]; // Logic to be improved for "Next" based on time
 
     useEffect(() => {
@@ -107,14 +107,27 @@ export default function ClientDashboard() {
                         <Text style={[styles.greeting, { color: theme.icon }]}>{greeting},</Text>
                         <Text style={[styles.userName, { color: theme.text }]}>{user?.fullName || 'Traveler'}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => router.push('/(client)/profile')}>
-                        <Image
-                            source={{ uri: user?.photoURL || 'https://ui-avatars.com/api/?name=' + (user?.fullName || 'User') }}
-                            style={styles.avatar}
-                            contentFit="cover"
-                            transition={500}
-                        />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        {/* Balance Badge */}
+                        <View style={{
+                            backgroundColor: theme.primary + '15',
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 20
+                        }}>
+                            <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>
+                                {user?.balance?.toFixed(0) || '0'} MAD
+                            </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => router.push('/(client)/profile')}>
+                            <Image
+                                source={{ uri: user?.photoURL || 'https://ui-avatars.com/api/?name=' + (user?.fullName || 'User') }}
+                                style={styles.avatar}
+                                contentFit="cover"
+                                transition={500}
+                            />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* 2. Primary Action / Active State */}
@@ -287,9 +300,9 @@ export default function ClientDashboard() {
                     <GlassCard style={styles.statsContainer} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <StatItem label="Rides" value={user?.stats?.tripsDone || '0'} icon={Navigation} />
                         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem label="Spent" value={`$${user?.spending?.total || '0'}`} icon={Star} />
+                        <StatItem label="Spent" value={`${user?.spending?.total || '0'} MAD`} icon={Star} />
                         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem label="Balance" value={`$${user?.balance || '0'}`} icon={Clock} />
+                        <StatItem label="Balance" value={`${user?.balance || '0'} MAD`} icon={Clock} />
                     </GlassCard>
                 </View>
 

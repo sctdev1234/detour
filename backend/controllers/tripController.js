@@ -151,3 +151,30 @@ exports.removeClient = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
+
+exports.confirmPickup = async (req, res) => {
+    try {
+        const { tripId, clientId } = req.body;
+        const trip = await tripService.confirmPickup(req.user.id, { tripId, clientId });
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in confirmPickup:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        if (err.message.includes('Payment failed')) return res.status(402).json({ msg: err.message }); // 402 Payment Required
+        res.status(500).send('Server Error: ' + err.message);
+    }
+};
+
+exports.confirmDropoff = async (req, res) => {
+    try {
+        const { tripId, clientId } = req.body;
+        const trip = await tripService.confirmDropoff(req.user.id, { tripId, clientId });
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in confirmDropoff:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};

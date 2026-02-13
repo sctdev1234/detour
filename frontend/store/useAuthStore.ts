@@ -26,6 +26,7 @@ interface AuthState {
     setVerificationStatus: (status: 'pending' | 'verified' | 'rejected' | 'unverified') => void;
     updateDocuments: (docs: Partial<AuthState['documents']>) => void;
     setLoading: (loading: boolean) => void;
+    checkAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -63,6 +64,39 @@ export const useAuthStore = create<AuthState>()(
             setRole: (role) => set({ role: role as Role }),
             updateDocuments: (docs) => set((state) => ({ documents: { ...state.documents, ...docs } })),
             setLoading: (isLoading) => set({ isLoading }),
+            // Async Actions
+            checkAuth: async () => {
+                set({ isLoading: true });
+                try {
+                    const { authService } = require('../services/auth'); // Lazy import to avoid cycle if any
+                    const user = await authService.getCurrentUser();
+                    if (user) {
+                        set({
+                            user,
+                            role: user.role as Role,
+                            verificationStatus: user.verificationStatus,
+                            isLoading: false
+                        });
+                    } else {
+                        set({
+                            user: null,
+                            token: null,
+                            role: null,
+                            verificationStatus: 'unverified',
+                            isLoading: false
+                        });
+                    }
+                } catch (error) {
+                    console.error('checkAuth failed:', error);
+                    set({
+                        user: null,
+                        token: null,
+                        role: null,
+                        verificationStatus: 'unverified',
+                        isLoading: false
+                    });
+                }
+            },
         }),
         {
             name: 'auth-storage',

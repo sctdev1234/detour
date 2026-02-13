@@ -94,6 +94,8 @@ export type Trip = {
         routeId: Route;
         price?: number;
         seats?: number;
+        status?: 'pending' | 'picked_up' | 'dropped_off' | 'cancelled';
+        paymentStatus?: 'pending' | 'paid' | 'failed';
     }>;
     status: 'pending' | 'active' | 'completed' | 'cancelled';
     createdAt: string;

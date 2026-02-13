@@ -87,9 +87,26 @@ export default function DriverDashboard() {
                             <Text style={[styles.userName, { color: theme.text }]}>{user?.fullName?.split(' ')[0]}</Text>
                         </View>
                     </View>
-                    <View style={[styles.statusPill, { borderColor: theme.border, backgroundColor: theme.surface }]}>
-                        <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
-                        <Text style={[styles.statusText, { color: theme.text }]}>Online</Text>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        {/* Balance Badge */}
+                        <View style={{
+                            backgroundColor: theme.surface,
+                            borderColor: theme.border,
+                            borderWidth: 1,
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 20
+                        }}>
+                            <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>
+                                {user?.balance?.toFixed(0) || '0'} MAD
+                            </Text>
+                        </View>
+
+                        <View style={[styles.statusPill, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+                            <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
+                            <Text style={[styles.statusText, { color: theme.text }]}>Online</Text>
+                        </View>
                     </View>
                 </View>
 
@@ -130,7 +147,7 @@ export default function DriverDashboard() {
                                     </View>
                                     <Text style={styles.heroLabel}>WEEKLY POTENTIAL</Text>
                                 </View>
-                                <Text style={styles.heroValue}>${weeklyPotential.toLocaleString()}</Text>
+                                <Text style={styles.heroValue}>{weeklyPotential.toLocaleString()} MAD</Text>
                             </View>
                             <View style={styles.heroGraph}>
                                 <View style={[styles.graphBar, { height: 12, opacity: 0.3 }]} />
@@ -156,7 +173,7 @@ export default function DriverDashboard() {
                             <GlassCard style={styles.metricCard}>
                                 <Text style={[styles.metricLabel, { color: theme.icon }]}>WALLET BALANCE</Text>
                                 <View style={styles.metricContent}>
-                                    <Text style={[styles.metricValue, { color: theme.primary }]}>${user?.balance?.toLocaleString() || '0'}</Text>
+                                    <Text style={[styles.metricValue, { color: theme.primary }]}>{user?.balance?.toLocaleString() || '0'} MAD</Text>
                                 </View>
                             </GlassCard>
                         </View>
@@ -166,7 +183,7 @@ export default function DriverDashboard() {
                             <GlassCard style={styles.metricCard}>
                                 <Text style={[styles.metricLabel, { color: theme.icon }]}>TOTAL EARNINGS</Text>
                                 <View style={styles.metricContent}>
-                                    <Text style={[styles.metricValue, { color: theme.text }]}>${user?.earnings?.total?.toLocaleString() || '0'}</Text>
+                                    <Text style={[styles.metricValue, { color: theme.text }]}>{user?.earnings?.total?.toLocaleString() || '0'} MAD</Text>
                                 </View>
                             </GlassCard>
                             <GlassCard style={styles.metricCard}>
@@ -231,7 +248,7 @@ export default function DriverDashboard() {
                                                     </Text>
                                                 </View>
                                                 <Text style={[styles.priceTag, { color: '#16a34a' }]}>
-                                                    ${trip.routeId?.price}
+                                                    {trip.routeId?.price} MAD
                                                 </Text>
                                             </View>
                                         </View>

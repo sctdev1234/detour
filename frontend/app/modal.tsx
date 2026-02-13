@@ -7,7 +7,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacit
 import DetourMap from '../components/Map';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
 import { Colors } from '../constants/theme';
-import { useCompleteTrip, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
+import { useCompleteTrip, useConfirmDropoff, useConfirmPickup, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function ModalScreen() {
@@ -21,6 +21,32 @@ export default function ModalScreen() {
   const { mutateAsync: startTrip } = useStartTrip();
   const { mutateAsync: completeTrip } = useCompleteTrip();
   const { mutateAsync: removeClient } = useRemoveClient();
+  const { mutateAsync: confirmPickup } = useConfirmPickup();
+  const { mutateAsync: confirmDropoff } = useConfirmDropoff();
+
+  const handleConfirmPickup = async (tripId: string, clientId: string) => {
+    setActionLoading(true);
+    try {
+      await confirmPickup({ tripId, clientId });
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to confirm pickup. Please check connection or balance.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmDropoff = async (tripId: string, clientId: string) => {
+    setActionLoading(true);
+    try {
+      await confirmDropoff({ tripId, clientId });
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to confirm dropoff.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Find the trip
   const trip = trips?.find((t: any) => t.id === id);
@@ -316,25 +342,59 @@ export default function ModalScreen() {
           <Text style={{ color: theme.icon, fontStyle: 'italic' }}>No passengers yet.</Text>
         ) : (
           trip.clients.map((client: any, i: number) => (
-            <View key={i} style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border, marginBottom: 8 }]}>
-              {client.userId?.photoURL ? (
-                <Image source={{ uri: client.userId.photoURL }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, { backgroundColor: theme.border }]}>
-                  <User size={20} color={theme.icon} />
+            <View key={i} style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border, marginBottom: 8, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', gap: 12 }}>
+                {client.userId?.photoURL ? (
+                  <Image source={{ uri: client.userId.photoURL }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: theme.border }]}>
+                    <User size={20} color={theme.icon} />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.userName, { color: theme.text }]}>{client.userId?.fullName}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.userRole, { color: theme.icon }]}>Passenger</Text>
+                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: client.status === 'picked_up' ? '#3b82f620' : client.status === 'dropped_off' ? '#10b98120' : '#f59e0b20' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: client.status === 'picked_up' ? '#3b82f6' : client.status === 'dropped_off' ? '#10b981' : '#f59e0b' }}>
+                        {client.status ? client.status.toUpperCase() : 'PENDING'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.userName, { color: theme.text }]}>{client.userId?.fullName}</Text>
-                <Text style={[styles.userRole, { color: theme.icon }]}>Passenger</Text>
+                {isDriver && (
+                  <TouchableOpacity
+                    onPress={() => handleRemoveClient(client.userId._id, client.userId.fullName)}
+                    style={styles.removeBtn}
+                  >
+                    <Trash2 size={18} color="#ef4444" />
+                  </TouchableOpacity>
+                )}
               </View>
-              {isDriver && (
-                <TouchableOpacity
-                  onPress={() => handleRemoveClient(client.userId._id, client.userId.fullName)}
-                  style={styles.removeBtn}
-                >
-                  <Trash2 size={18} color="#ef4444" />
-                </TouchableOpacity>
+
+              {/* Action Buttons for Driver */}
+              {isDriver && trip.status === 'active' && client.status !== 'dropped_off' && (
+                <View style={{ flexDirection: 'row', width: '100%', marginTop: 12, gap: 8 }}>
+                  {(!client.status || client.status === 'pending') && (
+                    <TouchableOpacity
+                      style={[styles.actionBtnSmall, { backgroundColor: '#3b82f6' }]}
+                      onPress={() => handleConfirmPickup(trip.id, client.userId._id)}
+                      disabled={actionLoading}
+                    >
+                      <Text style={styles.actionBtnTextSmall}>Confirm Pickup</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {client.status === 'picked_up' && (
+                    <TouchableOpacity
+                      style={[styles.actionBtnSmall, { backgroundColor: '#10b981' }]}
+                      onPress={() => handleConfirmDropoff(trip.id, client.userId._id)}
+                      disabled={actionLoading}
+                    >
+                      <Text style={styles.actionBtnTextSmall}>Confirm Dropoff</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               )}
             </View>
           ))
@@ -411,4 +471,6 @@ const styles = StyleSheet.create({
   editRouteBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, flex: 1 },
   editRouteBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
   cancelBtn: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  actionBtnSmall: { flex: 1, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  actionBtnTextSmall: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

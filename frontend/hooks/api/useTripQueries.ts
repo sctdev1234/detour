@@ -325,3 +325,30 @@ export const useRemoveClient = () => {
         }
     });
 };
+
+export const useConfirmPickup = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        // @ts-ignore
+        mutationFn: async ({ tripId, clientId }: { tripId: string, clientId: string }) => {
+            await api.patch('/trip/pickup', { tripId, clientId });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+            queryClient.invalidateQueries({ queryKey: ['auth', 'user'] }); // Update balance
+        }
+    });
+};
+
+export const useConfirmDropoff = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        // @ts-ignore
+        mutationFn: async ({ tripId, clientId }: { tripId: string, clientId: string }) => {
+            await api.patch('/trip/dropoff', { tripId, clientId });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};

@@ -2,6 +2,7 @@ const Route = require('../models/Route');
 const Trip = require('../models/Trip');
 const JoinRequest = require('../models/JoinRequest');
 const User = require('../models/User');
+const transactionService = require('./transactionService');
 
 class TripService {
     async createRoute(userId, routeData) {
@@ -271,6 +272,64 @@ class TripService {
             { tripId, clientId, status: 'accepted' },
             { status: 'rejected' }
         );
+
+        return trip;
+    }
+    async confirmPickup(driverId, { tripId, clientId }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
+
+        const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
+        if (clientIndex === -1) throw new Error('Client not found in trip');
+
+        const clientEntry = trip.clients[clientIndex];
+
+        if (clientEntry.status === 'picked_up') throw new Error('Client already picked up');
+
+        // Update status
+        clientEntry.status = 'picked_up';
+
+        // Trigger Payment
+        // We need the price. Ideally this comes from the Route or Trip. 
+        // For now, let's assume the trip has a price or the client's route has a price.
+        // The Client's Route has the price they agreed to? Or the Driver's route price?
+        // Usually Driver sets price. Let's get Driver's Route price.
+        const driverRoute = await Route.findById(trip.routeId);
+        const price = driverRoute.price.amount;
+
+        try {
+            const transactionResult = await transactionService.processTripPayment(trip._id, clientId, driverId, price);
+            clientEntry.paymentStatus = 'paid';
+        } catch (paymentError) {
+            console.error('Payment failed:', paymentError);
+            clientEntry.paymentStatus = 'failed';
+            // We still mark as picked up, but maybe flag it? 
+            // Requirement: "if he has enough balance to pay... Driver confirm PickUp... System Deducted"
+            // If payment fails, should we block pickup? The requirement says "Driver see... if he has enough balance".
+            // So we should have checked before. But `processTripPayment` checks balance.
+            // If it fails, we should probably throw an error and NOT confirm pickup? 
+            // "notify the [Driver] that [System] he received the money" happens AFTER pickup confirm.
+            // Let's block if payment fails.
+            throw new Error(`Payment failed: ${paymentError.message}`);
+        }
+
+        await trip.save();
+        return trip;
+    }
+
+    async confirmDropoff(driverId, { tripId, clientId }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
+
+        const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
+        if (clientIndex === -1) throw new Error('Client not found in trip');
+
+        trip.clients[clientIndex].status = 'dropped_off';
+        await trip.save();
 
         return trip;
     }

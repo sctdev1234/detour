@@ -23,6 +23,16 @@ const TripSchema = new mongoose.Schema({
         joinedAt: {
             type: Date,
             default: Date.now
+        },
+        status: {
+            type: String,
+            enum: ['pending', 'picked_up', 'dropped_off', 'cancelled'],
+            default: 'pending'
+        },
+        paymentStatus: {
+            type: String,
+            enum: ['pending', 'paid', 'failed'],
+            default: 'pending'
         }
     }],
     status: {
