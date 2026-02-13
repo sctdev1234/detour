@@ -7,5 +7,14 @@ const transactionController = require('../controllers/transactionController');
 // @desc    Get user transactions
 // @access  Private
 router.get('/', auth, transactionController.getTransactions);
+// @route   POST api/transactions/subscribe
+// @desc    Subscribe to Pro plan
+// @access  Private
+router.post('/subscribe', auth, transactionController.subscribe);
+
+// @route   POST api/transactions/cashout
+// @desc    Cashout funds
+// @access  Private
+router.post('/cashout', auth, transactionController.cashout);
 
 module.exports = router;

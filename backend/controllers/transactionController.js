@@ -13,3 +13,32 @@ exports.getTransactions = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
+
+const transactionService = require('../services/transactionService');
+
+exports.subscribe = async (req, res) => {
+    try {
+        const result = await transactionService.subscribe(req.user.id);
+        res.json(result);
+    } catch (err) {
+        console.error("Error in subscribe:", err.message);
+        if (err.message === 'Insufficient balance') return res.status(400).json({ msg: err.message });
+        if (err.message === 'Already subscribed') return res.status(400).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.cashout = async (req, res) => {
+    try {
+        const { amount } = req.body;
+        if (!amount) return res.status(400).json({ msg: 'Amount is required' });
+
+        const result = await transactionService.cashout(req.user.id, parseFloat(amount));
+        res.json(result);
+    } catch (err) {
+        console.error("Error in cashout:", err.message);
+        if (err.message === 'Insufficient balance') return res.status(400).json({ msg: err.message });
+        if (err.message === 'Invalid amount') return res.status(400).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};

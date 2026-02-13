@@ -30,6 +30,10 @@ export interface User {
         hoursOnline?: number;
         rating?: number;
     };
+    subscription?: {
+        status: 'free' | 'pro';
+        expiresAt?: Date;
+    };
 }
 
 export interface SavedPlace {

@@ -63,6 +63,14 @@ const UserSchema = new mongoose.Schema({
         today: { type: Number, default: 0 },
         total: { type: Number, default: 0 }
     },
+    subscription: {
+        status: {
+            type: String,
+            enum: ['free', 'pro'],
+            default: 'free'
+        },
+        expiresAt: Date
+    },
     // Stats
     stats: {
         tripsDone: { type: Number, default: 0 }, // For both client (rides) and driver (drives)

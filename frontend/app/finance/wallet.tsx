@@ -4,7 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, CreditCard, DollarSign, History } from 'lu
 import React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useTransactions } from '../../hooks/api/useWalletQueries';
+import { useCashout, useSubscribe, useTransactions } from '../../hooks/api/useWalletQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function WalletScreen() {
@@ -13,7 +13,11 @@ export default function WalletScreen() {
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
     const { data: transactions, isLoading } = useTransactions();
-    const { showConfirm } = useUIStore();
+    const { showConfirm, showToast } = useUIStore();
+
+    // Mutations
+    const subscribeMutation = useSubscribe();
+    const cashoutMutation = useCashout();
 
     const renderTransaction = ({ item }: { item: any }) => {
         const isPositive = item.type === 'credit';
@@ -42,14 +46,48 @@ export default function WalletScreen() {
     };
 
     const handleSubscribe = () => {
+        if (user?.subscription?.status === 'pro') {
+            showToast('You are already a Pro member!', 'info');
+            return;
+        }
+
         showConfirm({
             title: 'Upgrade to Pro',
             message: 'Subscribe for 29.99 MAD/month to unlock exclusive features.',
-            confirmText: 'Subscribe',
+            confirmText: 'Subscribe (29.99 MAD)',
             cancelText: 'Cancel',
             onConfirm: () => {
-                // TODO: Implement subscription logic
-                alert('Subscription coming soon!');
+                subscribeMutation.mutate(undefined, {
+                    onSuccess: () => {
+                        showToast('Successfully subscribed to Pro!', 'success');
+                    },
+                    onError: (err: any) => {
+                        showToast(err.response?.data?.msg || 'Subscription failed', 'error');
+                    }
+                });
+            }
+        });
+    };
+
+    const handleCashout = () => {
+        showConfirm({
+            title: 'Cashout Funds',
+            message: 'Are you sure you want to withdraw your entire balance?',
+            confirmText: 'Cashout',
+            cancelText: 'Cancel',
+            onConfirm: () => {
+                if (!user?.balance || user.balance <= 0) {
+                    showToast('Insufficient balance', 'error');
+                    return;
+                }
+                cashoutMutation.mutate(user.balance, {
+                    onSuccess: () => {
+                        showToast('Cashout request submitted!', 'success');
+                    },
+                    onError: (err: any) => {
+                        showToast(err.response?.data?.msg || 'Cashout failed', 'error');
+                    }
+                });
             }
         });
     };
@@ -65,9 +103,9 @@ export default function WalletScreen() {
             <View style={styles.balanceCard}>
                 <Text style={styles.balanceLabel}>Total Balance</Text>
                 <Text style={styles.balanceAmount}>{user.balance?.toFixed(0) || '0'} MAD</Text>
-                <View style={[styles.statusBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                    <Text style={[styles.statusText, { color: '#fff' }]}>
-                        Standard Plan
+                <View style={[styles.statusBadge, { backgroundColor: user.subscription?.status === 'pro' ? '#4CD96420' : 'rgba(255,255,255,0.2)' }]}>
+                    <Text style={[styles.statusText, { color: user.subscription?.status === 'pro' ? '#4CD964' : '#fff' }]}>
+                        {user.subscription?.status === 'pro' ? 'Pro Plan' : 'Standard Plan'}
                     </Text>
                 </View>
             </View>
@@ -76,14 +114,20 @@ export default function WalletScreen() {
                 <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: theme.surface }]}
                     onPress={handleSubscribe}
+                    disabled={user.subscription?.status === 'pro'}
                 >
                     <View style={[styles.actionIcon, { backgroundColor: theme.primary + '20' }]}>
                         <CreditCard size={24} color={theme.primary} />
                     </View>
-                    <Text style={[styles.actionText, { color: theme.text }]}>Subscription</Text>
+                    <Text style={[styles.actionText, { color: theme.text }]}>
+                        {user.subscription?.status === 'pro' ? 'Subscribed' : 'Subscription'}
+                    </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.surface }]}>
+                <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: theme.surface }]}
+                    onPress={handleCashout}
+                >
                     <View style={[styles.actionIcon, { backgroundColor: '#4CD96420' }]}>
                         <DollarSign size={24} color="#4CD964" />
                     </View>
