@@ -5,6 +5,7 @@ import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, 
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/GlassCard';
+import CardStatItem from '../../components/ui/CardStatItem';
 import { Colors } from '../../constants/theme';
 import { useDriverRequests, useTrips } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -23,32 +24,6 @@ const SectionHeader = ({ title, action, onAction, theme }: any) => (
         )}
     </View>
 );
-
-const StatItem = ({ label, value, icon: Icon, onPress, color, theme }: any) => {
-    const Content = (
-        <View style={styles.statItem}>
-            <View style={styles.statValueBox}>
-                <View style={[styles.statIconBox, { backgroundColor: (color || theme.primary) + '15' }]}>
-                    {Icon && <Icon size={20} color={color || theme.primary} strokeWidth={2.5} />}
-                </View>
-                <Text style={[styles.statValue, { color: (color || theme.text) }]}>{value}</Text>
-            </View>
-            <View>
-                <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
-            </View>
-        </View>
-    );
-
-    if (onPress) {
-        return (
-            <TouchableOpacity onPress={onPress} style={{ flex: 1 }}>
-                {Content}
-            </TouchableOpacity>
-        );
-    }
-
-    return <View style={{ flex: 1 }}>{Content}</View>;
-};
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -176,7 +151,7 @@ export default function DriverDashboard() {
                         {/* Row 1 */}
                         <View style={styles.metricsRow}>
                             <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <StatItem
+                                <CardStatItem
                                     label="Active Routes"
                                     value={activeRoutes}
                                     icon={Car}
@@ -186,7 +161,7 @@ export default function DriverDashboard() {
                             </GlassCard>
 
                             <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <StatItem
+                                <CardStatItem
                                     label="Wallet Balance"
                                     value={`${user?.balance?.toFixed(0) || '0'}`}
                                     icon={Wallet}
@@ -200,7 +175,7 @@ export default function DriverDashboard() {
                         {/* Row 2 */}
                         <View style={styles.metricsRow}>
                             <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <StatItem
+                                <CardStatItem
                                     label="Driver Rating"
                                     value={(user?.stats?.rating || avgRating).toFixed(1)}
                                     icon={Star}
@@ -210,7 +185,7 @@ export default function DriverDashboard() {
                             </GlassCard>
 
                             <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <StatItem
+                                <CardStatItem
                                     label="Total Earnings"
                                     value={`${user?.earnings?.total?.toLocaleString() || '0'}`}
                                     icon={DollarSign}
@@ -692,32 +667,6 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
-    },
-    // Stat Item Styles
-    statItem: {
-        gap: 12,
-        flex: 1,
-    },
-    statValueBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    statIconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 22,
-        fontWeight: '800',
-        marginBottom: 2,
-    },
-    statLabel: {
-        fontSize: 13,
-        fontWeight: '600',
     },
 });
 

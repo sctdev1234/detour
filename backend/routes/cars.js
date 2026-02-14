@@ -61,4 +61,67 @@ router.get('/', async (req, res) => {
     }
 });
 
+// @route   PATCH api/cars/:id
+// @desc    Update a car (partial update)
+router.patch('/:id', auth, async (req, res) => {
+    try {
+        const car = await Car.findById(req.params.id);
+        if (!car) {
+            return res.status(404).json({ msg: 'Car not found' });
+        }
+
+        // If setting this car as default, unset all others first
+        if (req.body.isDefault) {
+            await Car.updateMany({ ownerId: car.ownerId }, { isDefault: false });
+        }
+
+        const updatedCar = await Car.findByIdAndUpdate(
+            req.params.id,
+            { $set: req.body },
+            { new: true }
+        );
+
+        res.json(updatedCar);
+    } catch (err) {
+        console.error(err.message);
+        if (err.kind === 'ObjectId') {
+            return res.status(404).json({ msg: 'Car not found' });
+        }
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   DELETE api/cars/:id
+// @desc    Delete a car
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const car = await Car.findById(req.params.id);
+        if (!car) {
+            return res.status(404).json({ msg: 'Car not found' });
+        }
+
+        const wasDefault = car.isDefault;
+        const ownerId = car.ownerId;
+
+        await Car.findByIdAndDelete(req.params.id);
+
+        // If the deleted car was the default, promote the next one
+        if (wasDefault) {
+            const nextCar = await Car.findOne({ ownerId }).sort({ createdAt: -1 });
+            if (nextCar) {
+                nextCar.isDefault = true;
+                await nextCar.save();
+            }
+        }
+
+        res.json({ msg: 'Car removed' });
+    } catch (err) {
+        console.error(err.message);
+        if (err.kind === 'ObjectId') {
+            return res.status(404).json({ msg: 'Car not found' });
+        }
+        res.status(500).send('Server Error');
+    }
+});
+
 module.exports = router;

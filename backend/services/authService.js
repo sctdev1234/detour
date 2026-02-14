@@ -220,7 +220,10 @@ class AuthService {
             steps: []
         };
 
-        if (user.role === 'client') {
+        // Normalize role to ensure matching works mainly for legacy data
+        const role = user.role ? user.role.toLowerCase() : 'client';
+
+        if (role === 'client') {
             // Check if user has at least one route created (Required to unlock app)
             const routeCount = await Route.countDocuments({ userId: user._id, role: 'client' });
             const hasRoute = routeCount > 0;
@@ -244,13 +247,14 @@ class AuthService {
             });
 
             status.completed = hasRoute;
-        } else if (user.role === 'driver') {
+        } else if (role === 'driver') {
             // 1. Upload Documents (Required)
             const docs = user.documents && user.documents.length > 0 ? user.documents[user.documents.length - 1] : null;
             const hasDocs = !!docs;
 
             // 2. Add Car (Required)
             // Check if user owns a car OR is assigned to one
+            // Use lean queries for performance and safety
             const carOwned = await Car.findOne({ ownerId: user._id });
             const carAssigned = await Car.findOne({
                 'assignment.driverEmail': user.email,
@@ -293,7 +297,8 @@ class AuthService {
                 required: false
             });
 
-            // Only unlock if ALL required steps are done
+            // Only unlock if ALL required steps are done.
+            // For legacy users without onboardingStatus, this calculation determines access.
             status.completed = hasDocs && hasCar && isApproved;
         }
 

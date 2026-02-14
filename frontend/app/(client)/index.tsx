@@ -26,6 +26,7 @@ import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/GlassCard';
 import DetourMap from '../../components/Map';
+import CardStatItem from '../../components/ui/CardStatItem';
 import { Colors } from '../../constants/theme';
 import { useClientRequests, useRoutes } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -63,32 +64,6 @@ export default function ClientDashboard() {
             </GlassCard>
         </TouchableOpacity>
     );
-
-    const StatItem = ({ label, value, icon: Icon, onPress, color }: any) => {
-        const Content = (
-            <View style={styles.statItem}>
-                <View style={styles.statValueBox}>
-                    <View style={[styles.statIconBox, { backgroundColor: (color || theme.primary) + '15' }]}>
-                        {Icon && <Icon size={20} color={color || theme.primary} strokeWidth={2.5} />}
-                    </View>
-                    <Text style={[styles.statValue, { color: (color || theme.text) }]}>{value}</Text>
-                </View>
-                <View>
-                    <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
-                </View>
-            </View>
-        );
-
-        if (onPress) {
-            return (
-                <TouchableOpacity onPress={onPress} style={{ flex: 1 }}>
-                    {Content}
-                </TouchableOpacity>
-            );
-        }
-
-        return <View style={{ flex: 1 }}>{Content}</View>;
-    };
 
     return (
         <View style={styles.container}>
@@ -301,7 +276,7 @@ export default function ClientDashboard() {
                     <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 16 }]}>Your Activity</Text>
                     <View style={styles.statsRow}>
                         <GlassCard style={styles.statCard} contentContainerStyle={{ padding: 16 }}>
-                            <StatItem
+                            <CardStatItem
                                 label="Total Rides"
                                 value={user?.stats?.tripsDone || '0'}
                                 icon={Navigation}
@@ -309,7 +284,7 @@ export default function ClientDashboard() {
                             />
                         </GlassCard>
                         <GlassCard style={styles.statCard} contentContainerStyle={{ padding: 16 }}>
-                            <StatItem
+                            <CardStatItem
                                 label="Total Spent"
                                 value={`${user?.spending?.total || '0'} MAD`}
                                 icon={TrendingUp}
@@ -603,30 +578,6 @@ const styles = StyleSheet.create({
     statCard: {
         flex: 1,
         borderRadius: 24,
-    },
-    statItem: {
-        gap: 12,
-    },
-    statValueBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    statIconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 22,
-        fontWeight: '800',
-        marginBottom: 2,
-    },
-    statLabel: {
-        fontSize: 13,
-        fontWeight: '600',
     },
 
     // Premium Banner
