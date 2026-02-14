@@ -135,20 +135,24 @@ export const useSubmitVerification = () => {
             // We'll assume the component handles the upload to Cloudinary/GridFS first or we reuse the service logic here.
             // For simplicity, let's assume `docs` already contains URLs or we use the service.
 
-            // Re-implementing the upload logic from useAuthStore here would be cleaner
+            const { uploadImage } = await import('../../services/uploadService');
             const uploadedDocs: any = { ...docs };
+
             const uploadPromises = Object.keys(docs).map(async (key) => {
                 const uri = (docs as any)[key];
+                // Upload if it's a local URI (not a URL and not a base64 string)
                 if (uri && !uri.startsWith('http') && !uri.startsWith('data:')) {
                     try {
-                        const url = await require('../../services/uploadService').uploadImage(uri, 'verification');
+                        const url = await uploadImage(uri, 'verification');
                         uploadedDocs[key] = url;
                     } catch (err) {
+                        console.error(`[Verification] Failed to upload ${key}:`, err);
                         throw new Error(`Failed to upload ${key}`);
                     }
                 }
             });
             await Promise.all(uploadPromises);
+
 
             const res = await api.post('/auth/verify', uploadedDocs);
             return res.data;
