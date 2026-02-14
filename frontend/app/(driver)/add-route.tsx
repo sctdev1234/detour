@@ -21,7 +21,7 @@ export default function AddRouteScreen() {
 
     const { user } = useAuthStore();
     const { mutateAsync: addRoute, isPending: isAddingRoute } = useAddRoute();
-    const { data: cars = [] } = useCars(user?.id);
+    const { data: cars = [] } = useCars();
 
     const { showToast } = useUIStore();
 

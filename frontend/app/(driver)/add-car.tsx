@@ -17,7 +17,7 @@ export default function AddCarScreen() {
     const theme = Colors[colorScheme];
 
     const user = useAuthStore((state) => state.user);
-    const { data: cars = [] } = useCars(user?.id);
+    const { data: cars = [] } = useCars();
     const { mutateAsync: addCar, isPending: isAdding } = useAddCar();
     const { showToast } = useUIStore();
 

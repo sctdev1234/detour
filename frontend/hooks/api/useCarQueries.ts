@@ -33,16 +33,14 @@ export const carKeys = {
     detail: (id: string) => [...carKeys.all, 'detail', id] as const,
 };
 
-export const useCars = (ownerId?: string) => {
+export const useCars = () => {
     return useQuery({
-        queryKey: carKeys.list(ownerId || ''),
+        queryKey: carKeys.list('me'),
         queryFn: async () => {
-            if (!ownerId) return [];
-            const { data } = await api.get(`/cars?ownerId=${ownerId}`);
+            const { data } = await api.get('/cars');
             // Ensure ID mapping is consistent (mongo _id to id)
             return data.map((c: any) => ({ ...c, id: c._id || c.id })) as Car[];
         },
-        enabled: !!ownerId,
     });
 };
 

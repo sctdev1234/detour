@@ -127,9 +127,12 @@ export const useMatches = (routeId: string | null) => {
             return res.data.map((m: any) => ({
                 route: {
                     id: m.route._id,
-                    userId: m.route.userId?._id || m.route.userId,
-                    fullName: m.route.userId?.fullName, // Added for convenience
-                    photoURL: m.route.userId?.photoURL, // Added for convenience
+                    userId: m.route.userId ? {
+                        _id: m.route.userId._id || m.route.userId,
+                        fullName: m.route.userId.fullName,
+                        email: m.route.userId.email,
+                        photoURL: m.route.userId.photoURL
+                    } : null,
                     role: 'driver',
                     carId: m.route.carId,
                     startPoint: {
