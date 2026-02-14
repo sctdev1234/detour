@@ -7,7 +7,7 @@ import { useRemoveRoute, useRoutes } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
 import { Route } from '../types';
 
-console.log('Routes Screen - StyleSheet imported:', !!StyleSheet);
+
 
 export default function RoutesScreen() {
     const router = useRouter();

@@ -115,8 +115,11 @@ function AppContent() {
           <Stack.Screen name="change-password" options={{ headerShown: false }} />
           <Stack.Screen name="chat" options={{ headerShown: false }} />
           <Stack.Screen name="tasks" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-
+          <Stack.Screen name="modal" options={{ headerShown: false }} />
+          <Stack.Screen name="finance/wallet" options={{ headerShown: false }} />
+          <Stack.Screen name="reclamations/new" options={{ headerShown: false }} />
+          <Stack.Screen name="reclamations/index" options={{ headerShown: false }} />
+          <Stack.Screen name="notifications" options={{ headerShown: false }} />
         </Stack>
         <LocationTracker />
         <Toast />

@@ -1,19 +1,16 @@
 import { useRouter } from 'expo-router';
 import { AlertCircle, Plus } from 'lucide-react-native';
 import React from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore';
-import { Reclamation, useReclamationStore } from '../../store/useReclamationStore';
+import { Reclamation, useReclamations } from '../../hooks/api/useReclamationQueries';
 
 export default function ReclamationsListScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user } = useAuthStore();
-    const { getReclamationsByReporter } = useReclamationStore();
 
-    const myReclamations = user ? getReclamationsByReporter(user.id) : [];
+    const { data: myReclamations, isLoading } = useReclamations();
 
     const renderItem = ({ item }: { item: Reclamation }) => {
         const getStatusColor = (status: string) => {
@@ -45,18 +42,24 @@ export default function ReclamationsListScreen() {
                 <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Support</Text>
             </View>
 
-            <FlatList
-                data={myReclamations}
-                keyExtractor={item => item.id}
-                renderItem={renderItem}
-                contentContainerStyle={styles.list}
-                ListEmptyComponent={
-                    <View style={styles.empty}>
-                        <AlertCircle size={48} color={theme.border} />
-                        <Text style={[styles.emptyText, { color: theme.icon }]}>No reclamations found</Text>
-                    </View>
-                }
-            />
+            {isLoading ? (
+                <View style={styles.empty}>
+                    <ActivityIndicator size="large" color={theme.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={myReclamations || []}
+                    keyExtractor={item => item.id}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.list}
+                    ListEmptyComponent={
+                        <View style={styles.empty}>
+                            <AlertCircle size={48} color={theme.border} />
+                            <Text style={[styles.emptyText, { color: theme.icon }]}>No reclamations found</Text>
+                        </View>
+                    }
+                />
+            )}
 
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: theme.primary }]}

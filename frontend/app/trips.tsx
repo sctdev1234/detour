@@ -103,32 +103,12 @@ export default function TripsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: {
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32,
-    },
-    backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)'
-    },
-    title: { fontSize: 24, fontWeight: '800' },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     list: { padding: 24, gap: 20 },
     tripCard: { borderRadius: 28, borderWidth: 1, padding: 20, gap: 16 },
     tripHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.03)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusDot: { width: 6, height: 6, borderRadius: 3 },
-    statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
     statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
     dateText: { fontSize: 12, fontWeight: '600' },
     trajectory: { flexDirection: 'row', gap: 16, alignItems: 'center' },

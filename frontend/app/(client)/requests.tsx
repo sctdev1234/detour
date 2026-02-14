@@ -1,6 +1,5 @@
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { Send, User } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -8,7 +7,6 @@ import { Colors } from '../../constants/theme';
 import { useClientRequests } from '../../hooks/api/useTripQueries';
 
 export default function ClientRequestsScreen() {
-    const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 

@@ -3,8 +3,8 @@ import { Send } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../constants/theme';
+import { ChatMessage, useChat, useSendMessage } from '../hooks/api/useChatQueries';
 import { useAuthStore } from '../store/useAuthStore';
-import { Message, useChatStore } from '../store/useChatStore';
 
 export default function ChatScreen() {
     const { requestId, recipientName } = useLocalSearchParams<{ requestId: string; recipientName: string }>();
@@ -12,22 +12,24 @@ export default function ChatScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
-    const { conversations, addMessage } = useChatStore();
+    const { data: chat } = useChat(requestId);
+    const { mutate: sendMessage } = useSendMessage(requestId);
 
     const [inputText, setInputText] = useState('');
     const flatListRef = useRef<FlatList>(null);
 
-    const messages = conversations[requestId]?.messages || [];
+    const messages = chat?.messages || [];
 
     const handleSend = () => {
-        if (inputText.trim() && user) {
-            addMessage(requestId, user.id, inputText.trim());
+        if (inputText.trim()) {
+            sendMessage(inputText.trim());
             setInputText('');
         }
     };
 
-    const renderMessage = ({ item }: { item: Message }) => {
-        const isMe = item.senderId === user?.id;
+    const renderMessage = ({ item }: { item: ChatMessage }) => {
+        const senderId = typeof item.senderId === 'string' ? item.senderId : item.senderId._id;
+        const isMe = senderId === user?.id;
 
         return (
             <View style={[

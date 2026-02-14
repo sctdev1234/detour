@@ -1,3 +1,4 @@
+import { useUIStore } from '@/store/useUIStore';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Info, MapPin, Send, User } from 'lucide-react-native';
@@ -13,16 +14,17 @@ export default function FindMatchesScreen() {
 
     const { data: matches, isLoading } = useMatches(routeId ?? null);
     const { mutateAsync: sendJoinRequest } = useSendJoinRequest();
+    const { showToast } = useUIStore();
 
     const handleJoin = async (tripId: string) => {
         if (!routeId) return;
         try {
             await sendJoinRequest({ clientRouteId: routeId, tripId });
-            alert('Request sent!');
+            showToast('Request sent!', 'success');
             router.back();
         } catch (error) {
             console.error(error);
-            alert('Failed to send request');
+            showToast('Failed to send request', 'error');
         }
     };
 
@@ -56,13 +58,21 @@ export default function FindMatchesScreen() {
                 </View>
 
                 {item.trip ? (
-                    <TouchableOpacity
-                        style={[styles.joinBtn, { backgroundColor: theme.primary }]}
-                        onPress={() => handleJoin(item.trip.id)}
-                    >
-                        <Send size={18} color="#fff" />
-                        <Text style={styles.joinBtnText}>Request to Join</Text>
-                    </TouchableOpacity>
+                    item.requestStatus ? (
+                        <View style={[styles.joinBtn, { backgroundColor: theme.border }]}>
+                            <Text style={[styles.joinBtnText, { color: theme.text }]}>
+                                {item.requestStatus === 'pending' ? 'Request Sent' : item.requestStatus}
+                            </Text>
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={[styles.joinBtn, { backgroundColor: theme.primary }]}
+                            onPress={() => handleJoin(item.trip.id)}
+                        >
+                            <Send size={18} color="#fff" />
+                            <Text style={styles.joinBtnText}>Request to Join</Text>
+                        </TouchableOpacity>
+                    )
                 ) : (
                     <View style={[styles.infoBanner, { backgroundColor: theme.border }]}>
                         <Info size={16} color={theme.icon} />

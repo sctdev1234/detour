@@ -128,10 +128,21 @@ class TripService {
             return acc;
         }, {});
 
-        return matches.map(route => ({
-            route,
-            trip: tripMap[route._id.toString()] || null
-        }));
+        // Fetch existing requests for this route
+        const requests = await JoinRequest.find({ clientRouteId: routeId });
+        const requestMap = requests.reduce((acc, req) => {
+            acc[req.tripId.toString()] = req.status;
+            return acc;
+        }, {});
+
+        return matches.map(route => {
+            const trip = tripMap[route._id.toString()] || null;
+            return {
+                route,
+                trip,
+                requestStatus: trip ? requestMap[trip._id.toString()] : null
+            };
+        });
     }
 
     async sendJoinRequest(clientId, { clientRouteId, tripId }) {

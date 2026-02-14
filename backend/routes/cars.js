@@ -8,7 +8,8 @@ const { auth, requireVerification } = require('../middleware/auth');
 // @desc    Add a new car
 router.post('/', auth, requireVerification, async (req, res) => {
     try {
-        let { marque, model, year, color, places, isDefault, images, documents, ownerId } = req.body;
+        let { marque, model, year, color, places, isDefault, images, documents } = req.body;
+        const ownerId = req.user.id;
 
         // Check if user has any cars
         const existingCarsCount = await Car.countDocuments({ ownerId });
@@ -32,7 +33,7 @@ router.post('/', auth, requireVerification, async (req, res) => {
             isDefault,
             images,
             documents,
-            ownerId: ownerId // In real app, get this from req.user.id via auth middleware
+            ownerId
         });
 
         const car = await newCar.save();
