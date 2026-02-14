@@ -150,22 +150,26 @@ export default function DriverDashboard() {
                         {/* Row 1 */}
                         <View style={styles.metricsRow}>
                             <GlassCard style={styles.metricCard} intensity={20}>
-                                <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                    <Car size={20} color={theme.text} />
-                                </View>
-                                <View>
+                                <View style={styles.metricValueBox}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                        <Car size={20} color={theme.text} />
+                                    </View>
                                     <Text style={[styles.metricValue, { color: theme.text }]}>{activeRoutes}</Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={[styles.metricLabel, { color: theme.icon }]}>Active Routes</Text>
                                 </View>
                             </GlassCard>
 
                             <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/finance/wallet')}>
                                 <GlassCard style={styles.metricCard} intensity={20}>
-                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                        <Text style={{ fontSize: 16, fontWeight: '800', color: theme.primary }}>M</Text>
-                                    </View>
-                                    <View>
+                                    <View style={styles.metricValueBox}>
+                                        <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.primary }}>M</Text>
+                                        </View>
                                         <Text style={[styles.metricValue, { color: theme.primary }]}>{user?.balance?.toFixed(0) || '0'}</Text>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
                                         <Text style={[styles.metricLabel, { color: theme.icon }]}>Wallet Balance</Text>
                                     </View>
                                 </GlassCard>
@@ -175,21 +179,25 @@ export default function DriverDashboard() {
                         {/* Row 2 */}
                         <View style={styles.metricsRow}>
                             <GlassCard style={styles.metricCard} intensity={20}>
-                                <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                    <Star size={20} color="#EAB308" fill="#EAB308" />
-                                </View>
-                                <View>
+                                <View style={styles.metricValueBox}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                        <Star size={20} color="#EAB308" fill="#EAB308" />
+                                    </View>
                                     <Text style={[styles.metricValue, { color: theme.text }]}>{(user?.stats?.rating || avgRating).toFixed(1)}</Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={[styles.metricLabel, { color: theme.icon }]}>Driver Rating</Text>
                                 </View>
                             </GlassCard>
 
                             <GlassCard style={styles.metricCard} intensity={20}>
-                                <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#10B981' }}>$</Text>
-                                </View>
-                                <View>
+                                <View style={styles.metricValueBox}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#10B981' }}>$</Text>
+                                    </View>
                                     <Text style={[styles.metricValue, { color: theme.text }]}>{user?.earnings?.total?.toLocaleString() || '0'}</Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={[styles.metricLabel, { color: theme.icon }]}>Total Earnings</Text>
                                 </View>
                             </GlassCard>
@@ -472,6 +480,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
     },
+    metricValueBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
     metricIconBox: {
         width: 44,
         height: 44,
@@ -480,7 +493,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     metricValue: {
-        fontSize: 18,
+        fontSize: 22,
         fontWeight: '800',
         marginBottom: 2,
     },

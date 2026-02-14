@@ -9,13 +9,13 @@ import {
     MapPin,
     Navigation,
     Search,
-    Star,
+    TrendingUp,
     Zap
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
-    Platform,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -23,6 +23,7 @@ import {
     View
 } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/GlassCard';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
@@ -31,35 +32,19 @@ import { useAuthStore } from '../../store/useAuthStore';
 
 export default function ClientDashboard() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
     const { data: routes } = useRoutes();
     const { data: requests } = useClientRequests();
 
-    const [greeting, setGreeting] = useState('Hello');
-
     // Filter for client routes and active trips
     const myRoutes = React.useMemo(() => routes?.filter(r => r.role === 'client').slice(0, 3) || [], [routes]);
-    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['accepted', 'started'].includes(r.status)), [requests]);
-    const nextRoute = myRoutes[0]; // Logic to be improved for "Next" based on time
-
-    useEffect(() => {
-        const hour = new Date().getHours();
-        if (hour < 12) setGreeting('Good Morning');
-        else if (hour < 18) setGreeting('Good Afternoon');
-        else setGreeting('Good Evening');
-    }, []);
+    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['accepted', 'started', 'picked_up'].includes(r.status)), [requests]);
 
     const handleQuickAction = (action: string) => {
-        if (action === 'work') {
-            // Logic to find work route or create one
-            router.push('/(client)/add-route');
-        } else if (action === 'home') {
-            router.push('/(client)/add-route');
-        } else {
-            router.push('/(client)/add-route');
-        }
+        router.push('/(client)/add-route');
     };
 
     const QuickDestinationBtn = ({ icon: Icon, label, subLabel, onPress, color = theme.primary }: any) => (
@@ -67,9 +52,9 @@ export default function ClientDashboard() {
             onPress={onPress}
             activeOpacity={0.7}
         >
-            <GlassCard style={styles.quickDestBtn} contentContainerStyle={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <GlassCard style={styles.quickDestBtn} contentContainerStyle={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={[styles.quickDestIcon, { backgroundColor: color + '15' }]}>
-                    <Icon size={24} color={color} />
+                    <Icon size={22} color={color} strokeWidth={2.5} />
                 </View>
                 <View>
                     <Text style={[styles.quickDestLabel, { color: theme.text }]}>{label}</Text>
@@ -79,12 +64,16 @@ export default function ClientDashboard() {
         </TouchableOpacity>
     );
 
-    const StatItem = ({ label, value, icon: Icon, onPress }: any) => {
+    const StatItem = ({ label, value, icon: Icon, onPress, color }: any) => {
         const Content = (
             <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    {Icon && <Icon size={12} color={theme.icon} />}
+                <View style={styles.statValueBox}>
+                    <View style={[styles.statIconBox, { backgroundColor: (color || theme.primary) + '15' }]}>
+                        {Icon && <Icon size={20} color={color || theme.primary} strokeWidth={2.5} />}
+                    </View>
+                    <Text style={[styles.statValue, { color: (color || theme.text) }]}>{value}</Text>
+                </View>
+                <View>
                     <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
                 </View>
             </View>
@@ -98,70 +87,94 @@ export default function ClientDashboard() {
             );
         }
 
-        return Content;
+        return <View style={{ flex: 1 }}>{Content}</View>;
     };
 
     return (
         <View style={styles.container}>
+            <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
             <LinearGradient
                 colors={[theme.background, theme.surface]}
                 style={StyleSheet.absoluteFill}
             />
+
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100, paddingTop: Platform.OS === 'ios' ? 120 : 100 }}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
             >
-                {/* 2. Primary Action / Active State */}
+                {/* 1. Active State / Search */}
                 <View style={styles.section}>
                     {activeRequest ? (
                         <Animated.View entering={FadeInDown.springify()}>
-                            <GlassCard style={[styles.activeCard]} contentContainerStyle={{ backgroundColor: theme.primary, padding: 0 }}>
-                                <View style={{ padding: 20 }}>
-                                    <View style={styles.activeCardHeader}>
-                                        <Text style={styles.activeCardTitle}>Current Trip</Text>
-                                        <View style={styles.activeStatusBadge}>
-                                            <Text style={styles.activeStatusText}>{activeRequest.status}</Text>
-                                        </View>
-                                    </View>
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                onPress={() => router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } })}
+                            >
+                                <LinearGradient
+                                    colors={['#2563EB', '#4F46E5']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.activeCard}
+                                >
                                     <View style={styles.activeCardContent}>
-                                        <View style={styles.TripLocations}>
-                                            <Text style={styles.tripLocationText} numberOfLines={1}>📍 {activeRequest.startPoint?.address || 'Start'}</Text>
-                                            <View style={styles.verticalLine} />
-                                            <Text style={styles.tripLocationText} numberOfLines={1}>🏁 {activeRequest.endPoint?.address || 'End'}</Text>
+                                        <View style={styles.activeCardHeader}>
+                                            <View style={styles.pulsingDot} />
+                                            <Text style={styles.activeCardTitle}>Trip in Progress</Text>
+                                            <View style={styles.activeStatusBadge}>
+                                                <Text style={styles.activeStatusText}>{activeRequest.status.replace('_', ' ')}</Text>
+                                            </View>
                                         </View>
-                                        <TouchableOpacity
-                                            style={styles.trackBtn}
-                                            onPress={() => router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } })}
-                                        >
+
+                                        <View style={styles.tripRouteContainer}>
+                                            <View style={styles.timelineContainer}>
+                                                <View style={[styles.timelineDot, { backgroundColor: '#fff' }]} />
+                                                <View style={[styles.timelineLine, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+                                                <View style={[styles.timelineDot, { backgroundColor: '#fff', opacity: 0.5 }]} />
+                                            </View>
+                                            <View style={styles.tripDetails}>
+                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.startPoint?.address || 'Start'}</Text>
+                                                <View style={{ height: 16 }} />
+                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.endPoint?.address || 'End'}</Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.trackBtn}>
                                             <Text style={styles.trackBtnText}>Track Driver</Text>
-                                            <ArrowRight size={16} color={theme.primary} />
-                                        </TouchableOpacity>
+                                            <ArrowRight size={16} color="#fff" />
+                                        </View>
                                     </View>
-                                </View>
-                            </GlassCard>
+                                </LinearGradient>
+                            </TouchableOpacity>
                         </Animated.View>
                     ) : (
                         <Animated.View entering={FadeInDown.springify()}>
-                            <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Where are you going?</Text>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Where to?</Text>
 
                             <TouchableOpacity
                                 onPress={() => router.push('/(client)/add-route')}
                                 activeOpacity={0.9}
+                                style={styles.searchContainer}
                             >
                                 <GlassCard style={styles.searchBar} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 }}>
-                                    <Search size={20} color={theme.icon} />
+                                    <Search size={20} color={theme.primary} strokeWidth={2.5} />
                                     <Text style={[styles.searchPlaceholder, { color: theme.icon }]}>Search destination...</Text>
                                 </GlassCard>
                             </TouchableOpacity>
 
-                            <View style={[styles.dashboardMapContainer, { borderColor: theme.border, borderRadius: 24, overflow: 'hidden', marginBottom: 16 }]}>
+                            {/* Saved Place Map Preview */}
+                            <View style={[styles.mapPreview, { borderColor: theme.border }]}>
                                 <DetourMap
                                     mode="picker"
                                     readOnly={true}
                                     theme={theme}
-                                    height={180}
+                                    height={160}
                                     savedPlaces={user?.savedPlaces}
+                                />
+                                <LinearGradient
+                                    colors={['transparent', 'rgba(0,0,0,0.05)']}
+                                    style={StyleSheet.absoluteFill}
+                                    pointerEvents="none"
                                 />
                             </View>
 
@@ -169,11 +182,11 @@ export default function ClientDashboard() {
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={{ gap: 12, paddingRight: 24 }}
-                                style={{ overflow: 'visible' }}
+                                style={styles.quickActionsScroll}
                             >
                                 {user?.savedPlaces && user.savedPlaces.length > 0 ? (
                                     user.savedPlaces.map((place, index) => (
-                                        <View key={place._id || index} style={{ width: 160 }}>
+                                        <View key={place._id || index} style={{ width: 150 }}>
                                             <QuickDestinationBtn
                                                 icon={place.icon === 'home' ? Home : place.icon === 'work' ? Briefcase : MapPin}
                                                 label={place.label}
@@ -193,7 +206,7 @@ export default function ClientDashboard() {
                                     ))
                                 ) : (
                                     <>
-                                        <View style={{ width: 160 }}>
+                                        <View style={{ width: 150 }}>
                                             <QuickDestinationBtn
                                                 icon={Briefcase}
                                                 label="Work"
@@ -201,7 +214,7 @@ export default function ClientDashboard() {
                                                 onPress={() => handleQuickAction('work')}
                                             />
                                         </View>
-                                        <View style={{ width: 160 }}>
+                                        <View style={{ width: 150 }}>
                                             <QuickDestinationBtn
                                                 icon={Home}
                                                 label="Home"
@@ -217,12 +230,12 @@ export default function ClientDashboard() {
                     )}
                 </View>
 
-                {/* 3. My Commutes (Recurring Routes) */}
+                {/* 2. My Commutes */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={[styles.sectionTitle, { color: theme.text }]}>My Commutes</Text>
                         <TouchableOpacity onPress={() => router.push('/(client)/routes')}>
-                            <Text style={{ color: theme.primary, fontWeight: '600' }}>Manage</Text>
+                            <Text style={[styles.sectionAction, { color: theme.primary }]}>Manage</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -233,28 +246,38 @@ export default function ClientDashboard() {
                                     key={route.id}
                                     entering={FadeInRight.delay(index * 100).springify()}
                                 >
-                                    <GlassCard style={styles.routeCard} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                                        <View style={[styles.routeIcon, { backgroundColor: theme.background }]}>
-                                            <Clock size={20} color={theme.primary} />
-                                        </View>
-                                        <View style={styles.routeInfo}>
-                                            <View style={styles.routeHeader}>
+                                    <GlassCard style={styles.routeCard} contentContainerStyle={{ padding: 16 }}>
+                                        <View style={styles.routeHeader}>
+                                            <View style={styles.timeContainer}>
+                                                <Clock size={16} color={theme.primary} />
                                                 <Text style={[styles.routeTime, { color: theme.text }]}>{route.timeStart}</Text>
-                                                <View style={[styles.daysBadge, { backgroundColor: theme.background }]}>
-                                                    <Text style={[styles.daysText, { color: theme.icon }]}>
-                                                        {route.days.length > 5 ? 'Daily' : `${route.days.length} days`}
-                                                    </Text>
-                                                </View>
                                             </View>
-                                            <Text style={[styles.routeAddress, { color: theme.icon }]} numberOfLines={1}>
-                                                To {route.endPoint.address}
-                                            </Text>
+                                            <View style={[styles.daysBadge, { backgroundColor: theme.primary + '15' }]}>
+                                                <Text style={[styles.daysText, { color: theme.primary }]}>
+                                                    {route.days.length > 5 ? 'Daily' : `${route.days.length} days`}
+                                                </Text>
+                                            </View>
                                         </View>
+
+                                        <View style={styles.routeBody}>
+                                            <View style={styles.timelineContainer}>
+                                                <View style={[styles.timelineDot, { borderColor: theme.primary }]} />
+                                                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                                                <View style={[styles.timelineDot, { borderColor: theme.secondary || '#10B981' }]} />
+                                            </View>
+                                            <View style={styles.tripDetails}>
+                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>Current Location</Text>
+                                                <View style={{ height: 12 }} />
+                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>{route.endPoint.address}</Text>
+                                            </View>
+                                        </View>
+
                                         <TouchableOpacity
-                                            style={[styles.findMatchBtn, { backgroundColor: theme.primary + '20' }]}
+                                            style={[styles.findMatchBtn, { backgroundColor: theme.primary + '10' }]}
                                             onPress={() => router.push({ pathname: '/(client)/find-matches', params: { routeId: route.id } })}
                                         >
-                                            <Text style={[styles.findMatchText, { color: theme.primary }]}>Find</Text>
+                                            <Text style={[styles.findMatchText, { color: theme.primary }]}>Find Driver</Text>
+                                            <ArrowRight size={16} color={theme.primary} />
                                         </TouchableOpacity>
                                     </GlassCard>
                                 </Animated.View>
@@ -262,59 +285,62 @@ export default function ClientDashboard() {
                         </View>
                     ) : (
                         <TouchableOpacity onPress={() => router.push('/(client)/add-route')}>
-                            <GlassCard style={styles.emptyState} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                                <View style={[styles.emptyIconData, { backgroundColor: theme.primary + '15' }]}>
-                                    <Navigation size={24} color={theme.primary} />
+                            <GlassCard style={styles.emptyState} contentContainerStyle={{ alignItems: 'center', padding: 32 }}>
+                                <View style={[styles.emptyIconData, { backgroundColor: theme.primary + '10' }]}>
+                                    <Navigation size={32} color={theme.primary} />
                                 </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={[styles.emptyTitle, { color: theme.text }]}>Set up your commute</Text>
-                                    <Text style={[styles.emptyDesc, { color: theme.icon }]}>Get matches for your daily route.</Text>
-                                </View>
-                                <ArrowRight size={20} color={theme.icon} />
+                                <Text style={[styles.emptyTitle, { color: theme.text }]}>No commutes yet</Text>
+                                <Text style={[styles.emptyDesc, { color: theme.icon }]}>Set up a recurring route to get matches instantly.</Text>
                             </GlassCard>
                         </TouchableOpacity>
                     )}
                 </View>
 
-                {/* 4. Weekly Activity / Stats */}
+                {/* 3. Your Activity Stats */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>Your Activity</Text>
-                    <GlassCard style={styles.statsContainer} contentContainerStyle={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <StatItem label="Rides" value={user?.stats?.tripsDone || '0'} icon={Navigation} />
-                        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem
-                            label="Spent"
-                            value={`${user?.spending?.total || '0'} MAD`}
-                            icon={Star}
-                            onPress={() => router.push('/finance/wallet')}
-                        />
-                        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                        <StatItem
-                            label="Balance"
-                            value={`${user?.balance || '0'} MAD`}
-                            icon={Clock}
-                            onPress={() => router.push('/finance/wallet')}
-                        />
-                    </GlassCard>
+                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 16 }]}>Your Activity</Text>
+                    <View style={styles.statsRow}>
+                        <GlassCard style={styles.statCard} contentContainerStyle={{ padding: 16 }}>
+                            <StatItem
+                                label="Total Rides"
+                                value={user?.stats?.tripsDone || '0'}
+                                icon={Navigation}
+                                color={theme.primary}
+                            />
+                        </GlassCard>
+                        <GlassCard style={styles.statCard} contentContainerStyle={{ padding: 16 }}>
+                            <StatItem
+                                label="Total Spent"
+                                value={`${user?.spending?.total || '0'} MAD`}
+                                icon={TrendingUp}
+                                color="#F59E0B"
+                                onPress={() => router.push('/finance/wallet')}
+                            />
+                        </GlassCard>
+                    </View>
                 </View>
 
-                {/* 5. Marketing / Pro Tip */}
-                <Animated.View entering={FadeInDown.delay(400)} style={{ paddingHorizontal: 24, marginBottom: 24 }}>
-                    <LinearGradient
-                        colors={[theme.secondary || '#5856D6', '#8E8CFF']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.proTip}
-                    >
-                        <View style={styles.proContent}>
-                            <Zap size={24} color="#FFF" fill="#FFF" />
-                            <View>
-                                <Text style={styles.proTitle}>Go Premium</Text>
-                                <Text style={styles.proDesc}>Get priority matching & lower fees.</Text>
+                {/* 4. Premium Banner */}
+                <Animated.View entering={FadeInDown.delay(400)} style={{ marginBottom: 40, marginHorizontal: 4 }}>
+                    <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/finance/wallet')}>
+                        <LinearGradient
+                            colors={['#8B5CF6', '#EC4899']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.premiumBanner}
+                        >
+                            <View style={styles.premiumContent}>
+                                <View style={styles.premiumIconBox}>
+                                    <Zap size={24} color="#FFF" fill="#FFF" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.premiumTitle}>Upgrade to Premium</Text>
+                                    <Text style={styles.premiumDesc}>Get priority matching & lower booking fees.</Text>
+                                </View>
+                                <ChevronRight size={20} color="#FFF" />
                             </View>
-                        </View>
-                        <ChevronRight size={20} color="#FFF" />
-                    </LinearGradient>
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </Animated.View>
 
             </ScrollView>
@@ -329,32 +355,11 @@ const styles = StyleSheet.create({
     scrollView: {
         flex: 1,
     },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        marginBottom: 24,
-    },
-    greeting: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    userName: {
-        fontSize: 24,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
-    avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 2,
-        borderColor: '#fff',
+    scrollContent: {
+        paddingBottom: 100,
+        paddingHorizontal: 20,
     },
     section: {
-        paddingHorizontal: 24,
         marginBottom: 32,
     },
     sectionHeader: {
@@ -362,38 +367,56 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
+        paddingHorizontal: 4,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 20,
+        fontWeight: '800',
+        marginBottom: 8,
+    },
+    sectionAction: {
+        fontSize: 14,
         fontWeight: '700',
-        letterSpacing: -0.5,
     },
 
-    // Search & Quick Destinations
+    // Search & Quick Actions
+    searchContainer: {
+        marginBottom: 20,
+        marginTop: 8,
+    },
     searchBar: {
-        borderRadius: 16,
-        marginBottom: 16,
+        borderRadius: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
     },
     searchPlaceholder: {
         fontSize: 16,
         fontWeight: '500',
     },
-    quickDestGrid: {
-        flexDirection: 'row',
-        gap: 12,
+    mapPreview: {
+        borderRadius: 24,
+        overflow: 'hidden',
+        marginBottom: 20,
+        borderWidth: 1,
+    },
+    quickActionsScroll: {
+        overflow: 'visible',
     },
     quickDestBtn: {
         borderRadius: 20,
     },
     quickDestIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 44,
+        height: 44,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
     },
     quickDestLabel: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
         marginBottom: 2,
     },
@@ -404,19 +427,34 @@ const styles = StyleSheet.create({
 
     // Active Card
     activeCard: {
-        borderRadius: 24,
-        overflow: 'hidden',
+        borderRadius: 28,
+        padding: 2, // Gradient border effect if needed, usually just fill
+        shadowColor: "#2563EB",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    activeCardContent: {
+        padding: 20,
     },
     activeCardHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
+    },
+    pulsingDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#fff',
+        marginRight: 8,
     },
     activeCardTitle: {
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+        flex: 1,
     },
     activeStatusBadge: {
         backgroundColor: 'rgba(255,255,255,0.2)',
@@ -426,168 +464,203 @@ const styles = StyleSheet.create({
     },
     activeStatusText: {
         color: '#fff',
-        fontSize: 12,
-        fontWeight: '700',
+        fontSize: 11,
+        fontWeight: '800',
         textTransform: 'uppercase',
     },
-    activeCardContent: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 16,
+    tripRouteContainer: {
+        flexDirection: 'row',
+        marginBottom: 20,
     },
-    TripLocations: {
-        marginBottom: 16,
-        gap: 8,
-    },
-    tripLocationText: {
-        fontSize: 14,
+    tripLocationTextWhite: {
+        color: '#fff',
+        fontSize: 15,
         fontWeight: '600',
-        color: '#1A1A1A',
-    },
-    verticalLine: {
-        height: 12,
-        width: 1,
-        backgroundColor: '#E5E5E5',
-        marginLeft: 6,
     },
     trackBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 12,
-        backgroundColor: '#F2F6FF',
-        borderRadius: 12,
+        padding: 14,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 16,
         gap: 8,
     },
     trackBtnText: {
+        color: '#fff',
         fontSize: 14,
         fontWeight: '700',
-        color: '#0066FF',
     },
 
-    // Routes List
+    // Routes List (Modern)
     routesList: {
-        gap: 12,
+        gap: 16,
     },
     routeCard: {
-        borderRadius: 20,
-    },
-    routeIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    routeInfo: {
-        flex: 1,
+        borderRadius: 24,
     },
     routeHeader: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+    },
+    timeContainer: {
+        flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 4,
     },
     routeTime: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
     },
     daysBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
     },
     daysText: {
-        fontSize: 11,
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    routeBody: {
+        flexDirection: 'row',
+        marginBottom: 16,
+    },
+    timelineContainer: {
+        alignItems: 'center',
+        marginRight: 16,
+        width: 16,
+        paddingVertical: 4,
+    },
+    timelineDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
+        backgroundColor: 'transparent',
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        marginVertical: 4,
+        borderRadius: 1,
+    },
+    tripDetails: {
+        flex: 1,
+        justifyContent: 'space-between',
+        paddingVertical: 0,
+    },
+    locationText: {
+        fontSize: 15,
         fontWeight: '600',
     },
-    routeAddress: {
-        fontSize: 13,
-        fontWeight: '500',
-    },
     findMatchBtn: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 14,
+        gap: 8,
     },
     findMatchText: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '700',
     },
 
     // Empty State
     emptyState: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
     emptyIconData: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 16,
     },
     emptyTitle: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
-        marginBottom: 2,
+        marginBottom: 4,
     },
     emptyDesc: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '500',
+        textAlign: 'center',
+        maxWidth: '80%',
     },
 
     // Stats
-    statsContainer: {
+    statsRow: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    statCard: {
+        flex: 1,
         borderRadius: 24,
     },
     statItem: {
-        alignItems: 'center',
-        gap: 6,
-        flex: 1, // Distribute evenly
+        gap: 12,
     },
-    statValue: {
-        fontSize: 20,
-        fontWeight: '800',
-    },
-    statLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    statDivider: {
-        width: 1,
-        height: '80%', // reduce height slightly
-        alignSelf: 'center',
-    },
-
-    // Pro Tip
-    proTip: {
-        padding: 20,
-        borderRadius: 24,
+    statValueBox: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        // marginTop: 8, // Removed margin from style, handled in view
     },
-    proContent: {
+    statIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statValue: {
+        fontSize: 22,
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    statLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+
+    // Premium Banner
+    premiumBanner: {
+        borderRadius: 28,
+        padding: 20,
+        shadowColor: "#8B5CF6",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    premiumContent: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 16,
     },
-    proTitle: {
-        color: '#FFF',
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 2,
+    premiumIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    proDesc: {
-        color: 'rgba(255,255,255,0.8)',
+    premiumTitle: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    premiumDesc: {
+        color: 'rgba(255,255,255,0.9)',
         fontSize: 13,
         fontWeight: '500',
-    },
-    dashboardMapContainer: {
-        borderWidth: 1,
-        // @ts-ignore
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
-        elevation: 2,
     },
 });
