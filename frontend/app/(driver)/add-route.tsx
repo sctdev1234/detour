@@ -149,7 +149,7 @@ export default function AddRouteScreen() {
                         </View>
 
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
-                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} />
+                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} savedPlaces={user?.savedPlaces} />
                             {points.length === 0 && (
                                 <View style={[styles.mapOverlay, { backgroundColor: theme.surface }]}>
                                     <MapPin size={24} color={theme.primary} />

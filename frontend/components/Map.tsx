@@ -3,6 +3,7 @@ import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Tras
 import React, { useCallback, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import MapView, { Callout, Marker, Polyline } from 'react-native-maps';
+import { useAuthStore } from '../store/useAuthStore';
 import { LatLng, Trip } from '../types';
 import { decodePolyline } from '../utils/location';
 
@@ -39,40 +40,55 @@ export interface MapProps {
     savedPlaces?: any[]; // Keep flexible or use SavedPlace type if imported
 }
 
-// --- Sub-components for Markers to prevent re-renders ---
+// --- Helper: get icon for saved place ---
+const getSavedPlaceIcon = (iconName?: string) => {
+    switch (iconName) {
+        case 'home': return Home;
+        case 'work': case 'briefcase': return Briefcase;
+        case 'gym': return Dumbbell;
+        case 'school': case 'graduation-cap': return GraduationCap;
+        default: return MapPin;
+    }
+};
 
-const PickerMarkers = React.memo(({ points, savedPlaces, theme, readOnly, onPointAdd, onPointRemove, onDragEnd }: any) => {
+// --- Saved Place Markers (shown in ALL modes) ---
+const SavedPlaceMarkers = React.memo(({ savedPlaces, theme, interactive, onPlacePress }: any) => {
+    if (!savedPlaces?.length) return null;
     return (
         <>
-            {savedPlaces?.map((place: any, index: number) => {
-                let IconComponent = MapPin;
-                switch (place.icon) {
-                    case 'home': IconComponent = Home; break;
-                    case 'work': case 'briefcase': IconComponent = Briefcase; break;
-                    case 'gym': IconComponent = Dumbbell; break;
-                    case 'school': case 'graduation-cap': IconComponent = GraduationCap; break;
-                }
-
+            {savedPlaces.map((place: any, index: number) => {
+                const IconComponent = getSavedPlaceIcon(place.icon);
                 return (
                     <Marker
                         key={`saved-${place._id || index}`}
                         coordinate={{ latitude: place.latitude, longitude: place.longitude }}
                         anchor={{ x: 0.5, y: 0.5 }}
-                        onPress={(e) => onPointAdd(e.nativeEvent.coordinate)}
+                        onPress={interactive ? (e) => onPlacePress?.(e.nativeEvent.coordinate) : undefined}
                     >
-                        <View style={[styles.savedPlaceMarker, { backgroundColor: theme.primary, borderColor: '#fff' }]}>
+                        <View style={[styles.savedPlaceMarker, { backgroundColor: theme.primary, borderColor: '#FFD700' }]}>
                             <IconComponent size={16} color="#fff" />
                         </View>
                         <Callout>
                             <View style={styles.callout}>
-                                <Text style={[styles.calloutText, { color: theme.text }]}>{place.label}</Text>
-                                {!readOnly && <Text style={{ fontSize: 10, color: theme.icon }}>Tap to add to route</Text>}
+                                <Text style={[styles.calloutTitle, { color: theme.text }]}>{place.label}</Text>
+                                {place.address ? (
+                                    <Text style={[styles.calloutSubtitle, { color: theme.icon }]} numberOfLines={2}>{place.address}</Text>
+                                ) : null}
+                                {interactive && <Text style={{ fontSize: 10, color: theme.icon, marginTop: 2 }}>Tap to add to route</Text>}
                             </View>
                         </Callout>
                     </Marker>
                 );
             })}
+        </>
+    );
+});
 
+// --- Sub-components for Markers to prevent re-renders ---
+
+const PickerMarkers = React.memo(({ points, theme, readOnly, onPointRemove, onDragEnd }: any) => {
+    return (
+        <>
             {points.map((point: any, index: number) => (
                 <Marker
                     key={index}
@@ -226,9 +242,12 @@ const Map = React.memo(({
     endPoint,
     waypoints = [],
     maxPoints,
-    savedPlaces = [],
+    savedPlaces: propSavedPlaces,
     driverLocation
 }: MapProps) => {
+    // Fallback: use saved places from auth store if not passed as prop
+    const storeUser = useAuthStore(s => s.user);
+    const savedPlaces = propSavedPlaces ?? storeUser?.savedPlaces ?? [];
     const mapRef = useRef<MapView>(null);
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -396,13 +415,19 @@ const Map = React.memo(({
                 showsUserLocation={mode === 'picker'}
                 provider={undefined} // Use default provider (Google mostly)
             >
+                {/* Saved Places — always visible in all modes */}
+                <SavedPlaceMarkers
+                    savedPlaces={savedPlaces}
+                    theme={theme}
+                    interactive={mode === 'picker' && !readOnly}
+                    onPlacePress={handlePointAdd}
+                />
+
                 {mode === 'picker' && (
                     <PickerMarkers
                         points={points}
-                        savedPlaces={savedPlaces}
                         theme={theme}
                         readOnly={readOnly}
-                        onPointAdd={handlePointAdd}
                         onPointRemove={handlePointRemove}
                         onDragEnd={handleDragEnd}
                     />
