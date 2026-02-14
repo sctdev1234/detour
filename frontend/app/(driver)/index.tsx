@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowUpRight, Bell, Calendar, Car, Plus, Star, TrendingUp, User } from 'lucide-react-native';
+import { ArrowUpRight, Bell, Calendar, Car, Clock, Plus, Star, TrendingUp, User } from 'lucide-react-native';
 import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassCard } from '../../components/GlassCard';
 import { Colors } from '../../constants/theme';
@@ -36,7 +36,7 @@ export default function DriverDashboard() {
 
     const pendingRequestsCount = requests?.filter((r: any) => r.status === 'pending').length || 0;
 
-    // Determine average rating - keeping store for now unless migration needed
+    // Determine average rating
     const getAverageRating = useRatingStore((state) => state.getAverageRating);
     const avgRating = getAverageRating(user?.id || '');
 
@@ -44,16 +44,23 @@ export default function DriverDashboard() {
     const trips = allTrips?.filter((t: any) => t.driverId?._id === user?.id || (t.driverId as any) === 'me' || t.driverId?.id === user?.id || t.driverId === user?.id) || [];
 
     const activeRoutes = trips.length;
-    const totalDistance = trips.reduce((acc: number, t: any) => acc + (t.routeId?.distanceKm || 0), 0);
+    // const totalDistance = trips.reduce((acc: number, t: any) => acc + (t.routeId?.distanceKm || 0), 0);
     const weeklyPotential = trips.reduce((acc: number, t: any) => acc + ((t.routeId?.price || 0) * (t.routeId?.days?.length || 0)), 0);
 
-    const daysMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const todayIndex = new Date().getDay();
-    const todayName = daysMap[todayIndex];
-    const dateNum = new Date().getDate();
+    const daysMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthsMap = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const today = new Date();
+    const todayName = daysMap[today.getDay()];
+    const dateNum = today.getDate();
+    const monthName = monthsMap[today.getMonth()];
 
-    const todaysTrips = trips.filter((t: any) => t.routeId?.days?.includes(todayName));
+    const todaysTrips = trips.filter((t: any) => t.routeId?.days?.includes(todayName.substring(0, 3))); // Matching short day name
     todaysTrips.sort((a: any, b: any) => (a.routeId?.timeStart || '').localeCompare(b.routeId?.timeStart || ''));
+
+    // Custom gradient for weekly potential card
+    const cardGradient = colorScheme === 'dark'
+        ? ['#4F46E5', '#7C3AED']
+        : ['#4338CA', '#6D28D9'];
 
     return (
         <View style={styles.container}>
@@ -66,10 +73,12 @@ export default function DriverDashboard() {
 
             <ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Notifications */}
+
+
+                {/* Notifications Banner */}
                 {pendingRequestsCount > 0 && (
                     <Animated.View entering={FadeInDown.delay(200)} style={styles.notificationWrapper}>
                         <TouchableOpacity
@@ -79,181 +88,221 @@ export default function DriverDashboard() {
                         >
                             <View style={styles.notificationContent}>
                                 <View style={[styles.notificationIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                    <Bell size={16} color="#fff" />
+                                    <Bell size={18} color="#fff" />
                                 </View>
-                                <Text style={styles.notificationText}>
-                                    <Text style={{ fontWeight: '700' }}>{pendingRequestsCount} new requests</Text> waiting
-                                </Text>
+                                <View>
+                                    <Text style={styles.notificationTitle}>New Requests</Text>
+                                    <Text style={styles.notificationText}>
+                                        You have <Text style={{ fontWeight: '800' }}>{pendingRequestsCount}</Text> pending request{pendingRequestsCount > 1 ? 's' : ''}
+                                    </Text>
+                                </View>
                             </View>
-                            <ArrowUpRight size={18} color="rgba(255,255,255,0.8)" />
+                            <View style={styles.arrowContainer}>
+                                <ArrowUpRight size={20} color="#fff" />
+                            </View>
                         </TouchableOpacity>
                     </Animated.View>
                 )}
 
-                {/* KPI Section */}
+                {/* Main Stats Card - Weekly Potential */}
                 <Animated.View entering={FadeInDown.delay(300)} style={styles.kpiContainer}>
-                    <TouchableOpacity onPress={() => router.push('/finance/wallet')} activeOpacity={0.9}>
-                        <GlassCard style={styles.heroCard} intensity={40}>
+                    <TouchableOpacity onPress={() => router.push('/finance/wallet')} activeOpacity={0.95}>
+                        <View style={[styles.heroCard, { shadowColor: cardGradient[0] }]}>
                             <LinearGradient
-                                colors={[theme.primary, theme.secondary]}
+                                colors={cardGradient as any}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 style={styles.heroGradient}
                             >
-                                <View>
-                                    <View style={styles.heroHeader}>
-                                        <View style={[styles.heroIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                            <TrendingUp size={16} color="#fff" />
+                                {/* Background Decorations */}
+                                <View style={[styles.bgCircle, { top: -20, right: -20, width: 100, height: 100 }]} />
+                                <View style={[styles.bgCircle, { bottom: -40, left: -20, width: 140, height: 140, opacity: 0.05 }]} />
+
+                                <View style={styles.heroValidContent}>
+                                    <View style={styles.heroTopRow}>
+                                        <View style={[styles.heroIconBox, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+                                            <TrendingUp size={20} color="#fff" />
                                         </View>
-                                        <Text style={styles.heroLabel}>WEEKLY POTENTIAL</Text>
+                                        <View style={[styles.trendBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                            <Text style={styles.trendText}>+12% vs last week</Text>
+                                        </View>
                                     </View>
-                                    <Text style={styles.heroValue}>{weeklyPotential.toLocaleString()} MAD</Text>
+
+                                    <View>
+                                        <Text style={styles.heroLabel}>WEEKLY POTENTIAL</Text>
+                                        <Text style={styles.heroValue}>{weeklyPotential.toLocaleString()} MAD</Text>
+                                    </View>
                                 </View>
+
                                 <View style={styles.heroGraph}>
-                                    <View style={[styles.graphBar, { height: 12, opacity: 0.3 }]} />
-                                    <View style={[styles.graphBar, { height: 20, opacity: 0.5 }]} />
-                                    <View style={[styles.graphBar, { height: 16, opacity: 0.4 }]} />
-                                    <View style={[styles.graphBar, { height: 28, opacity: 0.8 }]} />
-                                    <View style={[styles.graphBar, { height: 24, opacity: 0.6 }]} />
-                                    <View style={[styles.graphBar, { height: 32, opacity: 1.0 }]} />
+                                    {[0.4, 0.6, 0.3, 0.8, 0.5, 0.9, 0.7].map((h, i) => (
+                                        <View key={i} style={styles.graphBarContainer}>
+                                            <View style={[styles.graphBar, { height: `${h * 100}%`, opacity: i === 6 ? 1 : 0.5 }]} />
+                                        </View>
+                                    ))}
                                 </View>
                             </LinearGradient>
-                        </GlassCard>
+                        </View>
                     </TouchableOpacity>
 
+                    {/* Secondary Metrics Grid */}
                     <View style={styles.metricsGrid}>
-                        {/* Row 1: Active Routes & Balance */}
+                        {/* Row 1 */}
                         <View style={styles.metricsRow}>
-                            <GlassCard style={styles.metricCard}>
-                                <Text style={[styles.metricLabel, { color: theme.icon }]}>ACTIVE ROUTES</Text>
-                                <View style={styles.metricContent}>
-                                    <Car size={18} color={theme.text} />
+                            <GlassCard style={styles.metricCard} intensity={20}>
+                                <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                    <Car size={20} color={theme.text} />
+                                </View>
+                                <View>
                                     <Text style={[styles.metricValue, { color: theme.text }]}>{activeRoutes}</Text>
+                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>Active Routes</Text>
                                 </View>
                             </GlassCard>
-                            <TouchableOpacity onPress={() => router.push('/finance/wallet')} activeOpacity={0.9}>
-                                <GlassCard style={styles.metricCard}>
-                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>WALLET BALANCE</Text>
-                                    <View style={styles.metricContent}>
-                                        <Text style={[styles.metricValue, { color: theme.primary }]}>{user?.balance?.toLocaleString() || '0'} MAD</Text>
+
+                            <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/finance/wallet')}>
+                                <GlassCard style={styles.metricCard} intensity={20}>
+                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                        <Text style={{ fontSize: 16, fontWeight: '800', color: theme.primary }}>M</Text>
+                                    </View>
+                                    <View>
+                                        <Text style={[styles.metricValue, { color: theme.primary }]}>{user?.balance?.toFixed(0) || '0'}</Text>
+                                        <Text style={[styles.metricLabel, { color: theme.icon }]}>Wallet Balance</Text>
                                     </View>
                                 </GlassCard>
                             </TouchableOpacity>
                         </View>
 
-                        {/* Row 2: Earnings & Rating */}
+                        {/* Row 2 */}
                         <View style={styles.metricsRow}>
-                            <GlassCard style={styles.metricCard}>
-                                <Text style={[styles.metricLabel, { color: theme.icon }]}>TOTAL EARNINGS</Text>
-                                <View style={styles.metricContent}>
-                                    <Text style={[styles.metricValue, { color: theme.text }]}>{user?.earnings?.total?.toLocaleString() || '0'} MAD</Text>
+                            <GlassCard style={styles.metricCard} intensity={20}>
+                                <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                    <Star size={20} color="#EAB308" fill="#EAB308" />
+                                </View>
+                                <View>
+                                    <Text style={[styles.metricValue, { color: theme.text }]}>{(user?.stats?.rating || avgRating).toFixed(1)}</Text>
+                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>Driver Rating</Text>
                                 </View>
                             </GlassCard>
-                            <GlassCard style={styles.metricCard}>
-                                <Text style={[styles.metricLabel, { color: theme.icon }]}>RATING</Text>
-                                <View style={styles.metricContent}>
-                                    <Star size={18} color="#EAB308" fill="#EAB308" />
-                                    <Text style={[styles.metricValue, { color: theme.text }]}>{(user?.stats?.rating || avgRating).toFixed(1)}</Text>
+
+                            <GlassCard style={styles.metricCard} intensity={20}>
+                                <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
+                                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#10B981' }}>$</Text>
+                                </View>
+                                <View>
+                                    <Text style={[styles.metricValue, { color: theme.text }]}>{user?.earnings?.total?.toLocaleString() || '0'}</Text>
+                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>Total Earnings</Text>
                                 </View>
                             </GlassCard>
                         </View>
                     </View>
                 </Animated.View>
 
-                {/* Today's Routes */}
+                {/* Today's Schedule */}
                 <View style={styles.section}>
                     <SectionHeader
-                        title={`Today, ${todayName} ${dateNum}`}
+                        title="Today's Schedule"
                         theme={theme}
                         action={todaysTrips.length > 0 ? "View All" : null}
                         onAction={() => router.push('/(driver)/routes')}
                     />
 
-                    {
-                        todaysTrips.length > 0 ? (
-                            todaysTrips.map((trip: any, index: number) => (
-                                <Animated.View
-                                    key={trip.id}
-                                    entering={FadeInDown.delay(400 + (index * 100))}
-                                >
-                                    <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
-                                        <GlassCard style={{ marginBottom: 12 }} contentContainerStyle={{ flexDirection: 'row', padding: 0 }}>
-                                            <View style={[styles.timeColumn, { borderColor: theme.border }]}>
-                                                <Text style={[styles.timeText, { color: theme.text }]}>
-                                                    {trip.routeId?.timeStart?.split(':')[0]}
-                                                </Text>
-                                                <Text style={[styles.timeMin, { color: theme.icon }]}>
-                                                    {trip.routeId?.timeStart?.split(':')[1] || '00'}
+                    {todaysTrips.length > 0 ? (
+                        todaysTrips.map((trip: any, index: number) => (
+                            <Animated.View
+                                key={trip.id}
+                                entering={FadeInUp.delay(400 + (index * 100))}
+                            >
+                                <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
+                                    <GlassCard style={styles.tripCard} intensity={30}>
+                                        <View style={styles.tripHeader}>
+                                            <View style={[styles.timeBadge, { backgroundColor: theme.surface }]}>
+                                                <Clock size={14} color={theme.text} />
+                                                <Text style={[styles.timeBadgeText, { color: theme.text }]}>
+                                                    {trip.routeId?.timeStart}
                                                 </Text>
                                             </View>
-
-                                            <View style={styles.routeInfo}>
-                                                <View style={styles.routeAddresses}>
-                                                    <View style={styles.addressRow}>
-                                                        <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
-                                                        <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
-                                                            {trip.routeId?.startPoint?.address || 'Start Location'}
-                                                        </Text>
-                                                    </View>
-                                                    <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
-                                                    <View style={styles.addressRow}>
-                                                        <View style={[styles.timelineDot, { backgroundColor: theme.secondary }]} />
-                                                        <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>
-                                                            {trip.routeId?.endPoint?.address || 'End Location'}
-                                                        </Text>
-                                                    </View>
-                                                </View>
-
-                                                <View style={[styles.routeFooter, { borderColor: theme.border }]}>
-                                                    <View style={styles.paxInfo}>
-                                                        <User size={14} color={theme.icon} />
-                                                        <Text style={[styles.paxText, { color: theme.icon }]}>
-                                                            {trip.clients?.length || 0}/{(trip.routeId as any)?.maxPassengers || 4}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={[styles.priceTag, { color: '#16a34a' }]}>
-                                                        {trip.routeId?.price} MAD
-                                                    </Text>
-                                                </View>
+                                            <View style={[styles.priceBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                                                <Text style={[styles.priceBadgeText, { color: '#10B981' }]}>
+                                                    {trip.routeId?.price} MAD/seat
+                                                </Text>
                                             </View>
-                                        </GlassCard>
-                                    </TouchableOpacity>
-                                </Animated.View>
-                            ))
-                        ) : (
-                            <Animated.View entering={FadeInDown.delay(400)}>
-                                <GlassCard style={styles.emptyStateCard}>
-                                    <View style={[styles.emptyIcon, { backgroundColor: theme.background }]}>
-                                        <Calendar size={32} color={theme.icon} />
-                                    </View>
-                                    <Text style={[styles.emptyTitle, { color: theme.text }]}>No routes scheduled</Text>
-                                    <Text style={[styles.emptySub, { color: theme.icon }]}>
-                                        Your schedule is clear for today. Add a route to start receiving requests.
-                                    </Text>
-                                </GlassCard>
+                                        </View>
+
+                                        <View style={styles.tripBody}>
+                                            <View style={styles.timelineContainer}>
+                                                <View style={[styles.timelineDot, { borderColor: theme.text }]} />
+                                                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                                                <View style={[styles.timelineDot, { borderColor: theme.primary, backgroundColor: theme.primary }]} />
+                                            </View>
+
+                                            <View style={styles.tripDetails}>
+                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
+                                                    {trip.routeId?.startPoint?.address || 'Start Location'}
+                                                </Text>
+                                                <View style={{ height: 20 }} />
+                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
+                                                    {trip.routeId?.endPoint?.address || 'End Location'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={[styles.tripFooter, { borderTopColor: theme.border }]}>
+                                            <View style={styles.paxInfo}>
+                                                <User size={16} color={theme.icon} />
+                                                <Text style={[styles.paxText, { color: theme.icon }]}>
+                                                    {trip.clients?.length || 0} / {(trip.routeId as any)?.maxPassengers || 4} Passengers
+                                                </Text>
+                                            </View>
+                                            {trip.status === 'active' && (
+                                                <View style={styles.liveIndicator}>
+                                                    <View style={styles.liveDot} />
+                                                    <Text style={styles.liveText}>LIVE</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                    </GlassCard>
+                                </TouchableOpacity>
                             </Animated.View>
-                        )
-                    }
+                        ))
+                    ) : (
+                        <Animated.View entering={FadeInUp.delay(400)}>
+                            <GlassCard style={styles.emptyStateCard} intensity={10}>
+                                <View style={[styles.emptyIcon, { backgroundColor: theme.surface }]}>
+                                    <Calendar size={32} color={theme.icon} />
+                                </View>
+                                <Text style={[styles.emptyTitle, { color: theme.text }]}>No routes today</Text>
+                                <Text style={[styles.emptySub, { color: theme.icon }]}>
+                                    Your schedule is clear. Use the + button to add a route and start earning.
+                                </Text>
+                            </GlassCard>
+                        </Animated.View>
+                    )}
                 </View>
 
-                {/* Bottom Spacer */}
-                <View style={{ height: 120 }} />
+                {/* Bottom Spacer for FAB */}
+                <View style={{ height: 100 }} />
             </ScrollView>
 
-            <View style={[styles.fabContainer, { paddingBottom: insets.bottom + 16 }]}>
+            {/* Floating Action Button */}
+            <View style={[styles.fabContainer, { paddingBottom: insets.bottom + 20 }]}>
                 <TouchableOpacity
-                    style={[styles.fab, { backgroundColor: theme.text }]}
+                    style={[styles.fab, { shadowColor: theme.primary }]}
                     onPress={() => router.push('/(driver)/add-route')}
-                    activeOpacity={0.8}
+                    activeOpacity={0.9}
                 >
-                    <Plus size={24} color={theme.background} />
-                    <Text style={[styles.fabText, { color: theme.background }]}>New Route</Text>
+                    <LinearGradient
+                        colors={[theme.primary, theme.secondary || theme.primary]}
+                        style={StyleSheet.absoluteFill}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    />
+                    <Plus size={24} color="#fff" />
+                    <Text style={styles.fabText}>New Route</Text>
                 </TouchableOpacity>
             </View>
         </View>
     );
 }
-
 
 const styles = StyleSheet.create({
     container: {
@@ -263,149 +312,152 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 24,
     },
     // Header
-    header: {
+    headerContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 32,
     },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    avatarContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.02)',
-    },
-    avatarText: {
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    greeting: {
-        fontSize: 12,
-        fontWeight: '500',
-        letterSpacing: 0.5,
-    },
-    userName: {
-        fontSize: 20,
-        fontWeight: '700',
-        letterSpacing: -0.5,
-    },
-    statusPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-    },
-    statusDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    // Notification
+    // Notifications
     notificationWrapper: {
-        marginTop: 12, // Add some top margin since header is gone
         marginBottom: 24,
     },
     notificationCard: {
-        borderRadius: 16,
-        padding: 12,
-        paddingHorizontal: 16,
+        borderRadius: 20,
+        padding: 16,
+        paddingHorizontal: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 6,
     },
     notificationContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 16,
     },
     notificationIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
     },
+    notificationTitle: {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
     notificationText: {
         color: '#fff',
-        fontSize: 13,
+        fontSize: 14,
     },
-    // KPI
+    arrowContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    // KPI Section
     kpiContainer: {
         marginBottom: 32,
-        gap: 12,
+        gap: 16,
     },
     heroCard: {
-        borderRadius: 24,
-        overflow: 'hidden',
-        height: 140,
+        borderRadius: 32,
+        height: 180,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10,
     },
     heroGradient: {
         flex: 1,
+        borderRadius: 32,
         padding: 24,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    bgCircle: {
+        position: 'absolute',
+        backgroundColor: '#fff',
+        borderRadius: 999,
+        opacity: 0.1,
+    },
+    heroValidContent: {
+        flex: 1,
+        justifyContent: 'space-between',
+        zIndex: 1,
+    },
+    heroTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
     },
-    heroHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
-    },
-    heroIcon: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        alignItems: 'center',
+    heroIconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+    },
+    trendBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    trendText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '700',
     },
     heroLabel: {
         color: 'rgba(255,255,255,0.8)',
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: '700',
         letterSpacing: 1,
+        marginBottom: 4,
     },
     heroValue: {
         color: '#fff',
-        fontSize: 36,
+        fontSize: 40,
         fontWeight: '800',
         letterSpacing: -1,
     },
     heroGraph: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        left: 0,
+        height: 60,
         flexDirection: 'row',
         alignItems: 'flex-end',
-        gap: 4,
+        justifyContent: 'flex-end',
+        paddingRight: 24,
+        paddingBottom: 24,
+        gap: 6,
+        zIndex: 0,
+    },
+    graphBarContainer: {
         height: '100%',
-        paddingBottom: 4,
+        width: 8,
+        justifyContent: 'flex-end',
     },
     graphBar: {
-        width: 6,
+        width: '100%',
         backgroundColor: '#fff',
-        borderRadius: 3,
+        borderRadius: 4,
     },
+    // Metrics Grid
     metricsGrid: {
         gap: 12,
     },
@@ -415,26 +467,28 @@ const styles = StyleSheet.create({
     },
     metricCard: {
         flex: 1,
-        padding: 16,
-        borderRadius: 16,
-        gap: 8,
-    },
-    metricLabel: {
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
-    },
-    metricContent: {
+        borderRadius: 24,
+        gap: 12,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+    },
+    metricIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     metricValue: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 18,
+        fontWeight: '800',
+        marginBottom: 2,
     },
-    // Routes
+    metricLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    // Routes Section
     section: {
         marginBottom: 24,
     },
@@ -443,122 +497,144 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 16,
+        paddingHorizontal: 4,
     },
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        letterSpacing: -0.2,
-    },
-    sectionAction: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    // card: { ... }, // Removed generic card style in favor of GlassCard default styles
-    routeCard: {
-        marginBottom: 12,
-        overflow: 'hidden',
-    },
-    timeColumn: {
-        padding: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRightWidth: 1,
-        width: 70,
-        backgroundColor: 'rgba(0,0,0,0.01)',
-    },
-    avatarImage: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 22,
-    },
-    timeText: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '800',
     },
-    timeMin: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginTop: -2,
-    },
-    routeInfo: {
-        flex: 1,
-        padding: 16,
-    },
-    routeAddresses: {
-        gap: 2,
-    },
-    addressRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        height: 24,
-    },
-    timelineDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    timelineLine: {
-        width: 2,
-        height: 12,
-        marginLeft: 3,
-        borderRadius: 1,
-    },
-    addressText: {
+    sectionAction: {
         fontSize: 14,
-        fontWeight: '500',
-        flex: 1,
+        fontWeight: '700',
     },
-    routeFooter: {
+    tripCard: {
+        borderRadius: 24,
+        padding: 20,
+        marginBottom: 16,
+    },
+    tripHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 12,
-        paddingTop: 12,
+        marginBottom: 20,
+    },
+    timeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    timeBadgeText: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    priceBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    priceBadgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    tripBody: {
+        flexDirection: 'row',
+        marginBottom: 20,
+    },
+    timelineContainer: {
+        alignItems: 'center',
+        marginRight: 16,
+        width: 16,
+        paddingVertical: 4,
+    },
+    timelineDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        marginVertical: 4,
+        borderRadius: 1,
+    },
+    tripDetails: {
+        flex: 1,
+        justifyContent: 'space-between',
+        paddingVertical: 0,
+    },
+    locationText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    tripFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 16,
         borderTopWidth: 1,
         borderStyle: 'dashed',
     },
     paxInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
     },
     paxText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '500',
     },
-    priceTag: {
-        fontSize: 14,
-        fontWeight: '700',
+    liveIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#fee2e2',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    liveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#ef4444',
+    },
+    liveText: {
+        color: '#ef4444',
+        fontSize: 10,
+        fontWeight: '800',
     },
     // Empty State
     emptyStateCard: {
-        padding: 32,
+        padding: 40,
         alignItems: 'center',
         justifyContent: 'center',
-        borderStyle: 'dashed',
+        borderRadius: 32,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
-        backgroundColor: 'transparent',
+        borderStyle: 'dashed',
     },
     emptyIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
     },
     emptyTitle: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '700',
         marginBottom: 8,
     },
     emptySub: {
         fontSize: 14,
         textAlign: 'center',
+        lineHeight: 22,
         opacity: 0.6,
-        lineHeight: 20,
     },
     // FAB
     fabContainer: {
@@ -567,20 +643,23 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         alignItems: 'center',
+        zIndex: 100,
     },
     fab: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         paddingVertical: 16,
-        paddingHorizontal: 24,
+        paddingHorizontal: 28,
         borderRadius: 32,
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 16,
         elevation: 8,
+        overflow: 'hidden',
     },
     fabText: {
+        color: '#fff',
         fontSize: 16,
         fontWeight: '700',
     },
