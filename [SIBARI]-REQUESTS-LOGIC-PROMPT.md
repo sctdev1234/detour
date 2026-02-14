@@ -16,8 +16,16 @@ now we want to change it to :
 - the client create a route (with proposed price)
 - the driver create a route
 - the system create a trip empty pending (0 client)
-- the driver see the "Proposed Clients"
+- the driver see the "Proposed Clients" 
 - the driver send a request to the client (with proposed price)
 - the client accept or reject the request
 - if the client accept the request he will be added to the trip
 - if the client reject the request, the driver will be notified and he can send a request again to the same client again with different price
+
+
+
+- the client can't find drivers he only:
+- create a route with proposed price
+- and wait for the requests from the drivers
+
+

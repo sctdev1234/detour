@@ -41,7 +41,7 @@ exports.deleteRoute = async (req, res) => {
 
 exports.searchMatches = async (req, res) => {
     try {
-        const matches = await tripService.searchMatches(req.params.routeId);
+        const matches = await tripService.searchMatches(req.params.routeId, req.user.role);
         res.json(matches);
     } catch (err) {
         console.error("Error in searchMatches:", err.message);

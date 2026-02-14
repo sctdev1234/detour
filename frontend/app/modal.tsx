@@ -336,6 +336,48 @@ export default function ModalScreen() {
           </View>
         </View>
 
+        {/* Pending Invites (Driver) */}
+        {isDriver && (
+          <>
+            {(() => {
+              const { data: requests } = useDriverRequests();
+              // Filter requests for this specific trip that are pending
+              const pendingInvites = requests?.filter((r: any) => {
+                const rTripId = typeof r.tripId === 'string' ? r.tripId : r.tripId?._id;
+                return rTripId === trip.id && r.status === 'pending';
+              }) || [];
+
+              if (pendingInvites.length === 0) return null;
+
+              return (
+                <>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Pending Invites ({pendingInvites.length})</Text>
+                  {pendingInvites.map((req: any, i: number) => (
+                    <View key={i} style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border, marginBottom: 8, opacity: 0.8 }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', gap: 12 }}>
+                        {req.clientId?.photoURL ? (
+                          <Image source={{ uri: req.clientId.photoURL }} style={styles.avatar} />
+                        ) : (
+                          <View style={[styles.avatar, { backgroundColor: theme.border }]}>
+                            <User size={20} color={theme.icon} />
+                          </View>
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.userName, { color: theme.text }]}>{req.clientId?.fullName || 'Client'}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={[styles.userRole, { color: theme.primary }]}>Invited</Text>
+                            <Text style={{ fontSize: 12, color: theme.icon }}>• Waiting for response...</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              );
+            })()}
+          </>
+        )}
+
         {/* Clients */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Passengers ({trip.clients.length})</Text>
         {trip.clients.length === 0 ? (

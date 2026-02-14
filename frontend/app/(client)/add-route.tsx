@@ -80,6 +80,8 @@ export default function AddClientRouteScreen() {
         }
     };
 
+    const [price, setPrice] = useState('');
+
     const handleSave = async () => {
         if (points.length < 2) {
             showToast('Please select at least Pickup and Dropoff points', 'warning');
@@ -87,6 +89,10 @@ export default function AddClientRouteScreen() {
         }
         if (selectedDays.length === 0) {
             showToast('Please select at least one day', 'warning');
+            return;
+        }
+        if (!price || isNaN(parseFloat(price))) {
+            showToast('Please enter a valid price', 'warning');
             return;
         }
 
@@ -99,12 +105,12 @@ export default function AddClientRouteScreen() {
                 timeStart,
                 timeArrival: '', // Not needed for client
                 days: selectedDays,
-                price: 0,
+                price: parseFloat(price),
                 priceType: 'fix',
                 status: 'pending',
             });
-            showToast('Route created! finding matches...', 'success');
-            router.push({ pathname: '/(client)/find-matches', params: { routeId: newRoute.id } });
+            showToast('Route created! Waiting for driver offers...', 'success');
+            router.replace('/(client)/requests');
         } catch (error: any) {
             console.error(error);
             showToast(error.response?.data?.msg || 'Failed to create route', 'error');
@@ -114,6 +120,9 @@ export default function AddClientRouteScreen() {
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+                <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', left: 24, top: 60, zIndex: 10 }}>
+                    <Text style={{ fontSize: 30, color: theme.text }}>←</Text>
+                </TouchableOpacity>
                 <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Request a Ride</Text>
             </View>
 
@@ -144,13 +153,26 @@ export default function AddClientRouteScreen() {
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, { color: theme.text }]}>2. Schedule</Text>
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>2. Details</Text>
                         <TextInput
-                            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+                            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border, marginBottom: 12 }]}
                             value={timeStart}
                             onChangeText={setTimeStart}
                             placeholder="Departure Time (e.g. 08:30)"
+                            placeholderTextColor={theme.text + '80'}
                         />
+                        <TextInput
+                            style={[styles.input, { backgroundColor: theme.surface, color: theme.text, borderColor: theme.border }]}
+                            value={price}
+                            onChangeText={setPrice}
+                            placeholder="Proposed Price (MAD)"
+                            keyboardType="numeric"
+                            placeholderTextColor={theme.text + '80'}
+                        />
+                    </View>
+
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>3. Schedule</Text>
                         <View style={styles.daysGrid}>
                             {DAYS.map(day => (
                                 <TouchableOpacity
@@ -172,7 +194,7 @@ export default function AddClientRouteScreen() {
                         onPress={handleSave}
                     >
                         <Check size={20} color="#fff" />
-                        <Text style={styles.saveButtonText}>Create Route</Text>
+                        <Text style={styles.saveButtonText}>Create Request</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>

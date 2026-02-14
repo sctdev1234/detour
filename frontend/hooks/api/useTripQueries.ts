@@ -288,6 +288,7 @@ export const useHandleJoinRequest = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tripKeys.driverRequests() });
+            queryClient.invalidateQueries({ queryKey: tripKeys.clientRequests() });
             queryClient.invalidateQueries({ queryKey: tripKeys.trips() }); // Trip client list might update
         }
     });

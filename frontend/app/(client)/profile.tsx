@@ -1,5 +1,5 @@
+import CardStatItem from '@/components/ui/CardStatItem';
 import { useUIStore } from '@/store/useUIStore';
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -18,8 +18,8 @@ import {
     User,
     UserCog
 } from 'lucide-react-native';
+import React from 'react';
 import {
-    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -27,7 +27,7 @@ import {
     useColorScheme,
     View
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useDeleteAccount, useLogout } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -103,24 +103,6 @@ export default function ProfileScreen() {
             </Animated.View>
         );
     };
-
-    const StatBox = ({ label, value, icon: Icon, index }: { label: string, value: string, icon: any, index: number }) => (
-        <Animated.View
-            entering={FadeInUp.delay(300 + (index * 100)).springify()}
-            style={{ flex: 1 }}
-        >
-            <View style={[styles.statBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                {Platform.OS === 'ios' && (
-                    <BlurView intensity={20} tint={colorScheme} style={StyleSheet.absoluteFill} />
-                )}
-                <View style={[styles.statIcon, { backgroundColor: theme.primary + '15' }]}>
-                    <Icon size={16} color={theme.primary} />
-                </View>
-                <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
-                <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
-            </View>
-        </Animated.View>
-    );
 
     const MenuItem = ({ icon: Icon, title, subtitle, onPress, destructive = false, showChevron = true, index }: {
         icon: any;
@@ -201,9 +183,24 @@ export default function ProfileScreen() {
 
             {/* Stats Row */}
             <View style={styles.statsRow}>
-                <StatBox label="Trips" value="12" icon={Car} index={0} />
-                <StatBox label="Rating" value="4.9" icon={Star} index={1} />
-                <StatBox label="Hours" value="48" icon={Clock} index={2} />
+                <CardStatItem
+                    label="Trips"
+                    value="12"
+                    icon={Car}
+                    index={0}
+                />
+                <CardStatItem
+                    label="Rating"
+                    value="4.9"
+                    icon={Star}
+                    index={1}
+                />
+                <CardStatItem
+                    label="Hours"
+                    value="48"
+                    icon={Clock}
+                    index={2}
+                />
             </View>
 
             {/* Menu Groups */}
@@ -379,7 +376,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        gap: 12,
+        gap: 20,
         marginBottom: 32,
     },
     statBox: {

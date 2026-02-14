@@ -72,6 +72,19 @@ export default function TripsScreen() {
                             {1 + item.clients.length} Participants
                         </Text>
                     </View>
+
+                    {user?.role === 'driver' && item.status !== 'completed' && (
+                        <TouchableOpacity
+                            style={[styles.findBtn, { backgroundColor: theme.primary }]}
+                            onPress={() => router.push({
+                                pathname: '/(driver)/find-clients',
+                                params: { tripId: item.id, routeId: item.routeId?.id }
+                            })}
+                        >
+                            <User size={18} color="#fff" />
+                            <Text style={styles.findBtnText}>Find Clients</Text>
+                        </TouchableOpacity>
+                    )}
                 </TouchableOpacity>
             </Animated.View>
         );
@@ -122,5 +135,7 @@ const styles = StyleSheet.create({
     labelTxt: { color: '#fff', fontSize: 8, fontWeight: '900' },
     participantsCount: { fontSize: 12, fontWeight: '700' },
     empty: { alignItems: 'center', justifyContent: 'center', marginTop: 100, gap: 12 },
-    emptyText: { fontSize: 18, fontWeight: '700' }
+    emptyText: { fontSize: 18, fontWeight: '700' },
+    findBtn: { marginTop: 16, flexDirection: 'row', height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', gap: 8 },
+    findBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' }
 });

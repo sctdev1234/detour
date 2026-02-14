@@ -89,17 +89,19 @@ class TripService {
         return { msg: 'Route removed' };
     }
 
-    async searchMatches(routeId) {
-        const clientRoute = await Route.findById(routeId);
-        if (!clientRoute) throw new Error('Client route not found');
+    async searchMatches(originId, role = 'client') {
+        const route = await Route.findById(originId);
+        if (!route) throw new Error('Route not found');
 
         const maxDistance = 500000; // 500km for testing
-        const pickup = clientRoute.startPoint.coordinates;
-        const destination = clientRoute.endPoint.coordinates;
+        const pickup = route.startPoint.coordinates;
+        const destination = route.endPoint.coordinates;
 
-        // Find Driver Routes that are near
+        const targetRole = role === 'driver' ? 'client' : 'driver';
+
+        // Find Matching Routes
         const matches = await Route.find({
-            role: 'driver',
+            role: targetRole,
             status: { $ne: 'inactive' },
             'startPoint.coordinates': {
                 $near: {
@@ -112,9 +114,33 @@ class TripService {
                     $centerSphere: [destination, maxDistance / 6378100]
                 }
             },
-            'schedule.days': { $in: clientRoute.schedule.days }
+            'schedule.days': { $in: route.schedule.days }
         }).populate('userId', 'fullName email photoURL');
 
+        // Logic for Drivers searching Clients
+        if (role === 'driver') {
+            // Check existing requests for these clients (related to this driver's trip)
+            // Ideally we need the Trip ID here. But searchMatches(routeId) implies we search based on route.
+            // A Driver Route corresponds to a Trip. Let's find the trip for this route.
+            const trip = await Trip.findOne({ routeId: originId, status: { $ne: 'completed' } });
+
+            if (!trip) return matches.map(m => ({ route: m, requestStatus: null }));
+
+            const requests = await JoinRequest.find({ tripId: trip._id });
+            const requestMap = requests.reduce((acc, req) => {
+                acc[req.clientRouteId.toString()] = req.status;
+                return acc;
+            }, {});
+
+            return matches.map(clientRoute => {
+                return {
+                    route: clientRoute,
+                    requestStatus: requestMap[clientRoute._id.toString()] || null
+                };
+            });
+        }
+
+        // Logic for Clients searching Drivers (Legacy / Fallback)
         // Link with their active Trips
         const routeIds = matches.map(m => m._id);
         const trips = await Trip.find({
@@ -122,14 +148,12 @@ class TripService {
             status: { $ne: 'completed' }
         });
 
-        // Map trips by routeId for O(1) lookup
         const tripMap = trips.reduce((acc, trip) => {
             acc[trip.routeId.toString()] = trip;
             return acc;
         }, {});
 
-        // Fetch existing requests for this route
-        const requests = await JoinRequest.find({ clientRouteId: routeId });
+        const requests = await JoinRequest.find({ clientRouteId: originId });
         const requestMap = requests.reduce((acc, req) => {
             acc[req.tripId.toString()] = req.status;
             return acc;
@@ -145,13 +169,46 @@ class TripService {
         });
     }
 
-    async sendJoinRequest(clientId, { clientRouteId, tripId }) {
+    async sendJoinRequest(senderId, { clientRouteId, tripId, proposedPrice }) {
+        const sender = await User.findById(senderId);
+        if (!sender) throw new Error('User not found');
+
+        // Determine if Sender is Driver or Client
+        // But logic is shifting to Driver -> Client
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        let clientId, initiatedBy;
+
+        if (trip.driverId.toString() === senderId) {
+            // Sender is Driver
+            initiatedBy = 'driver';
+            // Need to find clientId from clientRouteId
+            const clientRoute = await Route.findById(clientRouteId);
+            if (!clientRoute) throw new Error('Client route not found');
+            clientId = clientRoute.userId;
+        } else {
+            // Sender is Client (Legacy or Counter-offer?)
+            initiatedBy = 'client';
+            clientId = senderId;
+        }
+
         const existingRequest = await JoinRequest.findOne({
             clientId,
-            tripId
+            tripId,
+            clientRouteId // Ensure we check the specific route too
         });
 
         if (existingRequest) {
+            // If rejected, maybe allow resending? Prompt says "he can send a request again... with different price"
+            if (existingRequest.status === 'rejected' && initiatedBy === 'driver') {
+                // Update existing request or create new? Updating is cleaner.
+                existingRequest.status = 'pending';
+                existingRequest.proposedPrice = proposedPrice;
+                existingRequest.initiatedBy = 'driver'; // Driver re-initiating
+                await existingRequest.save();
+                return existingRequest;
+            }
             throw new Error('Request already sent');
         }
 
@@ -159,7 +216,9 @@ class TripService {
             clientId,
             clientRouteId,
             tripId,
-            status: 'pending'
+            status: 'pending',
+            initiatedBy,
+            proposedPrice
         });
 
         await joinRequest.save();
@@ -168,12 +227,25 @@ class TripService {
 
     async handleJoinRequest(userId, { requestId, status }) {
         const joinRequest = await JoinRequest.findById(requestId).populate('tripId');
-
         if (!joinRequest) throw new Error('Request not found');
 
-        // Check if the current user is the driver of the trip
-        if (joinRequest.tripId.driverId.toString() !== userId) {
+        const trip = joinRequest.tripId;
+        const isDriver = trip.driverId.toString() === userId;
+        const isClient = joinRequest.clientId.toString() === userId;
+
+        if (!isDriver && !isClient) {
             throw new Error('Not authorized');
+        }
+
+        // Logic check:
+        // If initiatedBy 'driver', then Client accepts/rejects
+        // If initiatedBy 'client', then Driver accepts/rejects
+
+        if (joinRequest.initiatedBy === 'driver' && isDriver) {
+            throw new Error('Waiting for client response');
+        }
+        if (joinRequest.initiatedBy === 'client' && isClient) {
+            throw new Error('Waiting for driver response');
         }
 
         joinRequest.status = status;
@@ -181,15 +253,17 @@ class TripService {
 
         if (status === 'accepted') {
             // Update the Trip with the new client
-            await Trip.findByIdAndUpdate(joinRequest.tripId._id, {
+            await Trip.findByIdAndUpdate(trip._id, {
                 $push: { clients: { userId: joinRequest.clientId, routeId: joinRequest.clientRouteId } }
             });
 
             // Mark the client route as inactive so it disappears from their Routes list
+            // Or keep it active until the trip is completed? Prompt implies "added to the trip".
+            // If they have other matches? Usually one trip per route.
             await Route.findByIdAndUpdate(joinRequest.clientRouteId, { status: 'inactive' });
 
             // Set trip status to 'active'
-            await Trip.findByIdAndUpdate(joinRequest.tripId._id, { status: 'active' });
+            await Trip.findByIdAndUpdate(trip._id, { status: 'active' });
         }
 
         return joinRequest;

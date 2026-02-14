@@ -30,7 +30,8 @@ const createRouteSchema = z.object({
 const joinRequestSchema = z.object({
     body: z.object({
         clientRouteId: z.string(),
-        tripId: z.string()
+        tripId: z.string(),
+        proposedPrice: z.number().optional()
     })
 });
 
