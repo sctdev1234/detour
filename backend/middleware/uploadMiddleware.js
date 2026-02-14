@@ -9,16 +9,8 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Storage Engine
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        // Generate unique filename: fieldname-timestamp-random.ext
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const storage = multer.memoryStorage();
+
 
 // Check File Type
 function checkFileType(file, cb) {
@@ -32,6 +24,7 @@ function checkFileType(file, cb) {
         cb('Error: Images Only!');
     }
 }
+
 
 // Upload Middleware
 const upload = multer({

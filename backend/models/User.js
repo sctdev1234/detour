@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    photoURL: String, // Base64 or URL
+    photoURL: String, // URL
     role: {
         type: String,
         enum: ['client', 'driver', 'admin'],

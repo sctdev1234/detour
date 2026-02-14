@@ -1,45 +1,52 @@
-import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
+import api from './api';
 
 /**
- * Converts a local image URI to a Base64 Data URI string.
- * This effectively "uploads" the image by preparing it for storage in MongoDB.
+ * Uploads a local image URI to the backend, which stores it in Firebase Storage.
  * @param uri Local URI of the image
+ * @param folder Cloud folder to store the image in
  */
-export const uploadImage = async (uri: string, path?: string): Promise<string> => {
+export const uploadImage = async (uri: string, folder: string = 'misc'): Promise<string> => {
+    if (!uri) return '';
+    // If it's already a remote URL, return it
+    if (uri.startsWith('http')) return uri;
+
     try {
-        console.log(`[Storage] Converting ${uri} to Base64...`);
+        const formData = new FormData();
+        let filename = uri.split('/').pop() || 'upload.jpg';
+
+        // Ensure filename has an extension for Multer filter
+        if (!filename.includes('.')) {
+            filename += '.jpg';
+        }
 
         if (Platform.OS === 'web') {
             const response = await fetch(uri);
             const blob = await response.blob();
-            return await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const result = reader.result as string;
-                    console.log(`[Storage] Web Conversion success (${result.length} chars)`);
-                    resolve(result);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            // Use mime type from blob if possible
+            const type = blob.type || 'image/jpeg';
+            formData.append('image', blob, filename);
+        } else {
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : 'image/jpeg';
+            // @ts-ignore
+            formData.append('image', { uri, name: filename, type });
         }
 
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: 'base64',
-        });
 
-        // Determine mime type (simple guess, default to jpeg)
-        const fileExtension = uri.split('.').pop()?.toLowerCase();
-        let mimeType = 'image/jpeg';
-        if (fileExtension === 'png') mimeType = 'image/png';
+        formData.append('folder', folder);
 
-        const dataUri = `data:${mimeType};base64,${base64}`;
-        console.log(`[Storage] Conversion success (${dataUri.length} chars)`);
+        console.log(`[Storage] Uploading ${uri} to Firebase via Backend...`);
+        const res = await api.post('/upload', formData);
 
-        return dataUri;
+        if (res.data && res.data.url) {
+            console.log(`[Storage] Upload success: ${res.data.url}`);
+            return res.data.url;
+        }
+
+        throw new Error('Invalid response from server');
     } catch (error) {
-        console.error('[Storage] Base64 conversion error:', error);
+        console.error('[Storage] Upload failed:', error);
         throw error;
     }
 };

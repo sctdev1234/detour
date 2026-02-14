@@ -18,13 +18,15 @@ import {
 } from 'react-native';
 import { PremiumInput } from '../components/PremiumInput';
 import { Colors } from '../constants/theme';
+import { useUpdateProfile } from '../hooks/api/useAuthQueries';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function EditProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user, updateProfile } = useAuthStore();
+    const { user, updateUser } = useAuthStore();
+    const { mutateAsync: updateProfile } = useUpdateProfile();
     const { showToast, showConfirm } = useUIStore();
 
     const [displayName, setDisplayName] = useState(user?.fullName || '');
@@ -38,36 +40,17 @@ export default function EditProfileScreen() {
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.5,
-                base64: true, // Request base64 directly
             });
 
             if (!result.canceled) {
                 setUploadingImage(true);
                 const asset = result.assets[0];
+                const imageUrl = await import('../services/storageService').then(m =>
+                    m.uploadImage(asset.uri, 'profiles')
+                );
 
-                let base64Img = asset.base64;
-                if (!base64Img) {
-                    // Fallback for web if base64 not returned automatically (though expo-image-picker usually does if requested)
-                    if (Platform.OS === 'web') {
-                        const response = await fetch(asset.uri);
-                        const blob = await response.blob();
-                        base64Img = await new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result as string);
-                            reader.readAsDataURL(blob);
-                        });
-                    } else {
-                        throw new Error('Could not get image data');
-                    }
-                } else {
-                    // Ensure data URI prefix
-                    if (!base64Img.startsWith('data:image')) {
-                        base64Img = `data:${asset.mimeType || 'image/jpeg'};base64,${base64Img}`;
-                    }
-                }
-
-                // Directly update profile with base64 string
-                await updateProfile({ photoURL: base64Img as string });
+                // Directly update profile with Firebase URL
+                await updateProfile({ photoURL: imageUrl });
 
                 showToast('Profile photo updated', 'success');
             }
@@ -125,12 +108,8 @@ export default function EditProfileScreen() {
                                 ) : (
                                     <User size={40} color={theme.icon} />
                                 )}
-                                {uploadingImage && (
-                                    <View style={styles.loadingOverlay}>
-                                        <ActivityIndicator color="#fff" />
-                                    </View>
-                                )}
                             </TouchableOpacity>
+
                         </LinearGradient>
                         <TouchableOpacity onPress={pickImage} style={[styles.cameraBadge, { backgroundColor: theme.primary, borderColor: theme.surface }]}>
                             <Camera size={14} color="#fff" />
@@ -181,6 +160,17 @@ export default function EditProfileScreen() {
                         )}
                     </TouchableOpacity>
                 </ScrollView>
+
+                {(uploadingImage || isLoading) && (
+                    <View style={styles.fullScreenLoading}>
+                        <View style={[styles.loadingCard, { backgroundColor: theme.surface }]}>
+                            <ActivityIndicator size="large" color={theme.primary} />
+                            <Text style={[styles.loadingText, { color: theme.text }]}>
+                                {uploadingImage ? 'Uploading Photo...' : 'Saving Changes...'}
+                            </Text>
+                        </View>
+                    </View>
+                )}
             </KeyboardAvoidingView>
         </View>
     );
@@ -238,12 +228,6 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    loadingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     cameraBadge: {
         position: 'absolute',
         bottom: 30, // Adjusted for larger avatar
@@ -295,5 +279,25 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    fullScreenLoading: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    loadingCard: {
+        padding: 32,
+        borderRadius: 24,
+        alignItems: 'center',
+        gap: 16,
+        boxShadow: '0px 8px 24px rgba(0,0,0,0.2)',
+        elevation: 10,
+    },
+    loadingText: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
 });
+
 

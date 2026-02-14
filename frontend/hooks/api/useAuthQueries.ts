@@ -141,7 +141,7 @@ export const useSubmitVerification = () => {
                 const uri = (docs as any)[key];
                 if (uri && !uri.startsWith('http') && !uri.startsWith('data:')) {
                     try {
-                        const url = await require('../../services/uploadService').uploadImage(uri);
+                        const url = await require('../../services/uploadService').uploadImage(uri, 'verification');
                         uploadedDocs[key] = url;
                     } catch (err) {
                         throw new Error(`Failed to upload ${key}`);

@@ -4,7 +4,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Calendar, Camera, Car as CarIcon, Palette, Plus, Upload, Users, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useAddCar, useCars } from '../../hooks/api/useCarQueries';
@@ -102,10 +103,9 @@ export default function AddCarScreen() {
         try {
             // Upload Images
             const uploadedImages = await Promise.all(
-                form.images.map(async (uri, index) => {
-                    const id = Math.random().toString(36).substring(7);
+                form.images.map(async (uri) => {
                     return await import('../../services/storageService').then(m =>
-                        m.uploadImage(uri, `cars/${id}/images/${index}.jpg`)
+                        m.uploadImage(uri, 'cars')
                     );
                 })
             );
@@ -114,9 +114,8 @@ export default function AddCarScreen() {
             const uploadedDocs = { ...form.documents };
             for (const [key, uri] of Object.entries(form.documents)) {
                 if (uri) {
-                    const id = Math.random().toString(36).substring(7);
                     const url = await import('../../services/storageService').then(m =>
-                        m.uploadImage(uri, `cars/${id}/documents/${key}.jpg`)
+                        m.uploadImage(uri, 'car-documents')
                     );
                     uploadedDocs[key as keyof typeof uploadedDocs] = url;
                 }
@@ -281,6 +280,16 @@ export default function AddCarScreen() {
                     <Text style={styles.saveButtonText}>{isLoading ? 'Saving...' : 'Save Car'}</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            {isLoading && (
+                <View style={styles.fullScreenLoading}>
+                    <View style={[styles.loadingCard, { backgroundColor: theme.surface }]}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                        <Text style={[styles.loadingText, { color: theme.text }]}>Saving Your Car...</Text>
+                        <Text style={[styles.loadingSubText, { color: theme.icon }]}>Uploading photos and documents to cloud</Text>
+                    </View>
+                </View>
+            )}
         </View>
     );
 }
@@ -432,4 +441,32 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
     },
+    fullScreenLoading: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    loadingCard: {
+        padding: 40,
+        borderRadius: 32,
+        alignItems: 'center',
+        gap: 16,
+        boxShadow: '0px 8px 24px rgba(0,0,0,0.2)',
+        elevation: 10,
+        width: '80%',
+    },
+    loadingText: {
+        fontSize: 20,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    loadingSubText: {
+        fontSize: 14,
+        fontWeight: '600',
+        textAlign: 'center',
+        opacity: 0.7,
+    },
 });
+

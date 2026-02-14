@@ -5,7 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { AlertCircle, Camera, CheckCircle, Clock, Upload, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+
 import { Colors } from '../../constants/theme';
 import { useSubmitVerification } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -177,7 +178,7 @@ export default function VerificationScreen() {
 
                 {hasDoc ? (
                     <View style={styles.previewContainer}>
-                        <Image source={{ uri: documents.facePhoto }} style={styles.docPreview} contentFit="cover" transition={500} />
+                        <Image source={{ uri: documents[type] }} style={styles.docPreview} contentFit="cover" transition={500} />
                         <TouchableOpacity
                             style={styles.removeButton}
                             onPress={() => updateDocuments({ [type]: undefined })}
@@ -272,6 +273,16 @@ export default function VerificationScreen() {
                     <Text style={styles.submitButtonText}>{isSubmitting ? 'Submitting...' : 'Submit for Review'}</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            {isSubmitting && (
+                <View style={styles.fullScreenLoading}>
+                    <View style={[styles.loadingCard, { backgroundColor: theme.surface }]}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                        <Text style={[styles.loadingText, { color: theme.text }]}>Submitting Documents...</Text>
+                        <Text style={[styles.loadingSubText, { color: theme.icon }]}>Securely uploading your documents to cloud storage</Text>
+                    </View>
+                </View>
+            )}
         </View>
     );
 }
@@ -520,4 +531,32 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+    fullScreenLoading: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    loadingCard: {
+        padding: 40,
+        borderRadius: 32,
+        alignItems: 'center',
+        gap: 16,
+        boxShadow: '0px 8px 24px rgba(0,0,0,0.2)',
+        elevation: 10,
+        width: '80%',
+    },
+    loadingText: {
+        fontSize: 20,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    loadingSubText: {
+        fontSize: 14,
+        fontWeight: '600',
+        textAlign: 'center',
+        opacity: 0.7,
+    },
 });
+

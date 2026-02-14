@@ -6,10 +6,10 @@ import { API_URL } from './apiConfig';
 const api = axios.create({
     baseURL: API_URL,
     headers: {
-        'Content-Type': 'application/json',
         'Bypass-Tunnel-Reminder': 'true',
     },
 });
+
 
 // Add a request interceptor to add the auth token
 api.interceptors.request.use(

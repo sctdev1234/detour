@@ -86,13 +86,9 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 
-// Serve Uploads Static Folder
-const fs = require('fs');
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve Static Folder if needed (currently cloud-only)
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 // Error Handling Middleware
 const { errorHandler } = require('./middleware/errorMiddleware');
