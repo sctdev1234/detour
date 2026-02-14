@@ -1,4 +1,4 @@
-import { ListFilter, Map, Search } from 'lucide-react';
+import { ListFilter, Map, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import TripsMap from '../components/TripsMap';
@@ -16,6 +16,7 @@ export default function Trips() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open in full screen
 
     useEffect(() => {
         fetchTrips();
@@ -48,6 +49,17 @@ export default function Trips() {
     const fullScreenContent = (
         <div className={`transition-all duration-500 ease-in-out ${isFullScreen ? 'fixed inset-0 z-[9999] bg-slate-950' : 'grid gap-8'}`}>
 
+            {/* Sidebar Toggle Button (Full Screen Only) */}
+            {isFullScreen && (
+                <button
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="absolute top-[85px] left-3 z-[100] p-2 rounded-lg bg-slate-900/90 backdrop-blur border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition-all shadow-xl"
+                    title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+                >
+                    {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                </button>
+            )}
+
             {/* Map Section - Full Screen or Default */}
             <div className={`w-full transition-all duration-500 ${isFullScreen ? 'h-screen absolute inset-0 z-0' : 'relative z-10'}`}>
                 <TripsMap
@@ -62,7 +74,8 @@ export default function Trips() {
             <div className={`
                 transition-all duration-500 ease-in-out
                 ${isFullScreen
-                    ? 'absolute top-4 left-4 bottom-4 w-[400px] z-10 bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left-10 fade-in duration-500'
+                    ? `absolute top-4 left-16 bottom-4 w-[400px] z-10 bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden 
+                       ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-[110%] opacity-0 pointer-events-none'}`
                     : ''}
             `}>
                 {/* Header for Sidebar */}

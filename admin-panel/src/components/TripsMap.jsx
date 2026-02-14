@@ -1,7 +1,8 @@
+
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Maximize2, Minimize2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { Layers, Maximize2, Minimize2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 
 // Fix for default markers
@@ -61,6 +62,31 @@ function FocusHandler({ focusCoords }) {
 export default function TripsMap({ selectedTrip, focusCoords, isFullScreen, onToggleFullScreen }) {
     // Default center (Casablanca)
     const defaultCenter = [33.5731, -7.5898];
+    const [mapStyle, setMapStyle] = useState('dark');
+    const [showStyleMenu, setShowStyleMenu] = useState(false);
+
+    const mapStyles = {
+        dark: {
+            url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            label: "Dark Mode"
+        },
+        light: {
+            url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            label: "Light Mode"
+        },
+        street: {
+            url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            label: "Street View"
+        },
+        satellite: {
+            url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            label: "Satellite"
+        }
+    };
 
     // Construct path from points
     const getPath = () => {
@@ -86,6 +112,37 @@ export default function TripsMap({ selectedTrip, focusCoords, isFullScreen, onTo
 
     return (
         <div className={`w-full rounded-2xl overflow-hidden shadow-lg border border-slate-700/50 bg-slate-900 relative transition-all duration-500 ${isFullScreen ? 'h-full rounded-none border-0' : 'h-[400px] mb-6'}`}>
+
+            {/* Map Style Switcher */}
+            <div className="absolute top-4 right-16 z-[400]">
+                <button
+                    onClick={() => setShowStyleMenu(!showStyleMenu)}
+                    className={`p-3 rounded-xl backdrop-blur-md border transition-all duration-300 shadow-2xl group ${showStyleMenu ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800'}`}
+                    title="Change Map Style"
+                >
+                    <Layers className="w-5 h-5" />
+                </button>
+
+                {/* Dropdown Menu */}
+                <div className={`absolute top-full right-0 mt-2 w-40 bg-slate-900/90 backdrop-blur-xl border border-slate-700 rounded-xl overflow-hidden shadow-2xl transition-all duration-300 origin-top-right ${showStyleMenu ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none'}`}>
+                    <div className="p-1 space-y-1">
+                        {Object.entries(mapStyles).map(([key, style]) => (
+                            <button
+                                key={key}
+                                onClick={() => {
+                                    setMapStyle(key);
+                                    setShowStyleMenu(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${mapStyle === key ? 'bg-blue-600/20 text-blue-400' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <span className={`w-2 h-2 rounded-full ${mapStyle === key ? 'bg-blue-400' : 'bg-slate-600'}`}></span>
+                                {style.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             {/* Toggle Full Screen Button */}
             <button
                 onClick={onToggleFullScreen}
@@ -102,8 +159,8 @@ export default function TripsMap({ selectedTrip, focusCoords, isFullScreen, onTo
                 className="z-0"
             >
                 <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url={mapStyles[mapStyle].url}
+                    attribution={mapStyles[mapStyle].attribution}
                 />
 
                 <FocusHandler focusCoords={focusCoords} />

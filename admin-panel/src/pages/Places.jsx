@@ -1,5 +1,6 @@
-import { MapPin, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ChevronDown, MapPin, PanelLeftClose, PanelLeftOpen, Plus, Search, User } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import PlacesTable from '../components/PlacesTable';
 import api from '../lib/axios';
 // Use dynamic import for map to avoid SSR issues if any (though this is SPA)
@@ -20,6 +21,14 @@ export default function Places() {
     const [category, setCategory] = useState('other');
     const [selectedLocation, setSelectedLocation] = useState(null); // { lat, lng }
 
+    // Map & Full Screen State
+    const [mapCenter, setMapCenter] = useState([33.5731, -7.5898]);
+    const [displayedPlaces, setDisplayedPlaces] = useState([]);
+    const [isFullScreen, setIsFullScreen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedUserId, setSelectedUserId] = useState(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open in full screen
+
     useEffect(() => {
         fetchPlaces(currentPage);
     }, [currentPage]);
@@ -27,7 +36,13 @@ export default function Places() {
     const fetchPlaces = async (page) => {
         setLoading(true);
         try {
-            const res = await api.get(`/admin/places?page=${page}&limit=6`); // Limit 6 for demo/UI fit
+            // For full screen experience, we might want to fetch ALL places if in full screen?
+            // But for now let's keep it paginated or maybe increase limit?
+            // The user said "show the box in left that contains all the person". 
+            // If they mean ALL places, we might need a "load all" for map view.
+            // For now, adhere to pagination but maybe larger limit? OR stick to current page for consistency.
+            const limit = isFullScreen ? 100 : 6;
+            const res = await api.get(`/admin/places?page=${page}&limit=${limit}`);
             setPlaces(res.data.places);
             setTotalPages(res.data.totalPages);
             setCurrentPage(res.data.currentPage);
@@ -37,6 +52,11 @@ export default function Places() {
             setLoading(false);
         }
     };
+
+    // Re-fetch when entering full screen to get more points?
+    useEffect(() => {
+        fetchPlaces(currentPage);
+    }, [isFullScreen]);
 
     const handleAddPlace = async (e) => {
         e.preventDefault();
@@ -50,11 +70,9 @@ export default function Places() {
             };
 
             const res = await api.post('/admin/places', payload);
-            // Re-fetch to allow backend to sort/page correctly, or just add to top if on page 1
             if (currentPage === 1) {
                 fetchPlaces(1);
             } else {
-                // Optionally jump to page 1
                 setCurrentPage(1);
             }
 
@@ -83,55 +101,218 @@ export default function Places() {
         setSelectedLocation(null);
     };
 
-    const [mapCenter, setMapCenter] = useState([33.5731, -7.5898]);
-    const [displayedPlaces, setDisplayedPlaces] = useState([]);
-
     useEffect(() => {
-        // Initially show nothing or maybe the first one? User said "just when i click".
-        // asking for "markers are listed on the map" -> "show it ... just when click".
-        // So start empty.
         setDisplayedPlaces([]);
     }, [places]);
+
+    // Group Places by User
+    const usersWithPlaces = useMemo(() => {
+        const groups = {};
+        places.forEach(place => {
+            if (!place.user) return;
+            const userId = place.user._id;
+            if (!groups[userId]) {
+                groups[userId] = {
+                    user: place.user,
+                    places: []
+                };
+            }
+            groups[userId].places.push(place);
+        });
+        return Object.values(groups);
+    }, [places]);
+
+    const handleUserSelect = (userGroup) => {
+        if (selectedUserId === userGroup.user._id) {
+            setSelectedUserId(null);
+            setDisplayedPlaces([]);
+        } else {
+            setSelectedUserId(userGroup.user._id);
+            setDisplayedPlaces(userGroup.places);
+
+            // Center map on first place
+            if (userGroup.places.length > 0) {
+                const firstPlace = userGroup.places[0];
+                if (firstPlace.latitude && firstPlace.longitude) {
+                    setMapCenter([firstPlace.latitude, firstPlace.longitude]);
+                }
+            }
+        }
+    };
+
+    // Derived places to show on map
+    const mapPlaces = useMemo(() => {
+        if (!isFullScreen) return displayedPlaces;
+        if (selectedUserId) return displayedPlaces;
+        return places; // Show all in full screen if no user selected
+    }, [isFullScreen, selectedUserId, displayedPlaces, places]);
+
+    // Filter Users
+    const filteredUsers = usersWithPlaces.filter(group => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+            group.user.fullName?.toLowerCase().includes(query) ||
+            group.user.email?.toLowerCase().includes(query) ||
+            group.places.some(p => p.address.toLowerCase().includes(query))
+        );
+    });
 
     const handleLocationClick = (place) => {
         if (place.latitude && place.longitude) {
             setMapCenter([place.latitude, place.longitude]);
             setDisplayedPlaces([place]);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (!isFullScreen) window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                        Places Management
-                    </h1>
-                    <p className="text-slate-400 mt-1">Manage locations and view them on the map</p>
-                </div>
+    const fullScreenContent = (
+        <div className={`transition-all duration-500 ease-in-out ${isFullScreen ? 'fixed inset-0 z-[9999] bg-slate-950' : 'grid grid-cols-1 lg:grid-cols-3 gap-6'}`}>
+
+            {/* Sidebar Toggle Button (Full Screen Only) */}
+            {isFullScreen && (
                 <button
-                    onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg shadow-blue-500/20"
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="absolute top-[85px] left-3 z-[100] p-2 rounded-lg bg-slate-900/90 backdrop-blur border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition-all shadow-xl"
+                    title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
                 >
-                    <Plus className="w-4 h-4" />
-                    Add New Place
+                    {isSidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
                 </button>
+            )}
+
+            {/* Map Section */}
+            <div className={`transition-all duration-500 ${isFullScreen ? 'h-screen absolute inset-0 z-0' : 'lg:col-span-3 h-[400px] relative z-0'}`}>
+                <PlacesMap
+                    places={isFullScreen ? mapPlaces : displayedPlaces}
+                    center={mapCenter}
+                    isFullScreen={isFullScreen}
+                    onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
+                />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Map Section - Takes 1/3 on large screens, or full width if needed */}
-                <div className="lg:col-span-3 h-[400px]">
-                    <PlacesMap
-                        places={displayedPlaces}
-                        center={mapCenter}
-                    />
-                </div>
+            {/* Sidebar / Table Section */}
+            <div className={`
+                transition-all duration-500 ease-in-out
+                ${isFullScreen
+                    ? `absolute top-4 left-16 bottom-4 w-[400px] z-10 bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden 
+                       ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-[110%] opacity-0 pointer-events-none'}`
+                    : 'lg:col-span-3'}
+            `}>
 
-                {/* Table Section */}
-                <div className="lg:col-span-3">
+                {/* Full Screen Sidebar Header */}
+                {isFullScreen && (
+                    <div className="p-4 border-b border-slate-700/50 bg-slate-900/50 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <User className="w-5 h-5 text-blue-400" />
+                                Users & Places
+                            </h2>
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-lg shadow-blue-500/20"
+                                title="Add New Place"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search users or places..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-2 pl-9 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 focus:bg-slate-800 transition-all"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className={`${isFullScreen ? 'flex-1 overflow-y-auto p-4 custom-scrollbar' : ''}`}>
                     {loading ? (
-                        <div className="text-slate-400 text-center py-10">Loading places...</div>
+                        <div className="text-slate-400 text-center py-10">Loading...</div>
+                    ) : isFullScreen ? (
+                        // User List for Full Screen Sidebar
+                        <div className="space-y-3">
+                            {filteredUsers.map((group) => {
+                                const isSelected = selectedUserId === group.user._id;
+                                return (
+                                    <div
+                                        key={group.user._id}
+                                        className={`
+                                            rounded-2xl border transition-all duration-300 overflow-hidden
+                                            ${isSelected
+                                                ? 'bg-slate-800/80 border-blue-500/50 shadow-lg shadow-blue-500/10'
+                                                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60 hover:border-slate-600'
+                                            }
+                                        `}
+                                    >
+                                        <div
+                                            onClick={() => handleUserSelect(group)}
+                                            className="p-4 cursor-pointer flex items-center justify-between"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative">
+                                                    <img
+                                                        src={group.user.photoURL || `https://ui-avatars.com/api/?name=${group.user.fullName}&background=0D8ABC&color=fff`}
+                                                        alt={group.user.fullName}
+                                                        className={`w-10 h-10 rounded-full object-cover border-2 ${isSelected ? 'border-blue-400 ring-2 ring-blue-500/20' : 'border-slate-600'}`}
+                                                    />
+                                                    <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-800 ${group.user.role === 'driver' ? 'bg-emerald-400' : 'bg-blue-400'}`}></span>
+                                                </div>
+                                                <div>
+                                                    <h4 className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                                                        {group.user.fullName}
+                                                    </h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] uppercase font-bold text-slate-500">{group.user.role}</span>
+                                                        <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                                                        <span className="text-xs text-slate-400">{group.places.length} Place{group.places.length !== 1 && 's'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className={`transition-transform duration-300 ${isSelected ? 'rotate-180' : ''}`}>
+                                                <ChevronDown className={`w-4 h-4 ${isSelected ? 'text-blue-400' : 'text-slate-600'}`} />
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Places List */}
+                                        <div className={`
+                                            transition-all duration-300 ease-in-out overflow-hidden bg-slate-900/50
+                                            ${isSelected ? 'max-h-[500px] border-t border-slate-700/50' : 'max-h-0'}
+                                        `}>
+                                            <div className="p-3 space-y-2">
+                                                {group.places.map(place => (
+                                                    <div
+                                                        key={place._id}
+                                                        className="flex items-start gap-3 p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 transition-all cursor-pointer group/place"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // Prevent toggling user
+                                                            handleLocationClick(place);
+                                                        }}
+                                                    >
+                                                        <div className="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-400 group-hover/place:text-blue-400 group-hover/place:bg-blue-500/10 transition-colors shrink-0">
+                                                            <MapPin className="w-4 h-4" />
+                                                        </div>
+                                                        <div>
+                                                            <h5 className="text-sm font-medium text-slate-300 group-hover/place:text-white transition-colors">
+                                                                {place.label || place.name}
+                                                            </h5>
+                                                            <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                                                                {place.address}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     ) : (
                         <PlacesTable
                             places={places}
@@ -144,6 +325,30 @@ export default function Places() {
                     )}
                 </div>
             </div>
+        </div>
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                        Places Management
+                    </h1>
+                    <p className="text-slate-400 mt-1">Manage locations and view them on the map</p>
+                </div>
+                {!isFullScreen && (
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg shadow-blue-500/20"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add New Place
+                    </button>
+                )}
+            </div>
+
+            {isFullScreen ? createPortal(fullScreenContent, document.body) : fullScreenContent}
 
             {/* Add Modal */}
             {showAddModal && (

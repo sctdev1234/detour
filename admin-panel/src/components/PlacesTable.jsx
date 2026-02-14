@@ -1,6 +1,6 @@
 import { Calendar, MapPin, Trash2, User } from 'lucide-react';
 
-export default function PlacesTable({ places, onDelete, onLocationClick, currentPage, totalPages, onPageChange }) {
+export default function PlacesTable({ places, onDelete, onLocationClick, currentPage, totalPages, onPageChange, compact }) {
     if (places.length === 0) {
         return (
             <div className="p-12 text-center bg-slate-800/30 rounded-2xl border border-slate-700 border-dashed">
@@ -13,73 +13,136 @@ export default function PlacesTable({ places, onDelete, onLocationClick, current
 
     return (
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden backdrop-blur-sm flex flex-col h-full">
-            <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-slate-700/50 bg-slate-800/50">
-                            <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Place Name</th>
-                            <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Address</th>
-                            <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Category</th>
-                            <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Added By</th>
-                            <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Date Added</th>
-                            <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/50">
+            <div className={`
+                ${compact ? 'space-y-3' : 'overflow-x-auto flex-1'}
+            `}>
+                {compact ? (
+                    // Compact Card View for Sidebar
+                    <div className="space-y-3 px-1">
                         {places.map((place) => (
-                            <tr key={place._id} className="hover:bg-slate-700/30 transition-colors group">
-                                <td className="p-4">
+                            <div
+                                key={place._id}
+                                onClick={() => onLocationClick(place)}
+                                className="group relative flex flex-col gap-3 p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl hover:bg-slate-800/80 hover:border-slate-600 transition-all cursor-pointer"
+                            >
+                                {/* Header: Icon & Name */}
+                                <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center text-blue-400 shrink-0 border border-slate-600/50 group-hover:bg-blue-500/10 group-hover:border-blue-500/30 transition-colors">
                                             <MapPin className="w-5 h-5" />
                                         </div>
-                                        <div className="font-medium text-slate-200">{place.label || place.name}</div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-200 text-sm line-clamp-1 group-hover:text-blue-400 transition-colors">
+                                                {place.label || place.name}
+                                            </h4>
+                                            <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-[10px] font-medium bg-slate-700/50 text-slate-400 border border-slate-700 capitalize">
+                                                {place.category || 'other'}
+                                            </span>
+                                        </div>
                                     </div>
-                                </td>
-                                <td className="p-4 text-slate-400 text-sm max-w-[200px] truncate" title={place.address}>
-                                    {place.address}
-                                </td>
-                                <td className="p-4">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700 text-slate-300 capitalize">
-                                        {place.category || 'other'}
-                                    </span>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-2 text-slate-300 text-sm">
-                                        <User className="w-4 h-4 text-slate-500" />
+
+                                    {/* Delete Action (visible on hover) */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete(place._id);
+                                        }}
+                                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                        title="Delete Place"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                {/* Address */}
+                                <div className="pl-[52px]">
+                                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                                        {place.address}
+                                    </p>
+                                </div>
+
+                                {/* Added By Footer */}
+                                <div className="mt-1 pt-3 border-t border-slate-700/30 flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2 text-slate-500">
+                                        <User className="w-3.5 h-3.5" />
                                         <span>{place.user?.fullName || 'Unknown'}</span>
                                     </div>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-2 text-slate-400 text-sm">
-                                        <Calendar className="w-4 h-4 text-slate-600" />
+                                    <div className="text-slate-600">
                                         {new Date(place.createdAt).toLocaleDateString()}
                                     </div>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        {(place.latitude && place.longitude) ? (
-                                            <button
-                                                onClick={() => onLocationClick(place)}
-                                                className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors"
-                                                title="View on Map"
-                                            >
-                                                <MapPin className="w-4 h-4" />
-                                            </button>
-                                        ) : null}
-                                        <button
-                                            onClick={() => onDelete(place._id)}
-                                            className="p-2 hover:bg-red-500/10 text-slate-500 hover:text-red-400 rounded-lg transition-colors"
-                                            title="Delete Place"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
                         ))}
-                    </tbody>
-                </table>
+                    </div>
+                ) : (
+                    // Standard Table View
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-slate-700/50 bg-slate-800/50">
+                                <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Place Name</th>
+                                <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Address</th>
+                                <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Category</th>
+                                <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Added By</th>
+                                <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Date Added</th>
+                                <th className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/50">
+                            {places.map((place) => (
+                                <tr key={place._id} className="hover:bg-slate-700/30 transition-colors group">
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
+                                                <MapPin className="w-5 h-5" />
+                                            </div>
+                                            <div className="font-medium text-slate-200">{place.label || place.name}</div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-slate-400 text-sm max-w-[200px] truncate" title={place.address}>
+                                        {place.address}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700 text-slate-300 capitalize">
+                                            {place.category || 'other'}
+                                        </span>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2 text-slate-300 text-sm">
+                                            <User className="w-4 h-4 text-slate-500" />
+                                            <span>{place.user?.fullName || 'Unknown'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                            <Calendar className="w-4 h-4 text-slate-600" />
+                                            {new Date(place.createdAt).toLocaleDateString()}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                            {(place.latitude && place.longitude) ? (
+                                                <button
+                                                    onClick={() => onLocationClick(place)}
+                                                    className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors"
+                                                    title="View on Map"
+                                                >
+                                                    <MapPin className="w-4 h-4" />
+                                                </button>
+                                            ) : null}
+                                            <button
+                                                onClick={() => onDelete(place._id)}
+                                                className="p-2 hover:bg-red-500/10 text-slate-500 hover:text-red-400 rounded-lg transition-colors"
+                                                title="Delete Place"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
             {/* Pagination Controls */}
