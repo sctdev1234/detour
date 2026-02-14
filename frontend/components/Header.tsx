@@ -67,7 +67,8 @@ export default function Header() {
         // Auth
         if (pathname.includes('/(auth)/login')) return true;
         if (pathname.includes('/(auth)/role-selection')) return true;
-        if (pathname.includes('/tasks')) return true; // Tasks is a root-like screen
+        if (pathname.includes('/tasks')) return true; // Removed to show header
+
         if (pathname.includes('/(auth)/signup')) return false; // Signup usually has back to login
 
         return false;
@@ -86,7 +87,9 @@ export default function Header() {
     // EXCEPT for the main dashboard indexes where we want to use this header
     const isDashboard = pathname === '/' || pathname === '/index' ||
         pathname === '/(driver)' || pathname === '/(driver)/' || pathname === '/(driver)/index' ||
-        pathname === '/(client)' || pathname === '/(client)/' || pathname === '/(client)/index';
+        pathname === '/(client)' || pathname === '/(client)/' || pathname === '/(client)/index' ||
+        pathname.includes('/tasks');
+
 
     if (isMainTab() && !isDashboard) {
         return null;

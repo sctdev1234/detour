@@ -11,7 +11,6 @@ import {
     View,
     useColorScheme,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import OnboardingStep from '../components/OnboardingStep';
 import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
@@ -77,19 +76,20 @@ export default function TasksScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
                 }
             >
-                <View style={styles.header}>
+                <View style={[styles.header, { marginTop: 10 }]}>
                     <Text style={[styles.title, { color: theme.text }]}>Finish Setup</Text>
                     <Text style={[styles.subtitle, { color: '#6B7280' }]}>
                         Complete the following tasks to unlock the full experience of Detour.
                     </Text>
                 </View>
+
 
                 {/* Progress Bar */}
                 <View style={styles.progressContainer}>
@@ -136,9 +136,10 @@ export default function TasksScreen() {
                     </View>
                 )}
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: {
