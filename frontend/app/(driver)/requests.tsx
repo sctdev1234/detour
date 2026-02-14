@@ -1,3 +1,4 @@
+import { useUIStore } from '@/store/useUIStore';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -14,14 +15,15 @@ export default function DriverRequestsScreen() {
 
     const { data: driverRequests, isLoading } = useDriverRequests();
     const { mutateAsync: handleJoinRequest } = useHandleJoinRequest();
+    const { showToast } = useUIStore();
 
     const onRespond = async (requestId: string, status: 'accepted' | 'rejected') => {
         try {
             await handleJoinRequest({ requestId, status });
-            alert(`Request ${status}`);
+            showToast(`Request ${status}`, 'success');
         } catch (error) {
             console.error(error);
-            alert('Failed to respond');
+            showToast('Failed to respond', 'error');
         }
     };
 

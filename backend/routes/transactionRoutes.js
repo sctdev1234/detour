@@ -17,4 +17,9 @@ router.post('/subscribe', auth, transactionController.subscribe);
 // @access  Private
 router.post('/cashout', auth, transactionController.cashout);
 
+// @route   POST api/transactions/deposit
+// @desc    Add funds (simulated)
+// @access  Private
+router.post('/deposit', auth, transactionController.deposit);
+
 module.exports = router;

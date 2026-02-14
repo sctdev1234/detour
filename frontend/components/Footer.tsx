@@ -105,10 +105,16 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
     // Let's fallback to checking if the route name exists in our combined set of "known tabs".
     // Actually, sticking to role-based filtering is better for security/UX.
 
-    console.log('Rendering Footer for role:', user?.role);
+
 
     // Filter state routes that are in the visible list for the current role
     const routesToShow = state.routes.filter(route => visibleRoutes.includes(route.name));
+
+    // Hide footer entirely when the active route is a form/hidden screen
+    const activeRoute = state.routes[state.index];
+    if (activeRoute && !visibleRoutes.includes(activeRoute.name)) {
+        return null;
+    }
 
     const Container = Platform.OS === 'ios' ? BlurView : View;
     const containerStyle = Platform.OS === 'ios'

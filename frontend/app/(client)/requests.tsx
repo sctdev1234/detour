@@ -1,14 +1,12 @@
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { Send, User } from 'lucide-react-native';
-import { ActivityIndicator, FlatList, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
-import { useClientRequests } from '../../hooks/api/useTripQueries';
+import { useClientRequests, useHandleJoinRequest } from '../../hooks/api/useTripQueries';
 
 export default function ClientRequestsScreen() {
-    const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
@@ -33,14 +31,47 @@ export default function ClientRequestsScreen() {
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.driverName, { color: theme.text }]}>{driver?.fullName || 'Anonymous Driver'}</Text>
                             <View style={styles.statusRow}>
-                                <View style={[styles.statusDot, { backgroundColor: item.status === 'pending' ? '#f59e0b' : item.status === 'accepted' ? '#10b981' : '#ef4444' }]} />
-                                <Text style={[styles.statusText, { color: theme.icon }]}>{item.status.toUpperCase()}</Text>
+                                <Text style={[styles.statusText, { color: theme.icon }]}>
+                                    Status: {item.status.toUpperCase()}
+                                </Text>
                             </View>
+                            {item.proposedPrice && (
+                                <Text style={{ color: theme.primary, fontWeight: '700', marginTop: 4 }}>
+                                    Offer: {item.proposedPrice} MAD
+                                </Text>
+                            )}
                         </View>
                     </View>
+
+                    {item.status === 'pending' && (
+                        <View style={styles.actionButtons}>
+                            <TouchableOpacity
+                                style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
+                                onPress={() => handleRequest(item._id, 'rejected')}
+                            >
+                                <Text style={styles.btnText}>Reject</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
+                                onPress={() => handleRequest(item._id, 'accepted')}
+                            >
+                                <Text style={styles.btnText}>Accept</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </BlurView>
             </Animated.View>
         );
+    };
+
+    const { mutateAsync: handleJoinRequest } = useHandleJoinRequest();
+
+    const handleRequest = async (requestId: string, status: 'accepted' | 'rejected') => {
+        try {
+            await handleJoinRequest({ requestId, status });
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     return (
@@ -49,7 +80,7 @@ export default function ClientRequestsScreen() {
                 <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>My Requests</Text>
             </View>
 
-            {isLoading && !clientRequests?.length ? (
+            {isLoading && (!clientRequests || clientRequests.length === 0) ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
@@ -104,5 +135,8 @@ const styles = StyleSheet.create({
     statusDot: { width: 8, height: 8, borderRadius: 4 },
     statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
     empty: { alignItems: 'center', justifyContent: 'center', marginTop: 100, gap: 12 },
-    emptyText: { fontSize: 16, fontWeight: '600' }
+    emptyText: { fontSize: 16, fontWeight: '600' },
+    actionButtons: { flexDirection: 'row', gap: 12, marginTop: 12 },
+    actionBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    btnText: { color: '#fff', fontWeight: '700', fontSize: 14 }
 });

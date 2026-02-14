@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
-import { useAuthStore } from '../../store/useAuthStore';
 
 // Define the Car interface based on the store definition
 export interface Car {
@@ -33,39 +32,33 @@ export const carKeys = {
     detail: (id: string) => [...carKeys.all, 'detail', id] as const,
 };
 
-export const useCars = (ownerId?: string) => {
+export const useCars = () => {
     return useQuery({
-        queryKey: carKeys.list(ownerId || ''),
+        queryKey: carKeys.list('me'),
         queryFn: async () => {
-            if (!ownerId) return [];
-            const { data } = await api.get(`/cars?ownerId=${ownerId}`);
+            const { data } = await api.get('/cars');
             // Ensure ID mapping is consistent (mongo _id to id)
             return data.map((c: any) => ({ ...c, id: c._id || c.id })) as Car[];
         },
-        enabled: !!ownerId,
     });
 };
 
 export const useAddCar = () => {
     const queryClient = useQueryClient();
-    const { user } = useAuthStore.getState();
 
     return useMutation({
-        mutationFn: async (carData: Omit<Car, 'id' | 'ownerId' | 'verificationStatus'> & { ownerId: string }) => {
+        mutationFn: async (carData: Omit<Car, 'id' | 'ownerId' | 'verificationStatus'>) => {
             const { data } = await api.post('/cars', carData);
             return { ...data, id: data._id || data.id };
         },
         onSuccess: () => {
-            if (user?.id) {
-                queryClient.invalidateQueries({ queryKey: carKeys.list(user.id) });
-            }
+            queryClient.invalidateQueries({ queryKey: carKeys.list('me') });
         },
     });
 };
 
 export const useRemoveCar = () => {
     const queryClient = useQueryClient();
-    const { user } = useAuthStore.getState();
 
     return useMutation({
         mutationFn: async (id: string) => {
@@ -73,16 +66,13 @@ export const useRemoveCar = () => {
             return id;
         },
         onSuccess: () => {
-            if (user?.id) {
-                queryClient.invalidateQueries({ queryKey: carKeys.list(user.id) });
-            }
+            queryClient.invalidateQueries({ queryKey: carKeys.list('me') });
         },
     });
 };
 
 export const useUpdateCar = () => {
     const queryClient = useQueryClient();
-    const { user } = useAuthStore.getState();
 
     return useMutation({
         mutationFn: async ({ id, updates }: { id: string; updates: Partial<Car> }) => {
@@ -90,16 +80,13 @@ export const useUpdateCar = () => {
             return data;
         },
         onSuccess: () => {
-            if (user?.id) {
-                queryClient.invalidateQueries({ queryKey: carKeys.list(user.id) });
-            }
+            queryClient.invalidateQueries({ queryKey: carKeys.list('me') });
         },
     });
 };
 
 export const useSetDefaultCar = () => {
     const queryClient = useQueryClient();
-    const { user } = useAuthStore.getState();
 
     return useMutation({
         mutationFn: async (id: string) => {
@@ -107,16 +94,13 @@ export const useSetDefaultCar = () => {
             return data;
         },
         onSuccess: () => {
-            if (user?.id) {
-                queryClient.invalidateQueries({ queryKey: carKeys.list(user.id) });
-            }
+            queryClient.invalidateQueries({ queryKey: carKeys.list('me') });
         },
     });
 };
 
 export const useAssignCar = () => {
     const queryClient = useQueryClient();
-    const { user } = useAuthStore.getState();
 
     return useMutation({
         mutationFn: async ({ id, assignment }: { id: string; assignment: Car['assignment'] }) => {
@@ -124,36 +108,23 @@ export const useAssignCar = () => {
             return data;
         },
         onSuccess: () => {
-            if (user?.id) {
-                queryClient.invalidateQueries({ queryKey: carKeys.list(user.id) });
-            }
+            queryClient.invalidateQueries({ queryKey: carKeys.list('me') });
         },
     });
 };
 
 export const useRevokeAssignment = () => {
     const queryClient = useQueryClient();
-    const { user } = useAuthStore.getState();
 
     return useMutation({
         mutationFn: async (id: string) => {
-            // Logic to end assignment - this might require fetching the car first or backend support
-            // For now assuming we just update the status to ended if we knew the structure, 
-            // but cleaner is to have a specific endpoint or just patch the status
-            // Based on store logic, it patches the assignment with status 'ended'
-            // We'll trust the component or helper to construct the 'ended' assignment update 
-            // OR we can fetch car, get assignment, and patch. 
-            // BUT simpler: logic in store was: patch assignment.status = ended.
-            // We can do that via useUpdateCar usually, but let's keep this if needed.
-            // Actually, the store logic was complex (get car -> update). 
-            // Let's rely on useUpdateCar for this in the component or make this smarter.
-            // For now, let's just use useUpdateCar in components for simplicity, or 
-            // if we really want a specific hook:
-            // Since we don't have the current assignment here easily without fetching,
-            // we'll assume the backend handles partial updates or we pass the new assignment.
-            // Let's NOT export this separately and expect components to use useUpdateCar
-            // with the correct assignment object.
-            return null;
-        }
+            const { data } = await api.patch(`/cars/${id}`, {
+                assignment: { status: 'ended' }
+            });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: carKeys.list('me') });
+        },
     });
 };

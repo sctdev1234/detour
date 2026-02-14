@@ -21,7 +21,7 @@ export default function AddRouteScreen() {
 
     const { user } = useAuthStore();
     const { mutateAsync: addRoute, isPending: isAddingRoute } = useAddRoute();
-    const { data: cars = [] } = useCars(user?.id);
+    const { data: cars = [] } = useCars();
 
     const { showToast } = useUIStore();
 
@@ -149,7 +149,7 @@ export default function AddRouteScreen() {
                         </View>
 
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
-                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} />
+                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} savedPlaces={user?.savedPlaces} />
                             {points.length === 0 && (
                                 <View style={[styles.mapOverlay, { backgroundColor: theme.surface }]}>
                                     <MapPin size={24} color={theme.primary} />

@@ -42,7 +42,8 @@ export default function ClientDashboard() {
 
     // Filter for client routes and active trips
     const myRoutes = React.useMemo(() => routes?.filter(r => r.role === 'client').slice(0, 3) || [], [routes]);
-    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['accepted', 'started', 'picked_up'].includes(r.status)), [requests]);
+    // Include pending requests in active state
+    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['pending', 'accepted', 'started', 'picked_up'].includes(r.status)), [requests]);
 
     const handleQuickAction = (action: string) => {
         router.push('/(client)/add-route');
@@ -84,10 +85,16 @@ export default function ClientDashboard() {
                         <Animated.View entering={FadeInDown.springify()}>
                             <TouchableOpacity
                                 activeOpacity={0.9}
-                                onPress={() => router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } })}
+                                onPress={() => {
+                                    if (activeRequest.status === 'pending') {
+                                        router.push('/(client)/requests');
+                                    } else {
+                                        router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } });
+                                    }
+                                }}
                             >
                                 <LinearGradient
-                                    colors={['#2563EB', '#4F46E5']}
+                                    colors={activeRequest.status === 'pending' ? ['#F59E0B', '#FCD34D'] : ['#2563EB', '#4F46E5']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 1 }}
                                     style={styles.activeCard}
@@ -95,7 +102,9 @@ export default function ClientDashboard() {
                                     <View style={styles.activeCardContent}>
                                         <View style={styles.activeCardHeader}>
                                             <View style={styles.pulsingDot} />
-                                            <Text style={styles.activeCardTitle}>Trip in Progress</Text>
+                                            <Text style={styles.activeCardTitle}>
+                                                {activeRequest.status === 'pending' ? 'Waiting for Offers' : 'Trip in Progress'}
+                                            </Text>
                                             <View style={styles.activeStatusBadge}>
                                                 <Text style={styles.activeStatusText}>{activeRequest.status.replace('_', ' ')}</Text>
                                             </View>
@@ -108,14 +117,16 @@ export default function ClientDashboard() {
                                                 <View style={[styles.timelineDot, { backgroundColor: '#fff', opacity: 0.5 }]} />
                                             </View>
                                             <View style={styles.tripDetails}>
-                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.startPoint?.address || 'Start'}</Text>
+                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.clientRouteId?.startPoint?.address || 'Start'}</Text>
                                                 <View style={{ height: 16 }} />
-                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.endPoint?.address || 'End'}</Text>
+                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.clientRouteId?.endPoint?.address || 'End'}</Text>
                                             </View>
                                         </View>
 
                                         <View style={styles.trackBtn}>
-                                            <Text style={styles.trackBtnText}>Track Driver</Text>
+                                            <Text style={styles.trackBtnText}>
+                                                {activeRequest.status === 'pending' ? 'View Requests' : 'Track Driver'}
+                                            </Text>
                                             <ArrowRight size={16} color="#fff" />
                                         </View>
                                     </View>
@@ -249,9 +260,9 @@ export default function ClientDashboard() {
 
                                         <TouchableOpacity
                                             style={[styles.findMatchBtn, { backgroundColor: theme.primary + '10' }]}
-                                            onPress={() => router.push({ pathname: '/(client)/find-matches', params: { routeId: route.id } })}
+                                            onPress={() => router.push('/(client)/requests')}
                                         >
-                                            <Text style={[styles.findMatchText, { color: theme.primary }]}>Find Driver</Text>
+                                            <Text style={[styles.findMatchText, { color: theme.primary }]}>Check Requests</Text>
                                             <ArrowRight size={16} color={theme.primary} />
                                         </TouchableOpacity>
                                     </GlassCard>

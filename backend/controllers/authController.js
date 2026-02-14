@@ -142,6 +142,8 @@ class AuthController {
 
     async changePassword(req, res) {
         try {
+            const { oldPassword, newPassword } = req.body;
+
             if (!oldPassword || !newPassword) {
                 return res.status(400).json({ msg: 'Please provide both old and new passwords' });
             }

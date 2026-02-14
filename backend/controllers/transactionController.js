@@ -42,3 +42,16 @@ exports.cashout = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
+
+exports.deposit = async (req, res) => {
+    try {
+        const { amount } = req.body;
+        if (!amount || amount <= 0) return res.status(400).json({ msg: 'Valid amount is required' });
+
+        const result = await transactionService.deposit(req.user.id, parseFloat(amount));
+        res.json({ balance: result });
+    } catch (err) {
+        console.error("Error in deposit:", err.message);
+        res.status(500).send('Server Error');
+    }
+};

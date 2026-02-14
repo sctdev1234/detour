@@ -15,9 +15,9 @@ export const tripKeys = {
 // --- Queries ---
 
 export const useRoutes = () => {
-    return useQuery({
+    return useQuery<Route[]>({
         queryKey: tripKeys.routes(),
-        queryFn: async () => {
+        queryFn: async (): Promise<Route[]> => {
             const res = await api.get('/trip/route');
             const formattedRoutes: Route[] = res.data.map((item: any) => ({
                 id: item._id,
@@ -55,9 +55,9 @@ export const useRoutes = () => {
 };
 
 export const useTrips = () => {
-    return useQuery({
+    return useQuery<Trip[]>({
         queryKey: tripKeys.trips(),
-        queryFn: async () => {
+        queryFn: async (): Promise<Trip[]> => {
             const res = await api.get('/trip/all');
             const formattedTrips: Trip[] = res.data.map((t: any) => ({
                 id: t._id,
@@ -127,9 +127,12 @@ export const useMatches = (routeId: string | null) => {
             return res.data.map((m: any) => ({
                 route: {
                     id: m.route._id,
-                    userId: m.route.userId?._id || m.route.userId,
-                    fullName: m.route.userId?.fullName, // Added for convenience
-                    photoURL: m.route.userId?.photoURL, // Added for convenience
+                    userId: m.route.userId ? {
+                        _id: m.route.userId._id || m.route.userId,
+                        fullName: m.route.userId.fullName,
+                        email: m.route.userId.email,
+                        photoURL: m.route.userId.photoURL
+                    } : null,
                     role: 'driver',
                     carId: m.route.carId,
                     startPoint: {
@@ -157,9 +160,9 @@ export const useMatches = (routeId: string | null) => {
 };
 
 export const useDriverRequests = () => {
-    return useQuery({
+    return useQuery<any[]>({
         queryKey: tripKeys.driverRequests(),
-        queryFn: async () => {
+        queryFn: async (): Promise<any[]> => {
             const res = await api.get('/trip/requests/driver');
             return res.data.map((r: any) => ({
                 id: r._id,
@@ -174,9 +177,9 @@ export const useDriverRequests = () => {
 };
 
 export const useClientRequests = () => {
-    return useQuery({
+    return useQuery<any[]>({
         queryKey: tripKeys.clientRequests(),
-        queryFn: async () => {
+        queryFn: async (): Promise<any[]> => {
             const res = await api.get('/trip/requests/client');
             return res.data.map((r: any) => ({
                 id: r._id,
@@ -285,6 +288,7 @@ export const useHandleJoinRequest = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tripKeys.driverRequests() });
+            queryClient.invalidateQueries({ queryKey: tripKeys.clientRequests() });
             queryClient.invalidateQueries({ queryKey: tripKeys.trips() }); // Trip client list might update
         }
     });

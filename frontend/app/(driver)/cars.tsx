@@ -14,7 +14,7 @@ export default function CarsScreen() {
     const theme = Colors[colorScheme];
 
     const user = useAuthStore((state) => state.user);
-    const { data: cars = [] } = useCars(user?.id);
+    const { data: cars = [] } = useCars();
     const { mutate: removeCar } = useRemoveCar();
     const { mutate: setDefaultCar } = useSetDefaultCar();
 

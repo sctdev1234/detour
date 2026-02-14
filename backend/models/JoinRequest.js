@@ -21,6 +21,16 @@ const JoinRequestSchema = new mongoose.Schema({
         enum: ['pending', 'accepted', 'rejected'],
         default: 'pending'
     },
+    initiatedBy: {
+        type: String,
+        enum: ['driver', 'client'],
+        required: true,
+        default: 'client' // Default to client for backward compatibility if needed, though we aim to switch flow
+    },
+    proposedPrice: {
+        type: Number,
+        required: false // Optional, can be used for counter-offers or confirming agreed price
+    },
     createdAt: {
         type: Date,
         default: Date.now

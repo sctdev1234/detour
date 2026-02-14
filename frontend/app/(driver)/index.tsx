@@ -150,49 +150,41 @@ export default function DriverDashboard() {
                     <View style={styles.metricsGrid}>
                         {/* Row 1 */}
                         <View style={styles.metricsRow}>
-                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <CardStatItem
-                                    label="Active Routes"
-                                    value={activeRoutes}
-                                    icon={Car}
-                                    theme={theme}
-                                    color={theme.text}
-                                />
-                            </GlassCard>
+                            <CardStatItem
+                                label="Active Routes"
+                                value={activeRoutes}
+                                icon={Car}
+                                theme={theme}
+                                color={theme.text}
+                            />
 
-                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <CardStatItem
-                                    label="Wallet Balance"
-                                    value={`${user?.balance?.toFixed(0) || '0'}`}
-                                    icon={Wallet}
-                                    theme={theme}
-                                    color={theme.primary}
-                                    onPress={() => router.push('/finance/wallet')}
-                                />
-                            </GlassCard>
+                            <CardStatItem
+                                label="Wallet Balance"
+                                value={`${user?.balance?.toFixed(0) || '0'}`}
+                                icon={Wallet}
+                                theme={theme}
+                                color={theme.primary}
+                                onPress={() => router.push('/finance/wallet')}
+                            />
                         </View>
 
                         {/* Row 2 */}
                         <View style={styles.metricsRow}>
-                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <CardStatItem
-                                    label="Driver Rating"
-                                    value={(user?.stats?.rating || avgRating).toFixed(1)}
-                                    icon={Star}
-                                    theme={theme}
-                                    color="#EAB308"
-                                />
-                            </GlassCard>
+                            <CardStatItem
+                                label="Driver Rating"
+                                value={(user?.stats?.rating || avgRating).toFixed(1)}
+                                icon={Star}
+                                theme={theme}
+                                color="#EAB308"
+                            />
 
-                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
-                                <CardStatItem
-                                    label="Total Earnings"
-                                    value={`${user?.earnings?.total?.toLocaleString() || '0'}`}
-                                    icon={DollarSign}
-                                    theme={theme}
-                                    color="#10B981"
-                                />
-                            </GlassCard>
+                            <CardStatItem
+                                label="Total Earnings"
+                                value={`${user?.earnings?.total?.toLocaleString() || '0'}`}
+                                icon={DollarSign}
+                                theme={theme}
+                                color="#10B981"
+                            />
                         </View>
                     </View>
                 </Animated.View>

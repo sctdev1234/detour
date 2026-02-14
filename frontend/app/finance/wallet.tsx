@@ -4,7 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, CreditCard, DollarSign, History } from 'lu
 import React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { useCashout, useSubscribe, useTransactions } from '../../hooks/api/useWalletQueries';
+import { useCashout, useDeposit, useSubscribe, useTransactions } from '../../hooks/api/useWalletQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function WalletScreen() {
@@ -18,6 +18,7 @@ export default function WalletScreen() {
     // Mutations
     const subscribeMutation = useSubscribe();
     const cashoutMutation = useCashout();
+    const depositMutation = useDeposit();
 
     const renderTransaction = ({ item }: { item: any }) => {
         const isPositive = item.type === 'credit';
@@ -43,6 +44,25 @@ export default function WalletScreen() {
                 </Text>
             </View>
         );
+    };
+
+    const handleDeposit = (amount: number) => {
+        showConfirm({
+            title: 'Top Up Balance',
+            message: `Add ${amount} MAD to your wallet? (Simulated)`,
+            confirmText: 'Confirm',
+            cancelText: 'Cancel',
+            onConfirm: () => {
+                depositMutation.mutate(amount, {
+                    onSuccess: () => {
+                        showToast(`Successfully added ${amount} MAD!`, 'success');
+                    },
+                    onError: (err: any) => {
+                        showToast(err.response?.data?.msg || 'Deposit failed', 'error');
+                    }
+                });
+            }
+        });
     };
 
     const handleSubscribe = () => {
@@ -107,6 +127,21 @@ export default function WalletScreen() {
                     <Text style={[styles.statusText, { color: user.subscription?.status === 'pro' ? '#4CD964' : '#fff' }]}>
                         {user.subscription?.status === 'pro' ? 'Pro Plan' : 'Standard Plan'}
                     </Text>
+                </View>
+            </View>
+
+            <View style={styles.topUpSection}>
+                <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 16, marginBottom: 12, paddingHorizontal: 24 }]}>Top Up Balance (Simulated)</Text>
+                <View style={styles.chipContainer}>
+                    {[50, 100, 200, 500].map((amount) => (
+                        <TouchableOpacity
+                            key={amount}
+                            style={[styles.amountChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                            onPress={() => handleDeposit(amount)}
+                        >
+                            <Text style={[styles.chipText, { color: theme.text }]}>+{amount} MAD</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
             </View>
 
@@ -297,6 +332,25 @@ const styles = StyleSheet.create({
     transactionAmount: {
         fontSize: 17,
         fontWeight: '800',
+    },
+    topUpSection: {
+        marginTop: 24,
+    },
+    chipContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 24,
+        gap: 12,
+    },
+    amountChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        borderWidth: 1,
+        elevation: 1,
+    },
+    chipText: {
+        fontWeight: '700',
+        fontSize: 14,
     }
 });
 

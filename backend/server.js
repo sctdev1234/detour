@@ -85,6 +85,8 @@ app.use('/api/places', require('./routes/places'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
+app.use('/api/reclamations', require('./routes/reclamations'));
+app.use('/api/chat', require('./routes/chat'));
 
 // Serve Static Folder if needed (currently cloud-only)
 // app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

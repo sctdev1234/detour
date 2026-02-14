@@ -7,16 +7,14 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useReclamationStore } from '../../store/useReclamationStore';
+import { useAddReclamation } from '../../hooks/api/useReclamationQueries';
 
 export default function NewReclamationScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user } = useAuthStore();
-    const { addReclamation } = useReclamationStore();
     const { showToast, showConfirm } = useUIStore();
+    const { mutateAsync: addReclamation } = useAddReclamation();
 
     const [type, setType] = useState<'accident' | 'behaving' | 'lost_item' | 'other'>('other');
     const [subject, setSubject] = useState('');
@@ -43,20 +41,17 @@ export default function NewReclamationScreen() {
             return;
         }
 
-        if (!user) return;
-
         setUploading(true);
         try {
             let evidenceUrl = undefined;
             if (image) {
                 const id = Math.random().toString(36).substring(7);
                 evidenceUrl = await import('../../services/storageService').then(m =>
-                    m.uploadImage(image, `reclamations/${user.id}/${id}.jpg`)
+                    m.uploadImage(image, `reclamations/${id}.jpg`)
                 );
             }
 
-            addReclamation({
-                reporterId: user.id,
+            await addReclamation({
                 type,
                 subject,
                 description,

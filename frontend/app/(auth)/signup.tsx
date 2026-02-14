@@ -69,8 +69,8 @@ export default function SignupScreen() {
                         <TouchableOpacity
                             style={[
                                 styles.roleButton,
+                                { borderColor: theme.border, backgroundColor: theme.surface },
                                 role === 'client' && { backgroundColor: theme.primary, borderColor: theme.primary },
-                                { borderColor: theme.border, backgroundColor: theme.surface }
                             ]}
                             onPress={() => setRole('client')}
                         >
@@ -84,8 +84,8 @@ export default function SignupScreen() {
                         <TouchableOpacity
                             style={[
                                 styles.roleButton,
+                                { borderColor: theme.border, backgroundColor: theme.surface },
                                 role === 'driver' && { backgroundColor: theme.primary, borderColor: theme.primary },
-                                { borderColor: theme.border, backgroundColor: theme.surface }
                             ]}
                             onPress={() => setRole('driver')}
                         >

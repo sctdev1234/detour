@@ -43,3 +43,17 @@ export const useCashout = () => {
         }
     });
 };
+
+export const useDeposit = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (amount: number) => {
+            const res = await api.post('/transactions/deposit', { amount });
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: walletKeys.all });
+            queryClient.invalidateQueries({ queryKey: ['user'] });
+        }
+    });
+};

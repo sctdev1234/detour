@@ -20,6 +20,8 @@
 
 [ ] - currency logic
 
+[ ] - Allow the to use the application as Gaust-Client but require the payment
+
 ==============================================================
 
 

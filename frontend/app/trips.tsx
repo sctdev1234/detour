@@ -72,6 +72,19 @@ export default function TripsScreen() {
                             {1 + item.clients.length} Participants
                         </Text>
                     </View>
+
+                    {user?.role === 'driver' && item.status !== 'completed' && (
+                        <TouchableOpacity
+                            style={[styles.findBtn, { backgroundColor: theme.primary }]}
+                            onPress={() => router.push({
+                                pathname: '/(driver)/find-clients',
+                                params: { tripId: item.id, routeId: item.routeId?.id }
+                            })}
+                        >
+                            <User size={18} color="#fff" />
+                            <Text style={styles.findBtnText}>Find Clients</Text>
+                        </TouchableOpacity>
+                    )}
                 </TouchableOpacity>
             </Animated.View>
         );
@@ -103,32 +116,12 @@ export default function TripsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: {
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32,
-    },
-    backBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)'
-    },
-    title: { fontSize: 24, fontWeight: '800' },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     list: { padding: 24, gap: 20 },
     tripCard: { borderRadius: 28, borderWidth: 1, padding: 20, gap: 16 },
     tripHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.03)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusDot: { width: 6, height: 6, borderRadius: 3 },
-    statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
     statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
     dateText: { fontSize: 12, fontWeight: '600' },
     trajectory: { flexDirection: 'row', gap: 16, alignItems: 'center' },
@@ -142,5 +135,7 @@ const styles = StyleSheet.create({
     labelTxt: { color: '#fff', fontSize: 8, fontWeight: '900' },
     participantsCount: { fontSize: 12, fontWeight: '700' },
     empty: { alignItems: 'center', justifyContent: 'center', marginTop: 100, gap: 12 },
-    emptyText: { fontSize: 18, fontWeight: '700' }
+    emptyText: { fontSize: 18, fontWeight: '700' },
+    findBtn: { marginTop: 16, flexDirection: 'row', height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', gap: 8 },
+    findBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' }
 });

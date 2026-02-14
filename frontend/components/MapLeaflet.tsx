@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import { Car, MapPin, Navigation, Star, Trash2, User } from 'lucide-react-native';
+import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Star, Trash2, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -113,6 +113,25 @@ const createProfileIcon = (photoURL: string, borderColor: string) => {
     return createIcon(html, 32);
 };
 
+const getSavedPlaceIconMarkup = (iconName?: string) => {
+    switch (iconName) {
+        case 'home': return renderToStaticMarkup(<Home size={14} color="#fff" />);
+        case 'work': case 'briefcase': return renderToStaticMarkup(<Briefcase size={14} color="#fff" />);
+        case 'gym': return renderToStaticMarkup(<Dumbbell size={14} color="#fff" />);
+        case 'school': case 'graduation-cap': return renderToStaticMarkup(<GraduationCap size={14} color="#fff" />);
+        default: return renderToStaticMarkup(<MapPin size={14} color="#fff" />);
+    }
+};
+
+const createSavedPlaceIcon = (iconName: string, theme: any) => {
+    const iconMarkup = getSavedPlaceIconMarkup(iconName);
+    const html = `
+    <div style="background-color: ${theme.primary || '#007AFF'}; width: 32px; height: 32px; border-radius: 16px; display: flex; justify-content: center; align-items: center; border: 2px solid #FFD700; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+        ${iconMarkup}
+    </div>`;
+    return createIcon(html, 32);
+};
+
 
 const MapLeaflet = React.memo(({
     mode = 'view',
@@ -128,10 +147,11 @@ const MapLeaflet = React.memo(({
     waypoints: propWaypoints = [],
     driverLocation,
     maxPoints,
-    savedPlaces = [] // Default to empty array if not provided
+    savedPlaces: propSavedPlaces
 }: MapProps) => {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
+    const savedPlaces = propSavedPlaces ?? user?.savedPlaces ?? [];
 
     // State
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
@@ -277,26 +297,44 @@ const MapLeaflet = React.memo(({
                     <MapEvents onMapClick={handleMapClick} />
                     <MapCenterUpdater center={mapCenter} />
 
+                    {/* --- Saved Places (shown in ALL modes) --- */}
+                    {savedPlaces?.map((place: any, index: number) => (
+                        <Marker
+                            key={`saved-${index}`}
+                            position={[place.latitude, place.longitude]}
+                            icon={createSavedPlaceIcon(place.icon, theme)}
+                            eventHandlers={{
+                                click: () => {
+                                    if (mode !== 'picker' || readOnly) return;
+                                    const newPoint = { latitude: place.latitude, longitude: place.longitude };
+                                    setPoints([...points, newPoint]);
+                                    onPointsChange && onPointsChange([...points, newPoint]);
+                                }
+                            }}
+                        >
+                            <Popup>
+                                <div style={{ minWidth: '140px' }}>
+                                    <div style={{ fontWeight: '800', fontSize: '14px', marginBottom: '2px' }}>
+                                        {place.label}
+                                    </div>
+                                    {place.address && (
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                            {place.address}
+                                        </div>
+                                    )}
+                                    {mode === 'picker' && !readOnly && (
+                                        <div style={{ fontSize: '10px', color: theme.primary || '#007AFF' }}>
+                                            Click to add to route
+                                        </div>
+                                    )}
+                                </div>
+                            </Popup>
+                        </Marker>
+                    ))}
+
                     {/* --- Picker Mode Markers --- */}
                     {mode === 'picker' && (
                         <>
-                            {savedPlaces?.map((place, index) => (
-                                <Marker
-                                    key={`saved-${index}`}
-                                    position={[place.latitude, place.longitude]}
-                                    icon={createStarIcon(theme)}
-                                    eventHandlers={{
-                                        click: () => {
-                                            if (readOnly) return;
-                                            const newPoint = { latitude: place.latitude, longitude: place.longitude };
-                                            setPoints([...points, newPoint]);
-                                            onPointsChange && onPointsChange([...points, newPoint]);
-                                        }
-                                    }}
-                                >
-                                    <Popup>{place.label}</Popup>
-                                </Marker>
-                            ))}
                             {points.map((point, index) => {
                                 const color = index === 0 ? '#4CD964' : index === points.length - 1 ? '#FF3B30' : '#007AFF';
                                 return (
