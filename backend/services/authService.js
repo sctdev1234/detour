@@ -68,6 +68,7 @@ class AuthService {
 
         const savedPlaces = await SavedPlace.find({ user: userId });
         const userObj = user.toObject();
+        userObj.id = user._id.toString(); // Ensure id is always present for frontend
         userObj.savedPlaces = savedPlaces;
         userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
 
