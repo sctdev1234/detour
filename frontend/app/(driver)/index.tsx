@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowUpRight, Bell, Calendar, Car, Clock, Plus, Star, TrendingUp, User } from 'lucide-react-native';
+import { ArrowUpRight, Bell, Calendar, Car, Clock, DollarSign, Plus, Star, TrendingUp, User, Wallet } from 'lucide-react-native';
 import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +23,32 @@ const SectionHeader = ({ title, action, onAction, theme }: any) => (
         )}
     </View>
 );
+
+const StatItem = ({ label, value, icon: Icon, onPress, color, theme }: any) => {
+    const Content = (
+        <View style={styles.statItem}>
+            <View style={styles.statValueBox}>
+                <View style={[styles.statIconBox, { backgroundColor: (color || theme.primary) + '15' }]}>
+                    {Icon && <Icon size={20} color={color || theme.primary} strokeWidth={2.5} />}
+                </View>
+                <Text style={[styles.statValue, { color: (color || theme.text) }]}>{value}</Text>
+            </View>
+            <View>
+                <Text style={[styles.statLabel, { color: theme.icon }]}>{label}</Text>
+            </View>
+        </View>
+    );
+
+    if (onPress) {
+        return (
+            <TouchableOpacity onPress={onPress} style={{ flex: 1 }}>
+                {Content}
+            </TouchableOpacity>
+        );
+    }
+
+    return <View style={{ flex: 1 }}>{Content}</View>;
+};
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -149,57 +175,48 @@ export default function DriverDashboard() {
                     <View style={styles.metricsGrid}>
                         {/* Row 1 */}
                         <View style={styles.metricsRow}>
-                            <GlassCard style={styles.metricCard} intensity={20}>
-                                <View style={styles.metricValueBox}>
-                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                        <Car size={20} color={theme.text} />
-                                    </View>
-                                    <Text style={[styles.metricValue, { color: theme.text }]}>{activeRoutes}</Text>
-                                </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>Active Routes</Text>
-                                </View>
+                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
+                                <StatItem
+                                    label="Active Routes"
+                                    value={activeRoutes}
+                                    icon={Car}
+                                    theme={theme}
+                                    color={theme.text}
+                                />
                             </GlassCard>
 
-                            <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/finance/wallet')}>
-                                <GlassCard style={styles.metricCard} intensity={20}>
-                                    <View style={styles.metricValueBox}>
-                                        <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.primary }}>M</Text>
-                                        </View>
-                                        <Text style={[styles.metricValue, { color: theme.primary }]}>{user?.balance?.toFixed(0) || '0'}</Text>
-                                    </View>
-                                    <View style={{ alignItems: 'flex-end' }}>
-                                        <Text style={[styles.metricLabel, { color: theme.icon }]}>Wallet Balance</Text>
-                                    </View>
-                                </GlassCard>
-                            </TouchableOpacity>
+                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
+                                <StatItem
+                                    label="Wallet Balance"
+                                    value={`${user?.balance?.toFixed(0) || '0'}`}
+                                    icon={Wallet}
+                                    theme={theme}
+                                    color={theme.primary}
+                                    onPress={() => router.push('/finance/wallet')}
+                                />
+                            </GlassCard>
                         </View>
 
                         {/* Row 2 */}
                         <View style={styles.metricsRow}>
-                            <GlassCard style={styles.metricCard} intensity={20}>
-                                <View style={styles.metricValueBox}>
-                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                        <Star size={20} color="#EAB308" fill="#EAB308" />
-                                    </View>
-                                    <Text style={[styles.metricValue, { color: theme.text }]}>{(user?.stats?.rating || avgRating).toFixed(1)}</Text>
-                                </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>Driver Rating</Text>
-                                </View>
+                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
+                                <StatItem
+                                    label="Driver Rating"
+                                    value={(user?.stats?.rating || avgRating).toFixed(1)}
+                                    icon={Star}
+                                    theme={theme}
+                                    color="#EAB308"
+                                />
                             </GlassCard>
 
-                            <GlassCard style={styles.metricCard} intensity={20}>
-                                <View style={styles.metricValueBox}>
-                                    <View style={[styles.metricIconBox, { backgroundColor: theme.surface }]}>
-                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#10B981' }}>$</Text>
-                                    </View>
-                                    <Text style={[styles.metricValue, { color: theme.text }]}>{user?.earnings?.total?.toLocaleString() || '0'}</Text>
-                                </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={[styles.metricLabel, { color: theme.icon }]}>Total Earnings</Text>
-                                </View>
+                            <GlassCard style={styles.metricCard} intensity={20} contentContainerStyle={{ padding: 16 }}>
+                                <StatItem
+                                    label="Total Earnings"
+                                    value={`${user?.earnings?.total?.toLocaleString() || '0'}`}
+                                    icon={DollarSign}
+                                    theme={theme}
+                                    color="#10B981"
+                                />
                             </GlassCard>
                         </View>
                     </View>
@@ -622,7 +639,6 @@ const styles = StyleSheet.create({
     },
     // Empty State
     emptyStateCard: {
-        padding: 40,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 32,
@@ -640,6 +656,7 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         fontSize: 18,
+        textAlign: 'center',
         fontWeight: '700',
         marginBottom: 8,
     },
@@ -675,6 +692,32 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+    },
+    // Stat Item Styles
+    statItem: {
+        gap: 12,
+        flex: 1,
+    },
+    statValueBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    statIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statValue: {
+        fontSize: 22,
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    statLabel: {
+        fontSize: 13,
+        fontWeight: '600',
     },
 });
 
