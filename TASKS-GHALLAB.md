@@ -1,3 +1,10 @@
+<!-- TASKS Proposed from SIBARI -->
+[ ] Exactly Like Avito Filter
+    [ ] Cars Marks Management
+    [ ] Cars Models Management
+    [ ] Cars Years Management
+
+
 Admin Panel Tasks:
 [X] make the pending aprovals clickable and show the details of the driver and approve or reject the driver
 [ ] make the active users clickable and show the details of the driver and ban the driver
