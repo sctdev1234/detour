@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 
+export interface LatLng {
+    latitude: number;
+    longitude: number;
+    heading?: number;
+}
+
 interface TripState {
     // Only Client-Side UI State
     selectedTripId: string | null;

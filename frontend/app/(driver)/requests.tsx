@@ -28,6 +28,8 @@ export default function DriverRequestsScreen() {
     };
 
     const renderRequestItem = ({ item, index }: { item: any, index: number }) => {
+        const isSelfInitiated = item.initiatedBy === 'driver';
+
         return (
             <Animated.View
                 entering={FadeInDown.delay(index * 100).springify()}
@@ -47,24 +49,37 @@ export default function DriverRequestsScreen() {
                             <Text style={[styles.routeInfo, { color: theme.icon }]}>
                                 {item.clientRouteId?.startPoint?.address?.split(',')[0] || 'Start'} → {item.clientRouteId?.endPoint?.address?.split(',')[0] || 'End'}
                             </Text>
+                            {isSelfInitiated && (
+                                <Text style={{ color: theme.primary, fontSize: 12, fontWeight: '600', marginTop: 4 }}>
+                                    You offered: {item.proposedPrice} MAD
+                                </Text>
+                            )}
                         </View>
                     </View>
 
                     <View style={styles.actions}>
-                        <TouchableOpacity
-                            style={[styles.actionBtn, { backgroundColor: '#ef444420' }]}
-                            onPress={() => onRespond(item.id, 'rejected')}
-                        >
-                            <X size={20} color="#ef4444" />
-                            <Text style={[styles.btnText, { color: '#ef4444' }]}>Reject</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.actionBtn, { backgroundColor: '#10b98120' }]}
-                            onPress={() => onRespond(item.id, 'accepted')}
-                        >
-                            <Check size={20} color="#10b981" />
-                            <Text style={[styles.btnText, { color: '#10b981' }]}>Accept</Text>
-                        </TouchableOpacity>
+                        {isSelfInitiated ? (
+                            <View style={[styles.actionBtn, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
+                                <Text style={[styles.btnText, { color: theme.icon }]}>Waiting for client response...</Text>
+                            </View>
+                        ) : (
+                            <>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: '#ef444420' }]}
+                                    onPress={() => onRespond(item.id, 'rejected')}
+                                >
+                                    <X size={20} color="#ef4444" />
+                                    <Text style={[styles.btnText, { color: '#ef4444' }]}>Reject</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: '#10b98120' }]}
+                                    onPress={() => onRespond(item.id, 'accepted')}
+                                >
+                                    <Check size={20} color="#10b981" />
+                                    <Text style={[styles.btnText, { color: '#10b981' }]}>Accept</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                 </BlurView>
             </Animated.View>

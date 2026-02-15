@@ -33,8 +33,17 @@ const MapBoundsUpdater = ({ points }: { points: LatLng[] }) => {
 
     useEffect(() => {
         if (points.length > 0) {
-            const bounds = L.latLngBounds(points.map(p => [p.latitude, p.longitude]));
-            map.fitBounds(bounds, { padding: [60, 60] });
+            const validPoints = points.filter(p =>
+                p &&
+                typeof p.latitude === 'number' && !isNaN(p.latitude) &&
+                typeof p.longitude === 'number' && !isNaN(p.longitude)
+            );
+            if (validPoints.length > 0) {
+                const bounds = L.latLngBounds(validPoints.map(p => [p.latitude, p.longitude]));
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, { padding: [60, 60] });
+                }
+            }
         }
     }, [points, map]);
 
@@ -133,25 +142,28 @@ const createSavedPlaceIcon = (iconName: string, theme: any) => {
 };
 
 
+const EMPTY_POINTS: LatLng[] = [];
+const EMPTY_SAVED_PLACES: any[] = [];
+
 const MapLeaflet = React.memo(({
     mode = 'view',
     theme,
     height = 300,
     readOnly = false,
-    initialPoints = [],
+    initialPoints = EMPTY_POINTS,
     onPointsChange,
     trip,
     customStopOrder,
     startPoint: propStartPoint,
     endPoint: propEndPoint,
-    waypoints: propWaypoints = [],
+    waypoints: propWaypoints = EMPTY_POINTS,
     driverLocation,
     maxPoints,
     savedPlaces: propSavedPlaces
 }: MapProps) => {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
-    const savedPlaces = propSavedPlaces ?? user?.savedPlaces ?? [];
+    const savedPlaces = propSavedPlaces ?? user?.savedPlaces ?? EMPTY_SAVED_PLACES;
 
     // State
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
@@ -231,9 +243,13 @@ const MapLeaflet = React.memo(({
             if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
         }
 
-        // Filter invalid points
+        // Filter invalid points strictly
         // @ts-ignore
-        markersToFit = markersToFit.filter(p => p && typeof p.latitude === 'number' && typeof p.longitude === 'number');
+        markersToFit = markersToFit.filter(p =>
+            p &&
+            typeof p.latitude === 'number' && !isNaN(p.latitude) &&
+            typeof p.longitude === 'number' && !isNaN(p.longitude)
+        );
 
         // Only update if we have points
         if (markersToFit.length > 0) {
@@ -298,7 +314,7 @@ const MapLeaflet = React.memo(({
                     <MapCenterUpdater center={mapCenter} />
 
                     {/* --- Saved Places (shown in ALL modes) --- */}
-                    {savedPlaces?.map((place: any, index: number) => (
+                    {savedPlaces?.filter(p => p && typeof p.latitude === 'number' && !isNaN(p.latitude) && typeof p.longitude === 'number' && !isNaN(p.longitude)).map((place: any, index: number) => (
                         <Marker
                             key={`saved-${index}`}
                             position={[place.latitude, place.longitude]}
@@ -378,14 +394,14 @@ const MapLeaflet = React.memo(({
                     {mode === 'trip' && trip && (
                         <>
                             {/* Driver Start */}
-                            {trip.routeId?.startPoint && (
+                            {trip.routeId?.startPoint?.latitude !== undefined && trip.routeId?.startPoint?.longitude !== undefined && (
                                 <Marker
                                     position={[trip.routeId.startPoint.latitude, trip.routeId.startPoint.longitude]}
                                     icon={createGenericIcon(<Car size={14} color="#fff" />, '#10b981')}
                                 />
                             )}
                             {/* Driver End */}
-                            {trip.routeId?.endPoint && (
+                            {trip.routeId?.endPoint?.latitude !== undefined && trip.routeId?.endPoint?.longitude !== undefined && (
                                 <Marker
                                     position={[trip.routeId.endPoint.latitude, trip.routeId.endPoint.longitude]}
                                     icon={createGenericIcon(<MapPin size={14} color="#fff" />, '#ef4444')}
@@ -448,20 +464,20 @@ const MapLeaflet = React.memo(({
                     {/* --- Route Markers --- */}
                     {mode === 'route' && (
                         <>
-                            {propStartPoint && (
+                            {propStartPoint?.latitude !== undefined && propStartPoint?.longitude !== undefined && (
                                 <Marker
                                     position={[propStartPoint.latitude, propStartPoint.longitude]}
                                     icon={createGenericIcon(<Navigation size={14} color="#fff" />, '#10b981')}
                                 />
                             )}
-                            {propWaypoints.map((wp, i) => (
+                            {propWaypoints.filter(wp => wp.latitude !== undefined && wp.longitude !== undefined).map((wp, i) => (
                                 <Marker
                                     key={i}
                                     position={[wp.latitude, wp.longitude]}
                                     icon={createGenericIcon(<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}>{i + 1}</Text>, '#f59e0b', 24)}
                                 />
                             ))}
-                            {propEndPoint && (
+                            {propEndPoint?.latitude !== undefined && propEndPoint?.longitude !== undefined && (
                                 <Marker
                                     position={[propEndPoint.latitude, propEndPoint.longitude]}
                                     icon={createGenericIcon(<MapPin size={14} color="#fff" />, '#ef4444')}

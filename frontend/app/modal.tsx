@@ -7,7 +7,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacit
 import DetourMap from '../components/Map';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
 import { Colors } from '../constants/theme';
-import { useCompleteTrip, useConfirmDropoff, useConfirmPickup, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
+import { useCompleteTrip, useConfirmDropoff, useConfirmPickup, useDriverRequests, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function ModalScreen() {
@@ -402,6 +402,11 @@ export default function ModalScreen() {
                         {client.status ? client.status.toUpperCase() : 'PENDING'}
                       </Text>
                     </View>
+                    {client.price && (
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.primary, marginLeft: 4 }}>
+                        • {client.price} MAD
+                      </Text>
+                    )}
                   </View>
                 </View>
                 {isDriver && (

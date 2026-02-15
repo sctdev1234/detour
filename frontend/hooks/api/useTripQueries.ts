@@ -271,11 +271,12 @@ export const useSearchTrips = () => {
 export const useSendJoinRequest = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ clientRouteId, tripId }: { clientRouteId: string, tripId: string }) => {
-            await api.post('/trip/request-join', { clientRouteId, tripId });
+        mutationFn: async ({ clientRouteId, tripId, proposedPrice }: { clientRouteId: string, tripId: string, proposedPrice?: number }) => {
+            await api.post('/trip/request-join', { clientRouteId, tripId, proposedPrice });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tripKeys.clientRequests() });
+            queryClient.invalidateQueries({ queryKey: tripKeys.driverRequests() }); // Also update driver requests since we just sent one
         }
     });
 };

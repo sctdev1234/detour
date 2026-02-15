@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { Send, User } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { useClientRequests, useHandleJoinRequest } from '../../hooks/api/useTripQueries';
 
@@ -47,18 +48,39 @@ export default function ClientRequestsScreen() {
                         <View style={styles.actionButtons}>
                             <TouchableOpacity
                                 style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
-                                onPress={() => handleRequest(item._id, 'rejected')}
+                                onPress={() => handleRequest(item.id, 'rejected')}
                             >
                                 <Text style={styles.btnText}>Reject</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
-                                onPress={() => handleRequest(item._id, 'accepted')}
+                                onPress={() => handleRequest(item.id, 'accepted')}
                             >
                                 <Text style={styles.btnText}>Accept</Text>
                             </TouchableOpacity>
                         </View>
                     )}
+
+                    {/* Map Preview */}
+                    <View style={styles.mapContainer}>
+                        <DetourMap
+                            mode="trip"
+                            theme={theme}
+                            height={200}
+                            readOnly
+                            trip={{
+                                ...item.tripId,
+                                clients: [
+                                    ...(item.tripId?.clients || []),
+                                    {
+                                        routeId: item.clientRouteId,
+                                        userId: { photoURL: null, fullName: 'You' }, // Placeholder for self
+                                        price: item.proposedPrice
+                                    }
+                                ]
+                            }}
+                        />
+                    </View>
                 </BlurView>
             </Animated.View>
         );
@@ -77,7 +99,7 @@ export default function ClientRequestsScreen() {
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
-                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>My Requests</Text>
+                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Ride Offers</Text>
             </View>
 
             {isLoading && (!clientRequests || clientRequests.length === 0) ? (
@@ -93,7 +115,10 @@ export default function ClientRequestsScreen() {
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <Send size={48} color={theme.icon} />
-                            <Text style={[styles.emptyText, { color: theme.text }]}>No requests sent yet</Text>
+                            <Text style={[styles.emptyText, { color: theme.text }]}>No offers received yet.</Text>
+                            <Text style={{ color: theme.icon, textAlign: 'center', maxWidth: 250 }}>
+                                Create a route request and wait for drivers to send you an offer.
+                            </Text>
                         </View>
                     }
                 />
@@ -138,5 +163,12 @@ const styles = StyleSheet.create({
     emptyText: { fontSize: 16, fontWeight: '600' },
     actionButtons: { flexDirection: 'row', gap: 12, marginTop: 12 },
     actionBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    btnText: { color: '#fff', fontWeight: '700', fontSize: 14 }
+    btnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    mapContainer: {
+        marginTop: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.1)'
+    }
 });

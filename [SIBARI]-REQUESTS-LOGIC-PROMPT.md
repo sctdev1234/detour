@@ -14,12 +14,12 @@ currently (old system) :
 
 now we want to change it to :
 - the client create a route (with proposed price)
-- the driver create a route
+- the driver create a route (without proposed price)
 - the system create a trip empty pending (0 client)
 - the driver see the "Proposed Clients" 
 - the driver send a request to the client (with proposed price)
 - the client accept or reject the request
-- if the client accept the request he will be added to the trip
+- if the client accept the request he will be added to the trip, then all ather requests from other drivers will be rejected, and all other drivers can't send a request to this client
 - if the client reject the request, the driver will be notified and he can send a request again to the same client again with different price
 
 
@@ -28,4 +28,23 @@ now we want to change it to :
 - create a route with proposed price
 - and wait for the requests from the drivers
 
+
+
+
+
+Steps need to check and fix,
+- open client account
+- create a client route (with proposed price) status (pending)
+- see the route in routes page (with status pending and proposed price and map)
+
+- open driver account
+- create a driver route (without proposed price) status (pending)
+- see the route in routes page (with status pending and map)
+- see the proposed clients routes (with status pending and proposed price and map with integration of the driver route)
+- send a request to client route (with proposed price)
+
+- open client account
+- see the request in requests page (with status pending and proposed price and map with integration of the driver route)
+- accept the request
+- see the trip in trips page
 

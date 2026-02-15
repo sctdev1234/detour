@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Clock, MapPin, Plus, Search, Trash2 } from 'lucide-react-native';
+import { Clock, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
@@ -48,14 +48,6 @@ export default function RoutesScreen() {
                     </View>
 
                     <View style={styles.actions}>
-                        {item.role === 'client' && (
-                            <TouchableOpacity
-                                style={[styles.actionBtn, { backgroundColor: theme.primary + '10' }]}
-                                onPress={() => router.push({ pathname: '/(client)/find-matches', params: { routeId: item.id } })}
-                            >
-                                <Search size={18} color={theme.primary} />
-                            </TouchableOpacity>
-                        )}
                         <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item.id)}>
                             <Trash2 size={18} color={'#ef4444'} />
                         </TouchableOpacity>
@@ -86,11 +78,9 @@ export default function RoutesScreen() {
                             </View>
                         ))}
                     </View>
-                    {item.role === 'driver' && (
-                        <Text style={[styles.priceText, { color: theme.primary }]}>
-                            ${item.price}{item.priceType === 'km' ? '/km' : ''}
-                        </Text>
-                    )}
+                    <Text style={[styles.priceText, { color: theme.primary }]}>
+                        ${item.price}{item.priceType === 'km' ? '/km' : ''}
+                    </Text>
                 </View>
             </Animated.View>
         );

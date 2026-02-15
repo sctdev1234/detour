@@ -2,7 +2,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Search, Send, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useMatches, useSendJoinRequest, useTrips } from '../../hooks/api/useTripQueries';
@@ -94,7 +94,7 @@ export default function DriverFindClientsScreen() {
                 <TouchableOpacity
                     style={[
                         styles.actionButton,
-                        { backgroundColor: isRequested ? theme.disabled : theme.primary }
+                        { backgroundColor: isRequested ? '#ccc' : theme.primary }
                     ]}
                     disabled={isRequested}
                     onPress={() => handleSendRequest(item.route.id, item.route.price)}
@@ -104,10 +104,25 @@ export default function DriverFindClientsScreen() {
                             <Text style={styles.buttonText}>Invited</Text>
                         </>
                     ) : (
-                        <>
-                            <Send size={18} color="#fff" />
-                            <Text style={styles.buttonText}>Invite</Text>
-                        </>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <TextInput
+                                style={styles.priceInput}
+                                placeholder="Price"
+                                placeholderTextColor={theme.icon}
+                                keyboardType="numeric"
+                                defaultValue={item.route.price?.toString()}
+                                onChangeText={(text: string) => {
+                                    item.proposedPrice = parseFloat(text);
+                                }}
+                            />
+                            <TouchableOpacity
+                                style={[styles.actionButton, { backgroundColor: theme.primary }]}
+                                onPress={() => handleSendRequest(item.route.id, item.proposedPrice || item.route.price)}
+                            >
+                                <Send size={18} color="#fff" />
+                                <Text style={styles.buttonText}>Invite</Text>
+                            </TouchableOpacity>
+                        </View>
                     )}
                 </TouchableOpacity>
             </Animated.View>
@@ -163,5 +178,15 @@ const styles = StyleSheet.create({
     routeText: { fontSize: 13, opacity: 0.8 },
     actionButton: { flexDirection: 'row', height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', gap: 8 },
     buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    emptyText: { fontSize: 16, fontWeight: '600', marginTop: 12 }
+    emptyText: { fontSize: 16, fontWeight: '600', marginTop: 12 },
+    priceInput: {
+        width: 80,
+        height: 48,
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        backgroundColor: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+        elevation: 2
+    }
 });

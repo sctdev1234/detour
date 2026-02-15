@@ -6,6 +6,7 @@ import DashboardHome from './pages/DashboardHome';
 import Drivers from './pages/Drivers';
 import Login from './pages/Login';
 import Places from './pages/Places';
+import Requests from './pages/Requests';
 import Subscriptions from './pages/Subscriptions';
 import Support from './pages/Support';
 import Trips from './pages/Trips';
@@ -32,6 +33,7 @@ function App() {
           <Route path="/credits" element={<Credits />} />
           <Route path="/users" element={<Users />} />
           <Route path="/trips" element={<Trips />} />
+          <Route path="/requests" element={<Requests />} />
           <Route path="/support" element={<Support />} />
         </Route>
 

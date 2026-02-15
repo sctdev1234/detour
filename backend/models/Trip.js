@@ -20,6 +20,10 @@ const TripSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Route' // The Client's Route
         },
+        price: {
+            type: Number,
+            required: true
+        },
         joinedAt: {
             type: Date,
             default: Date.now

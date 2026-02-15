@@ -102,7 +102,7 @@ class TripService {
         // Find Matching Routes
         const matches = await Route.find({
             role: targetRole,
-            status: { $ne: 'inactive' },
+            status: { $in: ['pending', 'active'] }, // Include active for clients waiting? Pending is default.
             'startPoint.coordinates': {
                 $near: {
                     $geometry: { type: "Point", coordinates: pickup },
@@ -114,23 +114,25 @@ class TripService {
                     $centerSphere: [destination, maxDistance / 6378100]
                 }
             },
-            'schedule.days': { $in: route.schedule.days }
+            // 'schedule.days': { $in: route.schedule.days } // Optional: relax for now to see results
         }).populate('userId', 'fullName email photoURL');
 
         // Logic for Drivers searching Clients
         if (role === 'driver') {
             // Check existing requests for these clients (related to this driver's trip)
-            // Ideally we need the Trip ID here. But searchMatches(routeId) implies we search based on route.
-            // A Driver Route corresponds to a Trip. Let's find the trip for this route.
+            // A Driver Route corresponds to a Trip.
             const trip = await Trip.findOne({ routeId: originId, status: { $ne: 'completed' } });
 
-            if (!trip) return matches.map(m => ({ route: m, requestStatus: null }));
-
-            const requests = await JoinRequest.find({ tripId: trip._id });
-            const requestMap = requests.reduce((acc, req) => {
-                acc[req.clientRouteId.toString()] = req.status;
-                return acc;
-            }, {});
+            // If no trip yet (shouldn't happen if created on route creation), or just checking matches
+            // We want to see if we already sent a request to this client route
+            let requestMap = {};
+            if (trip) {
+                const requests = await JoinRequest.find({ tripId: trip._id });
+                requestMap = requests.reduce((acc, req) => {
+                    acc[req.clientRouteId.toString()] = req.status;
+                    return acc;
+                }, {});
+            }
 
             return matches.map(clientRoute => {
                 return {
@@ -140,7 +142,7 @@ class TripService {
             });
         }
 
-        // Logic for Clients searching Drivers (Legacy / Fallback)
+        // Logic for Clients searching Drivers (Legacy / Fallback if needed)
         // Link with their active Trips
         const routeIds = matches.map(m => m._id);
         const trips = await Trip.find({
@@ -173,8 +175,6 @@ class TripService {
         const sender = await User.findById(senderId);
         if (!sender) throw new Error('User not found');
 
-        // Determine if Sender is Driver or Client
-        // But logic is shifting to Driver -> Client
         const trip = await Trip.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
@@ -183,12 +183,12 @@ class TripService {
         if (trip.driverId.toString() === senderId) {
             // Sender is Driver
             initiatedBy = 'driver';
-            // Need to find clientId from clientRouteId
+            // Find clientId from clientRouteId
             const clientRoute = await Route.findById(clientRouteId);
             if (!clientRoute) throw new Error('Client route not found');
             clientId = clientRoute.userId;
         } else {
-            // Sender is Client (Legacy or Counter-offer?)
+            // Sender is Client (Legacy)
             initiatedBy = 'client';
             clientId = senderId;
         }
@@ -196,20 +196,22 @@ class TripService {
         const existingRequest = await JoinRequest.findOne({
             clientId,
             tripId,
-            clientRouteId // Ensure we check the specific route too
+            clientRouteId
         });
 
         if (existingRequest) {
-            // If rejected, maybe allow resending? Prompt says "he can send a request again... with different price"
             if (existingRequest.status === 'rejected' && initiatedBy === 'driver') {
-                // Update existing request or create new? Updating is cleaner.
+                // Driver re-sending request
                 existingRequest.status = 'pending';
                 existingRequest.proposedPrice = proposedPrice;
-                existingRequest.initiatedBy = 'driver'; // Driver re-initiating
+                existingRequest.initiatedBy = 'driver';
                 await existingRequest.save();
                 return existingRequest;
             }
-            throw new Error('Request already sent');
+            if (existingRequest.status === 'pending') {
+                throw new Error('Request already sent');
+            }
+            // If accepted, already joined?
         }
 
         const joinRequest = new JoinRequest({
@@ -242,6 +244,7 @@ class TripService {
         // If initiatedBy 'client', then Driver accepts/rejects
 
         if (joinRequest.initiatedBy === 'driver' && isDriver) {
+            // Driver cannot accept their own request, they sent it.
             throw new Error('Waiting for client response');
         }
         if (joinRequest.initiatedBy === 'client' && isClient) {
@@ -254,16 +257,34 @@ class TripService {
         if (status === 'accepted') {
             // Update the Trip with the new client
             await Trip.findByIdAndUpdate(trip._id, {
-                $push: { clients: { userId: joinRequest.clientId, routeId: joinRequest.clientRouteId } }
+                $push: {
+                    clients: {
+                        userId: joinRequest.clientId,
+                        routeId: joinRequest.clientRouteId,
+                        price: joinRequest.proposedPrice // Store agreed price
+                    }
+                }
             });
+
+            // Auto-reject all other pending requests for this client route
+            await JoinRequest.updateMany(
+                {
+                    clientRouteId: joinRequest.clientRouteId,
+                    _id: { $ne: joinRequest._id },
+                    status: 'pending'
+                },
+                { status: 'rejected' }
+            );
 
             // Mark the client route as inactive so it disappears from their Routes list
             // Or keep it active until the trip is completed? Prompt implies "added to the trip".
             // If they have other matches? Usually one trip per route.
             await Route.findByIdAndUpdate(joinRequest.clientRouteId, { status: 'inactive' });
 
-            // Set trip status to 'active'
-            await Trip.findByIdAndUpdate(trip._id, { status: 'active' });
+            // Ensure trip status is active if it was pending
+            if (trip.status === 'pending') {
+                await Trip.findByIdAndUpdate(trip._id, { status: 'active' });
+            }
         }
 
         return joinRequest;
@@ -294,9 +315,13 @@ class TripService {
 
     async getClientRequests(userId) {
         return await JoinRequest.find({ clientId: userId })
+            .populate('clientRouteId')
             .populate({
                 path: 'tripId',
-                populate: { path: 'driverId', select: 'fullName photoURL' }
+                populate: [
+                    { path: 'driverId', select: 'fullName photoURL' },
+                    { path: 'routeId' }
+                ]
             })
             .sort({ createdAt: -1 });
     }
@@ -376,13 +401,14 @@ class TripService {
         // Update status
         clientEntry.status = 'picked_up';
 
-        // Trigger Payment
-        // We need the price. Ideally this comes from the Route or Trip. 
-        // For now, let's assume the trip has a price or the client's route has a price.
-        // The Client's Route has the price they agreed to? Or the Driver's route price?
-        // Usually Driver sets price. Let's get Driver's Route price.
-        const driverRoute = await Route.findById(trip.routeId);
-        const price = driverRoute.price.amount;
+        // Use the agreed price stored in the trip
+        const price = clientEntry.price;
+
+        if (!price) {
+            // Fallback if price is missing (legacy data?)
+            const driverRoute = await Route.findById(trip.routeId);
+            price = driverRoute.price.amount;
+        }
 
         try {
             const transactionResult = await transactionService.processTripPayment(trip._id, clientId, driverId, price);

@@ -286,23 +286,19 @@ export default function ClientDashboard() {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 16 }]}>Your Activity</Text>
                     <View style={styles.statsRow}>
-                        <GlassCard style={styles.statCard} contentContainerStyle={{ padding: 16 }}>
-                            <CardStatItem
-                                label="Total Rides"
-                                value={user?.stats?.tripsDone || '0'}
-                                icon={Navigation}
-                                color={theme.primary}
-                            />
-                        </GlassCard>
-                        <GlassCard style={styles.statCard} contentContainerStyle={{ padding: 16 }}>
-                            <CardStatItem
-                                label="Total Spent"
-                                value={`${user?.spending?.total || '0'} MAD`}
-                                icon={TrendingUp}
-                                color="#F59E0B"
-                                onPress={() => router.push('/finance/wallet')}
-                            />
-                        </GlassCard>
+                        <CardStatItem
+                            label="Total Rides"
+                            value={user?.stats?.tripsDone || '0'}
+                            icon={Navigation}
+                            color={theme.primary}
+                        />
+                        <CardStatItem
+                            label="Total Spent"
+                            value={`${user?.spending?.total || '0'} MAD`}
+                            icon={TrendingUp}
+                            color="#F59E0B"
+                            onPress={() => router.push('/finance/wallet')}
+                        />
                     </View>
                 </View>
 

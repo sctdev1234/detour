@@ -29,7 +29,7 @@ export default function AddRouteScreen() {
     const [timeStart, setTimeStart] = useState('08:00');
     const [timeArrival, setTimeArrival] = useState('09:00');
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
-    const [price, setPrice] = useState('50');
+    const [price, setPrice] = useState('');
     const [priceType, setPriceType] = useState<'fix' | 'km'>('fix');
     const [selectedCarId, setSelectedCarId] = useState('');
     const [routeMetrics, setRouteMetrics] = useState<{ distance: number; duration: number; geometry: string } | null>(null);

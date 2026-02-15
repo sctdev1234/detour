@@ -2,6 +2,7 @@ import {
     Car,
     CreditCard,
     DollarSign,
+    FileText,
     LayoutDashboard,
     LogOut,
     Map,
@@ -21,6 +22,7 @@ export default function Layout() {
 
     const navItems = [
         { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+        { path: '/requests', label: 'Requests History', icon: FileText },
         { path: '/drivers', label: 'Verifications', icon: Car },
         { path: '/places', label: 'Places', icon: Map },
         { path: '/subscriptions', label: 'Abonnements', icon: CreditCard },
