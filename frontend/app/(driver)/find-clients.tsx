@@ -1,7 +1,7 @@
 import { useUIStore } from '@/store/useUIStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowRight, List, Map as MapIcon, MapPin, User, Wallet } from 'lucide-react-native';
+import { ArrowRight, List, Map as MapIcon, MapPin, User, Wallet, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -24,6 +24,14 @@ export default function DriverFindClientsScreen() {
     const [activeRouteId, setActiveRouteId] = useState<string | null>(params.routeId as string || null);
     const [activeTripId, setActiveTripId] = useState<string | null>(params.tripId as string || null);
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+
+    // Selection State
+    const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+
+    // Color Palette for map routes
+    const ROUTE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#e11d48'];
+
+
 
     useEffect(() => {
         if (!activeRouteId && trips?.length) {
@@ -62,6 +70,40 @@ export default function DriverFindClientsScreen() {
         };
     }, [activeTrip, matches]);
 
+    // Debug Logs
+    useEffect(() => {
+        console.log('[FindClients] State:', {
+            activeTripId,
+            activeRouteId,
+            hasMatches: !!matches,
+            matchesCount: matches?.length,
+            hasMapTripData: !!mapTripData,
+            viewMode
+        });
+    }, [activeTripId, activeRouteId, matches, mapTripData, viewMode]);
+
+    const clientColors = useMemo(() => {
+        if (!mapTripData) return {};
+        const colors: Record<string, string> = {};
+        mapTripData.clients?.forEach((c: any, index: number) => {
+            if (c.routeId?._id) {
+                colors[c.routeId._id] = ROUTE_COLORS[index % ROUTE_COLORS.length];
+            }
+        });
+        return colors;
+    }, [mapTripData]);
+
+    const handleRouteSelect = (routeId: string) => {
+        console.log("Selected Route:", routeId);
+        // Toggle selection
+        setSelectedMatchId(prev => prev === routeId ? null : routeId);
+    };
+
+    const selectedMatch = useMemo(() => {
+        if (!selectedMatchId || !matches) return null;
+        return matches.find((m: any) => m.route.id === selectedMatchId);
+    }, [selectedMatchId, matches]);
+
     const handleSendRequest = async (clientRouteId: string, proposedPrice: number) => {
         if (!activeTripId) return;
         try {
@@ -77,7 +119,7 @@ export default function DriverFindClientsScreen() {
         }
     };
 
-    const renderClientItem = ({ item, index }: { item: any, index: number }) => {
+    const renderClientItem = ({ item, index, onClose }: { item: any, index: number, onClose?: () => void }) => {
         const client = item.route.userId;
         const isRequested = item.requestStatus === 'pending' || item.requestStatus === 'accepted';
 
@@ -116,8 +158,15 @@ export default function DriverFindClientsScreen() {
                             </View>
                         </View>
                     </View>
-                    <View style={[styles.distanceBadge, { backgroundColor: theme.surface }]}>
-                        <Text style={[styles.distanceText, { color: theme.textSecondary }]}>{item.route.distanceKm} km</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={[styles.distanceBadge, { backgroundColor: theme.surface }]}>
+                            <Text style={[styles.distanceText, { color: theme.textSecondary }]}>{item.route.distanceKm} km</Text>
+                        </View>
+                        {onClose && (
+                            <TouchableOpacity onPress={onClose} style={[styles.distanceBadge, { backgroundColor: theme.surface, paddingHorizontal: 6 }]}>
+                                <X size={16} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
 
@@ -131,6 +180,7 @@ export default function DriverFindClientsScreen() {
                             height={150}
                             interactive={false}
                             style={{ borderRadius: 16 }}
+                            savedPlaces={[]}
                         />
                     )}
                 </View>
@@ -193,71 +243,115 @@ export default function DriverFindClientsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <LinearGradient
-                colors={colorScheme === 'dark' ? [theme.surface, theme.background] : [theme.surface, theme.background]}
-                style={[styles.header, { paddingTop: 60, paddingBottom: 20 }]}
-            >
-                <Text style={[styles.title, { color: theme.text }]}>Find Clients</Text>
-                <Text style={{ color: theme.textSecondary, fontSize: 13, marginBottom: 16 }}>Match with nearby requests</Text>
-
-                <View style={[styles.toggleContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <TouchableOpacity
-                        style={[styles.toggleBtn, viewMode === 'list' && { backgroundColor: theme.primary }]}
-                        onPress={() => setViewMode('list')}
-                    >
-                        <List size={20} color={viewMode === 'list' ? '#fff' : theme.text} />
-                        <Text style={[styles.toggleText, { color: viewMode === 'list' ? '#fff' : theme.text }]}>List</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.toggleBtn, viewMode === 'map' && { backgroundColor: theme.primary }]}
-                        onPress={() => setViewMode('map')}
-                    >
-                        <MapIcon size={20} color={viewMode === 'map' ? '#fff' : theme.text} />
-                        <Text style={[styles.toggleText, { color: viewMode === 'map' ? '#fff' : theme.text }]}>Map</Text>
-                    </TouchableOpacity>
-                </View>
-            </LinearGradient>
+            {/* Header is now conditional inside render */}
 
             {viewMode === 'map' ? (
-                <View style={{ flex: 1 }}>
+                <View style={[StyleSheet.absoluteFill, { zIndex: 0 }]}>
                     {mapTripData ? (
                         <DetourMap
                             mode="trip"
                             theme={theme}
                             trip={mapTripData as any}
                             style={{ flex: 1 }}
+                            height="100%"
+                            selectedRouteId={selectedMatchId}
+                            onRouteSelect={handleRouteSelect}
+                            clientColors={clientColors}
+                            savedPlaces={[]}
+                            onMapPress={() => setSelectedMatchId(null)}
+                            edgePadding={selectedMatchId ? { top: 50, right: 50, bottom: 350, left: 50 } : { top: 50, right: 50, bottom: 50, left: 50 }}
                         />
                     ) : (
                         <View style={styles.center}>
                             <ActivityIndicator size="large" color={theme.primary} />
                         </View>
                     )}
-                    {/* Optional: Add a bottom sheet or carousel here for map interaction */}
+
+                    {/* Floating Header Actions */}
+                    <Animated.View
+                        entering={FadeInDown.delay(100)}
+                        style={{ position: 'absolute', top: 50, left: 24, right: 24 }}
+                    >
+                        <View style={[styles.toggleContainer, { backgroundColor: theme.surface, borderColor: theme.border, shadowOpacity: 0.1, elevation: 4 }]}>
+                            <TouchableOpacity
+                                style={[styles.toggleBtn, { backgroundColor: 'transparent' }]}
+                                onPress={() => setViewMode('list')}
+                            >
+                                <List size={20} color={theme.text} />
+                                <Text style={[styles.toggleText, { color: theme.text }]}>List</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.toggleBtn, { backgroundColor: theme.primary }]}
+                                onPress={() => setViewMode('map')}
+                            >
+                                <MapIcon size={20} color="#fff" />
+                                <Text style={[styles.toggleText, { color: '#fff' }]}>Map</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
+
+                    {/* Selected Item Card Overlay */}
+                    {selectedMatch && (
+                        <Animated.View
+                            entering={FadeInDown.springify()}
+                            style={{ position: 'absolute', bottom: 30, left: 16, right: 16 }}
+                        >
+                            <View style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 }}>
+                                {renderClientItem({ item: selectedMatch, index: 0, onClose: () => setSelectedMatchId(null) })}
+                            </View>
+                        </Animated.View>
+                    )}
                 </View>
             ) : (
-                isLoading ? (
-                    <View style={styles.center}>
-                        <ActivityIndicator size="large" color={theme.primary} />
-                    </View>
-                ) : (
-                    <FlatList
-                        data={matches || []}
-                        keyExtractor={(item) => item.route.id}
-                        renderItem={renderClientItem}
-                        contentContainerStyle={styles.list}
-                        ListEmptyComponent={
-                            <View style={styles.center}>
-                                <View style={[styles.emptyIconBg, { backgroundColor: theme.surface }]}>
-                                    <User size={40} color={theme.icon} />
+                <>
+                    <LinearGradient
+                        colors={colorScheme === 'dark' ? [theme.surface, theme.background] : [theme.surface, theme.background]}
+                        style={[styles.header, { paddingTop: 60, paddingBottom: 20 }]}
+                    >
+                        <Text style={[styles.title, { color: theme.text }]}>Find Clients</Text>
+                        <Text style={{ color: theme.textSecondary, fontSize: 13, marginBottom: 16 }}>Match with nearby requests</Text>
+
+                        <View style={[styles.toggleContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                            <TouchableOpacity
+                                style={[styles.toggleBtn, { backgroundColor: theme.primary }]}
+                                onPress={() => setViewMode('list')}
+                            >
+                                <List size={20} color="#fff" />
+                                <Text style={[styles.toggleText, { color: '#fff' }]}>List</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.toggleBtn, { backgroundColor: 'transparent' }]}
+                                onPress={() => setViewMode('map')}
+                            >
+                                <MapIcon size={20} color={theme.text} />
+                                <Text style={[styles.toggleText, { color: theme.text }]}>Map</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </LinearGradient>
+                    {isLoading ? (
+                        <View style={styles.center}>
+                            <ActivityIndicator size="large" color={theme.primary} />
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={matches || []}
+                            keyExtractor={(item) => item.route.id}
+                            renderItem={renderClientItem}
+                            contentContainerStyle={styles.list}
+                            ListEmptyComponent={
+                                <View style={styles.center}>
+                                    <View style={[styles.emptyIconBg, { backgroundColor: theme.surface }]}>
+                                        <User size={40} color={theme.icon} />
+                                    </View>
+                                    <Text style={[styles.emptyText, { color: theme.text }]}>No clients found nearby</Text>
+                                    <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 8 }}>
+                                        Try adjusting your route or check back later.
+                                    </Text>
                                 </View>
-                                <Text style={[styles.emptyText, { color: theme.text }]}>No clients found nearby</Text>
-                                <Text style={{ color: theme.textSecondary, textAlign: 'center', marginTop: 8 }}>
-                                    Try adjusting your route or check back later.
-                                </Text>
-                            </View>
-                        }
-                    />
-                )
+                            }
+                        />
+                    )}
+                </>
             )}
         </View>
     );

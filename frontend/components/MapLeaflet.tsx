@@ -9,6 +9,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLocationStore } from '../store/useLocationStore';
 import { LatLng } from '../types';
+import { decodePolyline } from '../utils/location';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
 import { MapProps } from './Map';
 
@@ -28,7 +29,7 @@ const LeafletStyles = () => {
 };
 
 // Helper to fit bounds
-const MapBoundsUpdater = ({ points }: { points: LatLng[] }) => {
+const MapBoundsUpdater = ({ points, edgePadding }: { points: LatLng[], edgePadding?: { top: number; right: number; bottom: number; left: number } }) => {
     const map = useMap();
 
     useEffect(() => {
@@ -41,11 +42,24 @@ const MapBoundsUpdater = ({ points }: { points: LatLng[] }) => {
             if (validPoints.length > 0) {
                 const bounds = L.latLngBounds(validPoints.map(p => [p.latitude, p.longitude]));
                 if (bounds.isValid()) {
-                    map.fitBounds(bounds, { padding: [60, 60] });
+                    const padding = edgePadding
+                        ? [edgePadding.top, edgePadding.right] // Leaflet uses [topleft, bottomright] or point, but simple padding option is [x, y] or specific keys.
+                        // Actually Leaflet fitBounds options: paddingBottomRight, paddingTopLeft.
+                        : [60, 60];
+
+                    const options: L.FitBoundsOptions = {};
+                    if (edgePadding) {
+                        options.paddingTopLeft = [edgePadding.left, edgePadding.top];
+                        options.paddingBottomRight = [edgePadding.right, edgePadding.bottom];
+                    } else {
+                        options.padding = [60, 60];
+                    }
+
+                    map.fitBounds(bounds, options);
                 }
             }
         }
-    }, [points, map]);
+    }, [points, map, edgePadding]);
 
     return null;
 };
@@ -77,6 +91,12 @@ const createIcon = (html: string, size: number = 32) => {
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
     });
+};
+
+const createDotIcon = (color: string) => {
+    const html = `
+    <div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 6px; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`;
+    return createIcon(html, 12);
 };
 
 const createStarIcon = (theme: any) => {
@@ -159,7 +179,13 @@ const MapLeaflet = React.memo(({
     waypoints: propWaypoints = EMPTY_POINTS,
     driverLocation,
     maxPoints,
-    savedPlaces: propSavedPlaces
+    savedPlaces: propSavedPlaces,
+    style,
+    selectedRouteId,
+    onRouteSelect,
+    clientColors,
+    onMapPress,
+    edgePadding
 }: MapProps) => {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
@@ -261,6 +287,7 @@ const MapLeaflet = React.memo(({
 
     // Handlers
     const handleMapClick = (e: L.LeafletMouseEvent) => {
+        onMapPress?.();
         if (mode !== 'picker' || readOnly) return;
         const newPoint = { latitude: e.latlng.lat, longitude: e.latlng.lng };
 
@@ -295,7 +322,7 @@ const MapLeaflet = React.memo(({
     const defaultCenter: [number, number] = [33.5731, -7.5898];
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, style]}>
             <LeafletStyles />
             <div style={{ height: (typeof height === 'number' ? `${height}px` : (height as string || '300px')), width: '100%', borderRadius: 20, overflow: 'hidden', zIndex: 1, position: 'relative' }}>
                 <MapContainer
@@ -309,7 +336,7 @@ const MapLeaflet = React.memo(({
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
 
-                    <MapBoundsUpdater points={allPointsToFit} />
+                    <MapBoundsUpdater points={allPointsToFit} edgePadding={edgePadding} />
                     <MapEvents onMapClick={handleMapClick} />
                     <MapCenterUpdater center={mapCenter} />
 
@@ -420,22 +447,41 @@ const MapLeaflet = React.memo(({
                             {/* Clients */}
                             {intermediatePoints.filter(p => p.type === 'pickup' || p.type === 'dropoff').map((p, i) => {
                                 // Find client info
-                                // This uses a bit of loose logic because intermediatePoints has minimal info, 
-                                // but `clients` array in Trip has full info.
-                                // We can match by clientIndex.
                                 const client = trip.clients?.[p.clientIndex || 0];
                                 const isPickup = p.type === 'pickup';
-                                const color = isPickup ? '#10b981' : '#ef4444';
+                                // @ts-ignore
+                                const routeId = (client?.routeId as any)?._id || client?.routeId?.id;
+                                const isSelected = selectedRouteId === routeId;
+                                const baseColor = isPickup ? '#10b981' : '#ef4444';
+                                const color = clientColors?.[routeId] || baseColor;
                                 const Icon = isPickup ? User : MapPin;
+                                const showFullMarker = isSelected;
+
+                                if (!showFullMarker) {
+                                    return (
+                                        <Marker
+                                            key={`${p.type}-${p.clientIndex}`}
+                                            position={[p.lat, p.lon]}
+                                            icon={createDotIcon(color)}
+                                            eventHandlers={{
+                                                click: () => onRouteSelect?.(routeId)
+                                            }}
+                                        />
+                                    );
+                                }
 
                                 return (
                                     <Marker
                                         key={`${p.type}-${p.clientIndex}`}
                                         position={[p.lat, p.lon]}
                                         icon={client?.userId?.photoURL
-                                            ? createProfileIcon(client.userId.photoURL, color)
-                                            : createGenericIcon(<Icon size={12} color="#fff" />, theme.secondary || '#6366f1', 24)
+                                            ? createProfileIcon(client.userId.photoURL, baseColor)
+                                            : createGenericIcon(<Icon size={12} color="#fff" />, color, 24)
                                         }
+                                        zIndexOffset={100}
+                                        eventHandlers={{
+                                            click: () => onRouteSelect?.(routeId)
+                                        }}
                                     >
                                         <Popup>
                                             <div style={{ minWidth: '120px' }}>
@@ -508,6 +554,35 @@ const MapLeaflet = React.memo(({
                             pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }}
                         />
                     )}
+
+                    {/* Client Route Polylines */}
+                    {mode === 'trip' && trip?.clients?.map((client: any, index: number) => {
+                        const clientGeom = client.routeId?.routeGeometry;
+                        if (!clientGeom) return null;
+
+                        // @ts-ignore
+                        const routeId = (client.routeId as any)?._id || client.routeId?.id;
+                        const isSelected = selectedRouteId === routeId;
+                        const color = clientColors?.[routeId] || theme.secondary || '#6366f1';
+                        // @ts-ignore
+                        const clientCoords = decodePolyline(clientGeom);
+
+                        const weight = isSelected ? 5 : 4;
+                        const dashArray = isSelected ? undefined : '10, 5';
+
+                        return (
+                            <Polyline
+                                key={`client-route-${index}`}
+                                positions={clientCoords.map((p: any) => [p.latitude, p.longitude])}
+                                pathOptions={{ color, weight, opacity: 0.8, dashArray }}
+                                eventHandlers={{
+                                    click: () => onRouteSelect?.(routeId)
+                                }}
+                            />
+                        );
+                    })}
+
+
 
                 </MapContainer>
             </div>

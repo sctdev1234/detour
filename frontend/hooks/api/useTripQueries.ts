@@ -170,6 +170,7 @@ export const useDriverRequests = () => {
                 clientRouteId: r.clientRouteId,
                 tripId: r.tripId,
                 status: r.status,
+                initiatedBy: r.initiatedBy,
                 createdAt: r.createdAt
             }));
         }
@@ -187,6 +188,7 @@ export const useClientRequests = () => {
                 clientRouteId: r.clientRouteId,
                 tripId: r.tripId,
                 status: r.status,
+                initiatedBy: r.initiatedBy,
                 createdAt: r.createdAt
             }));
         }

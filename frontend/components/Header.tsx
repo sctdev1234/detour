@@ -6,6 +6,7 @@ import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
+import { useClientRequests, useDriverRequests } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
 
 type Role = 'driver' | 'client' | null;
@@ -18,6 +19,20 @@ export default function Header() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user, role } = useAuthStore();
+
+    // Notification Logic
+    const { data: driverRequests } = useDriverRequests();
+    const { data: clientRequests } = useClientRequests();
+
+    // Calculate pending notifications based on role
+    const notificationCount = React.useMemo(() => {
+        if (role === 'driver') {
+            return driverRequests?.filter((r: any) => r.status === 'pending').length || 0;
+        } else {
+            // Clients see "pending offers" (driver initiated)
+            return clientRequests?.filter((r: any) => r.status === 'pending' && r.initiatedBy === 'driver').length || 0;
+        }
+    }, [role, driverRequests, clientRequests]);
 
     const Container = Platform.OS === 'ios' ? BlurView : View;
 
@@ -159,13 +174,28 @@ export default function Header() {
                         >
                             <Bell size={18} color={theme.text} strokeWidth={2} />
                             {/* Notification Dot */}
-                            <View style={[
-                                styles.notificationDot,
-                                {
-                                    backgroundColor: theme.primary,
-                                    borderColor: theme.surface
-                                }
-                            ]} />
+                            {notificationCount > 0 && (
+                                <View style={[
+                                    styles.notificationDot,
+                                    {
+                                        backgroundColor: theme.primary,
+                                        borderColor: theme.surface,
+                                        minWidth: 16,
+                                        height: 16,
+                                        borderRadius: 8,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        paddingHorizontal: 3,
+                                        top: -2,
+                                        right: -2,
+                                        borderWidth: 2
+                                    }
+                                ]}>
+                                    <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>
+                                        {notificationCount > 9 ? '9+' : notificationCount}
+                                    </Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
                     }
                 </View>

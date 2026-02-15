@@ -2,17 +2,18 @@ import { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import React from 'react';
-import { Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
+import { useClientRequests, useDriverRequests } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
 
 // Define visible routes for each role
-const CLIENT_ROUTES = ['index', 'search', 'requests', 'routes', 'trips', 'places', 'profile'];
+const CLIENT_ROUTES = ['index', 'requests', 'routes', 'trips', 'places', 'profile'];
 const DRIVER_ROUTES = ['index', 'cars', 'requests', 'routes', 'trips', 'places', 'profile'];
 
-const TabItem = ({ route, index, state, descriptors, navigation, theme }: {
-    route: any, index: number, state: any, descriptors: any, navigation: any, theme: any
+const TabItem = ({ route, index, state, descriptors, navigation, theme, badgeCount }: {
+    route: any, index: number, state: any, descriptors: any, navigation: any, theme: any, badgeCount?: number
 }) => {
     const { options } = descriptors[route.key];
     const isFocused = state.index === index;
@@ -69,6 +70,19 @@ const TabItem = ({ route, index, state, descriptors, navigation, theme }: {
             <Animated.View style={[animatedIconStyle, styles.iconContainer]}>
                 {Icon && Icon({ focused: isFocused, color })}
                 {isFocused && <View style={[styles.activeIndicator, { backgroundColor: theme.primary }]} />}
+                {badgeCount ? (
+                    <View style={[styles.badge, { backgroundColor: theme.primary, borderColor: theme.surface }]}>
+                        <Text style={{
+                            color: '#fff',
+                            fontSize: 9,
+                            fontWeight: '800',
+                            textAlign: 'center',
+                            lineHeight: 10 // Adjust line height for vertical centering
+                        }}>
+                            {badgeCount > 9 ? '9+' : badgeCount}
+                        </Text>
+                    </View>
+                ) : null}
             </Animated.View>
         </TouchableOpacity>
     );
@@ -77,7 +91,21 @@ const TabItem = ({ route, index, state, descriptors, navigation, theme }: {
 export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user } = useAuthStore();
+    const { user, role } = useAuthStore();
+
+    // Notification Logic
+    const { data: driverRequests } = useDriverRequests();
+    const { data: clientRequests } = useClientRequests();
+
+    // Calculate pending notifications based on role
+    const notificationCount = React.useMemo(() => {
+        if (role === 'driver') {
+            return driverRequests?.filter((r: any) => r.status === 'pending').length || 0;
+        } else {
+            // Clients see "pending offers"
+            return clientRequests?.filter((r: any) => r.status === 'pending' && r.initiatedBy === 'driver').length || 0;
+        }
+    }, [role, driverRequests, clientRequests]);
 
     // Determine which routes to show based on user role or pathname context if passed
     // But since this component is used inside specific layouts, we might just want to infer based on the routes present
@@ -139,6 +167,7 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
                             descriptors={descriptors}
                             navigation={navigation}
                             theme={theme}
+                            badgeCount={route.name === 'requests' ? notificationCount : undefined}
                         />
                     );
                 })}
@@ -180,4 +209,17 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
     },
+    badge: {
+        position: 'absolute',
+        top: -4,
+        right: -8,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        borderWidth: 1.5,
+        zIndex: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 2
+    }
 });

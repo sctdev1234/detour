@@ -2,6 +2,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
     ArrowRight,
+    ArrowUpRight,
+    Bell,
     Briefcase,
     ChevronRight,
     Clock,
@@ -43,7 +45,14 @@ export default function ClientDashboard() {
     // Filter for client routes and active trips
     const myRoutes = React.useMemo(() => routes?.filter(r => r.role === 'client').slice(0, 3) || [], [routes]);
     // Include pending requests in active state
-    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['pending', 'accepted', 'started', 'picked_up'].includes(r.status)), [requests]);
+    // Include pending requests in active state
+    // For active request card: we typically show the *most relevant* one.
+    // Ideally we filter out "offers" (driver initiated) from "active requests" UNLESS we accepted them?
+    // For now, keep existing logic but maybe prioritize accepted ones.
+    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['accepted', 'started', 'picked_up'].includes(r.status) || (r.status === 'pending' && r.initiatedBy === 'client')), [requests]);
+
+    const pendingOffers = React.useMemo(() => requests?.filter((r: any) => r.status === 'pending' && r.initiatedBy === 'driver') || [], [requests]);
+    const pendingOffersCount = pendingOffers.length;
 
     const handleQuickAction = (action: string) => {
         router.push('/(client)/add-route');
@@ -79,6 +88,32 @@ export default function ClientDashboard() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
             >
+                {/* Notifications Banner */}
+                {pendingOffersCount > 0 && (
+                    <Animated.View entering={FadeInDown.delay(200)} style={styles.notificationWrapper}>
+                        <TouchableOpacity
+                            style={[styles.notificationCard, { backgroundColor: theme.primary }]}
+                            onPress={() => router.push('/(client)/requests')}
+                            activeOpacity={0.9}
+                        >
+                            <View style={styles.notificationContent}>
+                                <View style={[styles.notificationIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                    <Bell size={18} color="#fff" />
+                                </View>
+                                <View>
+                                    <Text style={styles.notificationTitle}>New Offers</Text>
+                                    <Text style={styles.notificationText}>
+                                        You have <Text style={{ fontWeight: '800' }}>{pendingOffersCount}</Text> pending invite{pendingOffersCount > 1 ? 's' : ''}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.arrowContainer}>
+                                <ArrowUpRight size={20} color="#fff" />
+                            </View>
+                        </TouchableOpacity>
+                    </Animated.View>
+                )}
+
                 {/* 1. Active State / Search */}
                 <View style={styles.section}>
                     {activeRequest ? (
@@ -359,6 +394,58 @@ const styles = StyleSheet.create({
     sectionAction: {
         fontSize: 14,
         fontWeight: '700',
+    },
+
+    sectionAction: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+
+    // Notifications
+    notificationWrapper: {
+        marginBottom: 24,
+    },
+    notificationCard: {
+        borderRadius: 20,
+        padding: 16,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    notificationContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    notificationIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    notificationTitle: {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    notificationText: {
+        color: '#fff',
+        fontSize: 14,
+    },
+    arrowContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     // Search & Quick Actions

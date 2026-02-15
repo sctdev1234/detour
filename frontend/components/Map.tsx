@@ -38,7 +38,13 @@ export interface MapProps {
 
     // General
     driverLocation?: { latitude: number; longitude: number; heading: number };
-    savedPlaces?: any[]; // Keep flexible or use SavedPlace type if imported
+    savedPlaces?: any[];
+    // Selection & Data
+    selectedRouteId?: string | null;
+    onRouteSelect?: (routeId: string) => void;
+    clientColors?: Record<string, string>;
+    onMapPress?: () => void;
+    edgePadding?: { top: number; right: number; bottom: number; left: number };
 }
 
 // --- Helper: get icon for saved place ---
@@ -112,7 +118,9 @@ const PickerMarkers = React.memo(({ points, theme, readOnly, onPointRemove, onDr
     );
 });
 
-const TripMarkers = React.memo(({ trip, theme }: { trip: Trip, theme: any }) => {
+const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, clientColors }: {
+    trip: Trip, theme: any, selectedRouteId?: string | null, onRouteSelect?: (id: string) => void, clientColors?: Record<string, string>
+}) => {
     if (!trip || !trip.routeId) return null;
     const driverRoute = trip.routeId;
     const clients = trip.clients || [];
@@ -149,52 +157,75 @@ const TripMarkers = React.memo(({ trip, theme }: { trip: Trip, theme: any }) => 
             ))}
 
             {/* Clients */}
-            {clients.map((client: any, index: number) => (
-                <React.Fragment key={`client-${index}`}>
-                    <Marker coordinate={client.routeId.startPoint}>
-                        {client.userId?.photoURL ? (
-                            <View style={[styles.profileMarker, { borderColor: '#10b981' }]}>
-                                <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
-                            </View>
-                        ) : (
-                            <View style={[styles.clientMarker, { backgroundColor: theme.secondary }]}>
-                                <User size={12} color="#fff" />
-                            </View>
-                        )}
-                        <Callout tooltip>
-                            <View style={styles.callout}>
-                                <View style={{ gap: 4, minWidth: 120 }}>
-                                    <Text style={[styles.calloutTitle, { color: theme.text }]}>Pickup: {client.userId?.fullName || 'Client'}</Text>
-                                    {client.userId?.email && <Text style={[styles.calloutSubtitle, { color: theme.icon }]}>{client.userId.email}</Text>}
-                                    {client.price && <Text style={[styles.calloutPrice, { color: theme.primary }]}>{client.price} MAD</Text>}
-                                    {client.seats && <Text style={[styles.calloutSubtitle, { color: theme.text }]}>{client.seats} seat(s)</Text>}
-                                </View>
-                            </View>
-                        </Callout>
-                    </Marker>
-                    <Marker coordinate={client.routeId.endPoint}>
-                        {client.userId?.photoURL ? (
-                            <View style={[styles.profileMarker, { borderColor: '#ef4444' }]}>
-                                <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
-                            </View>
-                        ) : (
-                            <View style={[styles.clientMarker, { backgroundColor: theme.secondary, opacity: 0.7 }]}>
-                                <MapPin size={12} color="#fff" />
-                            </View>
-                        )}
-                        <Callout tooltip>
-                            <View style={styles.callout}>
-                                <View style={{ gap: 4, minWidth: 120 }}>
-                                    <Text style={[styles.calloutTitle, { color: theme.text }]}>Dropoff: {client.userId?.fullName || 'Client'}</Text>
-                                    {client.userId?.email && <Text style={[styles.calloutSubtitle, { color: theme.icon }]}>{client.userId.email}</Text>}
-                                    {client.price && <Text style={[styles.calloutPrice, { color: theme.primary }]}>{client.price} MAD</Text>}
-                                    {client.seats && <Text style={[styles.calloutSubtitle, { color: theme.text }]}>{client.seats} seat(s)</Text>}
-                                </View>
-                            </View>
-                        </Callout>
-                    </Marker>
-                </React.Fragment>
-            ))}
+            {clients.map((client: any, index: number) => {
+                const routeId = client.routeId?._id;
+                const isSelected = selectedRouteId === routeId;
+                // If a route is selected, others are dimmed or just dots.
+                // User requirement: "don't show the places icon until i click... show only start and end"
+                // Implication: By default (no selection), show small dots. If selected, show full markers for THAT route.
+                // If nothing selected, maybe show small dots for all?
+
+                const showFullMarker = isSelected;
+                const color = clientColors?.[routeId] || theme.secondary;
+
+                return (
+                    <React.Fragment key={`client-${index}`}>
+                        <Marker
+                            coordinate={client.routeId.startPoint}
+                            onPress={() => onRouteSelect?.(routeId)}
+                            anchor={{ x: 0.5, y: 0.5 }}
+                            zIndex={isSelected ? 10 : 1}
+                        >
+                            {showFullMarker ? (
+                                <React.Fragment>
+                                    {client.userId?.photoURL ? (
+                                        <View style={[styles.profileMarker, { borderColor: '#10b981' }]}>
+                                            <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
+                                        </View>
+                                    ) : (
+                                        <View style={[styles.clientMarker, { backgroundColor: color }]}>
+                                            <User size={12} color="#fff" />
+                                        </View>
+                                    )}
+                                    <Callout tooltip>
+                                        <View style={styles.callout}>
+                                            <View style={{ gap: 4, minWidth: 120 }}>
+                                                <Text style={[styles.calloutTitle, { color: theme.text }]}>Pickup: {client.userId?.fullName || 'Client'}</Text>
+                                                {client.price && <Text style={[styles.calloutPrice, { color: theme.primary }]}>{client.price} MAD</Text>}
+                                            </View>
+                                        </View>
+                                    </Callout>
+                                </React.Fragment>
+                            ) : (
+                                <View style={[styles.dotMarker, { backgroundColor: color }]} />
+                            )}
+                        </Marker>
+
+                        <Marker
+                            coordinate={client.routeId.endPoint}
+                            onPress={() => onRouteSelect?.(routeId)}
+                            anchor={{ x: 0.5, y: 0.5 }}
+                            zIndex={isSelected ? 10 : 1}
+                        >
+                            {showFullMarker ? (
+                                <React.Fragment>
+                                    {client.userId?.photoURL ? (
+                                        <View style={[styles.profileMarker, { borderColor: '#ef4444' }]}>
+                                            <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
+                                        </View>
+                                    ) : (
+                                        <View style={[styles.clientMarker, { backgroundColor: color, opacity: 0.9 }]}>
+                                            <MapPin size={12} color="#fff" />
+                                        </View>
+                                    )}
+                                </React.Fragment>
+                            ) : (
+                                <View style={[styles.dotMarker, { backgroundColor: color }]} />
+                            )}
+                        </Marker>
+                    </React.Fragment>
+                );
+            })}
         </>
     );
 });
@@ -245,7 +276,12 @@ const Map = React.memo(({
     waypoints = [],
     maxPoints,
     savedPlaces: propSavedPlaces,
-    driverLocation
+    driverLocation,
+    selectedRouteId,
+    onRouteSelect,
+    clientColors,
+    onMapPress,
+    edgePadding
 }: MapProps) => {
     // Fallback: use saved places from auth store if not passed as prop
     const storeUser = useAuthStore(s => s.user);
@@ -328,12 +364,12 @@ const Map = React.memo(({
         if (markersToFit.length > 0 && mapRef.current) {
             setTimeout(() => {
                 mapRef.current?.fitToCoordinates(markersToFit, {
-                    edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+                    edgePadding: edgePadding || { top: 60, right: 60, bottom: 60, left: 60 },
                     animated: true,
                 });
             }, 100);
         }
-    }, [points, savedPlaces, trip?.id, startPoint, endPoint, waypoints, routeCoordinates, mode]);
+    }, [points, savedPlaces, trip?.id, startPoint, endPoint, waypoints, routeCoordinates, mode, edgePadding]);
     // Note: removed driverLocation from dependencies.
     // If we want to initially center on driver, we can checking if it's the FIRST render with driver location.
     // But typically for a Trip view, seeing the whole Route is better.
@@ -342,6 +378,7 @@ const Map = React.memo(({
     // --- Handlers ---
 
     const handlePress = useCallback((e: any) => {
+        onMapPress?.();
         if (mode !== 'picker' || readOnly) return;
         const newPoint = e.nativeEvent.coordinate;
 
@@ -438,7 +475,15 @@ const Map = React.memo(({
                         onDragEnd={handleDragEnd}
                     />
                 )}
-                {mode === 'trip' && trip && <TripMarkers trip={trip} theme={theme} />}
+                {mode === 'trip' && trip && (
+                    <TripMarkers
+                        trip={trip}
+                        theme={theme}
+                        selectedRouteId={selectedRouteId}
+                        onRouteSelect={onRouteSelect}
+                        clientColors={clientColors}
+                    />
+                )}
                 {mode === 'route' && <RouteMarkers startPoint={startPoint} endPoint={endPoint} waypoints={waypoints} />}
 
                 {/* Driver Location - Rendered separately to allow smooth movement without re-rendering everything else if mostly static */}
@@ -474,16 +519,27 @@ const Map = React.memo(({
                 {/* Client Route Polylines (Dashed/Thinner) */}
                 {mode === 'trip' && trip?.clients?.map((client: any, index: number) => {
                     const clientGeom = client.routeId?.routeGeometry;
-                    console.log(`[Map] Rendering client ${index}:`, { hasGeom: !!clientGeom, routeId: client.routeId?._id });
                     if (!clientGeom) return null;
+
+                    const routeId = client.routeId?._id;
+                    const isSelected = selectedRouteId === routeId;
+                    const color = clientColors?.[routeId] || theme.secondary;
                     const clientCoords = decodePolyline(clientGeom);
+
+                    // If selected, we might want to make it thicker or bring to front
+                    const zIndex = isSelected ? 10 : 1;
+                    const strokeWidth = isSelected ? 5 : 4;
+
                     return (
                         <Polyline
                             key={`client-route-${index}`}
                             coordinates={clientCoords}
-                            strokeColor={theme.secondary || '#f59e0b'} // Use secondary color or orange
-                            strokeWidth={3}
-                            lineDashPattern={[10, 5]} // Dashed line for contrast
+                            strokeColor={color}
+                            strokeWidth={strokeWidth}
+                            lineDashPattern={isSelected ? [] : [10, 5]} // Solid if selected, dashed otherwise? Or always dashed? User didn't specify, but solid is clearer for selected.
+                            tappable={interactive}
+                            onPress={() => onRouteSelect?.(routeId)}
+                            zIndex={zIndex}
                         />
                     );
                 })}
@@ -667,5 +723,13 @@ const styles = StyleSheet.create({
     profileImage: {
         width: '100%',
         height: '100%',
+    },
+    dotMarker: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#fff',
+        elevation: 2,
     }
 });
