@@ -19,6 +19,7 @@ export interface MapProps {
     theme: any;
     height?: ViewStyle['height'];
     readOnly?: boolean;
+    interactive?: boolean;
     style?: ViewStyle;
 
     // Picker Props
@@ -233,6 +234,7 @@ const Map = React.memo(({
     theme,
     height = 300,
     readOnly = false,
+    interactive = true,
     style,
     initialPoints = [],
     onPointsChange,
@@ -414,6 +416,10 @@ const Map = React.memo(({
                 onPress={handlePress}
                 showsUserLocation={mode === 'picker'}
                 provider={undefined} // Use default provider (Google mostly)
+                scrollEnabled={interactive}
+                zoomEnabled={interactive}
+                rotateEnabled={interactive}
+                pitchEnabled={interactive}
             >
                 {/* Saved Places — always visible in all modes */}
                 <SavedPlaceMarkers
@@ -456,6 +462,7 @@ const Map = React.memo(({
                         strokeWidth={3}
                     />
                 )}
+                {/* Driver Route Polyline */}
                 {((mode === 'trip' || mode === 'route') && routeCoordinates.length > 1) && (
                     <Polyline
                         coordinates={routeCoordinates}
@@ -463,6 +470,23 @@ const Map = React.memo(({
                         strokeWidth={4}
                     />
                 )}
+
+                {/* Client Route Polylines (Dashed/Thinner) */}
+                {mode === 'trip' && trip?.clients?.map((client: any, index: number) => {
+                    const clientGeom = client.routeId?.routeGeometry;
+                    console.log(`[Map] Rendering client ${index}:`, { hasGeom: !!clientGeom, routeId: client.routeId?._id });
+                    if (!clientGeom) return null;
+                    const clientCoords = decodePolyline(clientGeom);
+                    return (
+                        <Polyline
+                            key={`client-route-${index}`}
+                            coordinates={clientCoords}
+                            strokeColor={theme.secondary || '#f59e0b'} // Use secondary color or orange
+                            strokeWidth={3}
+                            lineDashPattern={[10, 5]} // Dashed line for contrast
+                        />
+                    );
+                })}
 
             </MapView>
 

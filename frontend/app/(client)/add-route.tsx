@@ -119,10 +119,7 @@ export default function AddClientRouteScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
-                <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', left: 24, top: 60, zIndex: 10 }}>
-                    <Text style={{ fontSize: 30, color: theme.text }}>←</Text>
-                </TouchableOpacity>
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 20, paddingBottom: 10 }]}>
                 <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Request a Ride</Text>
             </View>
 

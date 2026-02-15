@@ -16,7 +16,7 @@ export const useRouteGuard = () => {
         const isSignupScreen = segmentsArray.length > 1 && segmentsArray[1] === 'signup';
 
         // List of routes that are accessible to authenticated users regardless of role
-        const sharedRoutes = ['change-password', 'edit-profile', 'chat', 'modal'];
+        const sharedRoutes = ['change-password', 'edit-profile', 'chat', 'modal', 'finance'];
 
         if (!user) {
             if (!inAuthGroup || (!isLoginScreen && !isSignupScreen)) {

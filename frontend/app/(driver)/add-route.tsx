@@ -1,8 +1,11 @@
 import { useUIStore } from '@/store/useUIStore';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Car, Check, Clock, DollarSign, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
+import { Car, Check, Clock, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import DetourMap from '../../components/Map';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
@@ -29,8 +32,7 @@ export default function AddRouteScreen() {
     const [timeStart, setTimeStart] = useState('08:00');
     const [timeArrival, setTimeArrival] = useState('09:00');
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
-    const [price, setPrice] = useState('');
-    const [priceType, setPriceType] = useState<'fix' | 'km'>('fix');
+    // Price removed for drivers - defaulted to 0
     const [selectedCarId, setSelectedCarId] = useState('');
     const [routeMetrics, setRouteMetrics] = useState<{ distance: number; duration: number; geometry: string } | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
@@ -65,9 +67,11 @@ export default function AddRouteScreen() {
                     geometry: result.geometry
                 });
 
-                if (priceType === 'km' && !price) {
-                    setPrice('2');
-                }
+                setRouteMetrics({
+                    distance: result.distanceKm,
+                    duration: result.durationMinutes,
+                    geometry: result.geometry
+                });
             } catch (error) {
                 console.error('Failed to calculate route', error);
             } finally {
@@ -113,8 +117,8 @@ export default function AddRouteScreen() {
                 timeStart,
                 timeArrival,
                 days: selectedDays,
-                price: parseFloat(price) || 0,
-                priceType,
+                price: 0, // Default price for drivers
+                priceType: 'fix',
                 status: 'pending',
                 distanceKm: routeMetrics?.distance,
                 estimatedDurationMin: routeMetrics?.duration,
@@ -129,9 +133,13 @@ export default function AddRouteScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
-                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>New Driver Route</Text>
-            </View>
+            <LinearGradient
+                colors={colorScheme === 'dark' ? [theme.surface, theme.background] : [theme.surface, theme.background]}
+                style={[styles.header, { paddingTop: 60, paddingBottom: 20 }]}
+            >
+                <Text style={[styles.title, { color: theme.text }]}>New Route</Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 4 }}>Plan your next trip</Text>
+            </LinearGradient>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -140,29 +148,36 @@ export default function AddRouteScreen() {
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
                     {/* Step 1: Map */}
-                    <View style={styles.section}>
+                    <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <View style={[styles.stepBadge, { backgroundColor: theme.primary }]}>
+                            <LinearGradient
+                                colors={[theme.primary, theme.secondary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.stepBadge}
+                            >
                                 <Text style={styles.stepText}>1</Text>
-                            </View>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Select Points</Text>
+                            </LinearGradient>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Route Points</Text>
                         </View>
 
                         <View style={[styles.mapContainer, { borderColor: theme.border }]}>
                             <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} savedPlaces={user?.savedPlaces} />
                             {points.length === 0 && (
-                                <View style={[styles.mapOverlay, { backgroundColor: theme.surface }]}>
+                                <BlurView intensity={80} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.mapOverlay}>
                                     <MapPin size={24} color={theme.primary} />
-                                    <Text style={[styles.overlayText, { color: theme.text }]}>Tap to set pickup</Text>
-                                </View>
+                                    <Text style={[styles.overlayText, { color: theme.text }]}>Tap map to add points</Text>
+                                </BlurView>
                             )}
                         </View>
 
                         {points.length > 0 && (
                             <View style={styles.pointNamesContainer}>
                                 {points.map((point, index) => (
-                                    <View key={index} style={styles.pointRow}>
-                                        <View style={[styles.pointBadge, { backgroundColor: index === 0 ? '#10b981' : index === points.length - 1 ? '#ef4444' : '#3b82f6' }]}>
+                                    <View key={index} style={[styles.pointRow, { backgroundColor: theme.surface }]}>
+                                        <View style={[styles.pointBadge, {
+                                            backgroundColor: index === 0 ? '#10b981' : index === points.length - 1 ? '#ef4444' : theme.primary
+                                        }]}>
                                             <Text style={styles.pointBadgeText}>{index + 1}</Text>
                                         </View>
                                         <View style={styles.pointInfo}>
@@ -199,15 +214,20 @@ export default function AddRouteScreen() {
                                 </View>
                             </View>
                         )}
-                    </View>
+                    </Animated.View>
 
                     {/* Step 2: Schedule */}
-                    <View style={styles.section}>
+                    <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <View style={[styles.stepBadge, { backgroundColor: theme.primary }]}>
+                            <LinearGradient
+                                colors={[theme.primary, theme.secondary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.stepBadge}
+                            >
                                 <Text style={styles.stepText}>2</Text>
-                            </View>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Schedule</Text>
+                            </LinearGradient>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Time & Schedule</Text>
                         </View>
 
                         <View style={styles.row}>
@@ -232,14 +252,17 @@ export default function AddRouteScreen() {
                             </View>
                         </View>
 
-                        <Text style={[styles.label, { color: theme.icon, marginTop: 8, marginBottom: 12 }]}>Recurring Days</Text>
+                        <Text style={[styles.label, { color: theme.textSecondary, marginTop: 8, marginBottom: 12 }]}>Repeat on</Text>
                         <View style={styles.daysGrid}>
                             {DAYS.map(day => (
                                 <TouchableOpacity
                                     key={day}
                                     style={[
                                         styles.dayItem,
-                                        { backgroundColor: selectedDays.includes(day) ? theme.primary : theme.surface, borderColor: theme.border }
+                                        {
+                                            backgroundColor: selectedDays.includes(day) ? theme.primary : theme.surface,
+                                            borderColor: selectedDays.includes(day) ? theme.primary : theme.border
+                                        }
                                     ]}
                                     onPress={() => toggleDay(day)}
                                 >
@@ -247,18 +270,22 @@ export default function AddRouteScreen() {
                                 </TouchableOpacity>
                             ))}
                         </View>
-                    </View>
+                    </Animated.View>
 
                     {/* Step 3: Car & Pricing */}
-                    <View style={styles.section}>
+                    <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <View style={[styles.stepBadge, { backgroundColor: theme.primary }]}>
+                            <LinearGradient
+                                colors={[theme.primary, theme.secondary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.stepBadge}
+                            >
                                 <Text style={styles.stepText}>3</Text>
-                            </View>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Car & Pricing</Text>
+                            </LinearGradient>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Vehicle</Text>
                         </View>
-
-                        <Text style={[styles.label, { color: theme.icon, marginBottom: 12 }]}>Vehicle</Text>
+                        <Text style={[styles.label, { color: theme.textSecondary, marginBottom: 12 }]}>Select Car</Text>
 
                         {cars.length === 0 ? (
                             <TouchableOpacity
@@ -274,63 +301,52 @@ export default function AddRouteScreen() {
                                         key={car.id}
                                         style={[
                                             styles.carCard,
-                                            { backgroundColor: theme.surface, borderColor: selectedCarId === car.id ? theme.primary : theme.border, borderWidth: selectedCarId === car.id ? 2 : 1 }
+                                            {
+                                                backgroundColor: theme.surface,
+                                                borderColor: selectedCarId === car.id ? theme.primary : 'transparent',
+                                                borderWidth: 2,
+                                                shadowColor: theme.text,
+                                                shadowOpacity: 0.05,
+                                                shadowRadius: 10,
+                                                elevation: 2
+                                            }
                                         ]}
                                         onPress={() => setSelectedCarId(car.id)}
                                     >
-                                        <Car size={20} color={selectedCarId === car.id ? theme.primary : theme.icon} />
+                                        <View style={[styles.carIconBg, { backgroundColor: selectedCarId === car.id ? theme.primary + '20' : theme.background }]}>
+                                            <Car size={24} color={selectedCarId === car.id ? theme.primary : theme.icon} />
+                                        </View>
                                         <View>
                                             <Text style={[styles.carName, { color: theme.text }]}>{car.model}</Text>
-                                            <Text style={{ fontSize: 10, color: theme.icon }}>{car.marque}</Text>
+                                            <Text style={{ fontSize: 12, color: theme.textSecondary }}>{car.marque}</Text>
                                         </View>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
                         )}
 
-                        <View style={[styles.row, { marginTop: 16 }]}>
-                            <View style={{ flex: 1 }}>
-                                <PremiumInput
-                                    label="Price"
-                                    value={price}
-                                    onChangeText={setPrice}
-                                    keyboardType="numeric"
-                                    icon={DollarSign}
-                                />
-                            </View>
-                            <View style={{ width: 16 }} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.label, { color: theme.icon, marginBottom: 8 }]}>Type</Text>
-                                <View style={[styles.toggleContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                                    <TouchableOpacity
-                                        style={[styles.toggleBtn, priceType === 'fix' && { backgroundColor: theme.primary }]}
-                                        onPress={() => setPriceType('fix')}
-                                    >
-                                        <Text style={[styles.toggleText, { color: priceType === 'fix' ? '#fff' : theme.icon }]}>Fix</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.toggleBtn, priceType === 'km' && { backgroundColor: theme.primary }]}
-                                        onPress={() => setPriceType('km')}
-                                    >
-                                        <Text style={[styles.toggleText, { color: priceType === 'km' ? '#fff' : theme.icon }]}>/km</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </View>
-                    </View>
+                        {/* Price section removed for drivers */}
+                    </Animated.View>
 
                     <TouchableOpacity
-                        style={[styles.saveButton, { backgroundColor: theme.primary, opacity: isAddingRoute || isCalculating ? 0.7 : 1 }]}
                         onPress={handleSave}
                         disabled={isAddingRoute || isCalculating}
+                        activeOpacity={0.8}
                     >
-                        <Check size={20} color="#fff" />
-                        <Text style={styles.saveButtonText}>{isAddingRoute ? 'Publishing...' : 'Publish Route'}</Text>
+                        <LinearGradient
+                            colors={[theme.primary, theme.secondary]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={[styles.saveButton, { opacity: isAddingRoute || isCalculating ? 0.7 : 1 }]}
+                        >
+                            <Check size={20} color="#fff" />
+                            <Text style={styles.saveButtonText}>{isAddingRoute ? 'Publishing...' : 'Publish Route'}</Text>
+                        </LinearGradient>
                     </TouchableOpacity>
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
-        </View>
+        </View >
     );
 }
 
@@ -340,13 +356,9 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 20,
-        flexDirection: 'row',
+        paddingTop: 60,
+        paddingBottom: 24,
         alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32,
     },
     backButton: {
         width: 44,
@@ -357,12 +369,13 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.2)',
     },
     title: {
-        fontSize: 20,
+        fontSize: 28,
         fontWeight: '800',
+        letterSpacing: -0.5,
     },
     content: {
         padding: 24,
-        gap: 36,
+        gap: 24,
     },
     section: {
         gap: 16,
@@ -374,16 +387,16 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     stepBadge: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
     },
     stepText: {
         color: '#fff',
         fontWeight: '800',
-        fontSize: 14,
+        fontSize: 16,
     },
     sectionTitle: {
         fontSize: 20,
@@ -391,7 +404,7 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
     },
     mapContainer: {
-        height: 260,
+        height: 280,
         borderRadius: 24,
         borderWidth: 1,
         overflow: 'hidden',
@@ -399,19 +412,19 @@ const styles = StyleSheet.create({
     },
     mapOverlay: {
         position: 'absolute',
-        bottom: 16,
+        bottom: 20,
         alignSelf: 'center',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 18,
-        paddingVertical: 10,
-        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 24,
         gap: 8,
-        elevation: 4,
+        overflow: 'hidden',
     },
     overlayText: {
-        fontWeight: '700',
-        fontSize: 13,
+        fontWeight: '600',
+        fontSize: 14,
     },
     metricsCard: {
         flexDirection: 'row',
@@ -463,42 +476,50 @@ const styles = StyleSheet.create({
     daysGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 8,
     },
     dayItem: {
-        paddingVertical: 10,
+        paddingVertical: 12,
         paddingHorizontal: 16,
-        borderRadius: 14,
+        borderRadius: 16,
         borderWidth: 1,
+        minWidth: 50,
+        alignItems: 'center',
     },
     dayText: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '700',
     },
     carsScroll: {
-        gap: 14,
+        gap: 12,
         paddingVertical: 4,
         paddingHorizontal: 4,
     },
     carCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 14,
+        padding: 16,
         paddingRight: 24,
-        borderRadius: 20,
-        borderWidth: 1,
-        gap: 14,
+        borderRadius: 24,
+        // borderWidth: 1,
+        gap: 16,
+        minWidth: 160,
+    },
+    carIconBg: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     carName: {
         fontWeight: '700',
-        fontSize: 15,
+        fontSize: 16,
     },
     toggleContainer: {
         flexDirection: 'row',
         height: 56,
         borderRadius: 18,
-        padding: 4,
-        borderWidth: 1,
     },
     toggleBtn: {
         flex: 1,
@@ -518,7 +539,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         marginTop: 24,
-        elevation: 6,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 8,
     },
     saveButtonText: {
         color: '#fff',
@@ -533,35 +558,38 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: 'rgba(0,0,0,0.03)',
         padding: 12,
-        borderRadius: 12,
+        borderRadius: 16,
+        // elevation: 1,
+        // shadowColor: "#000",
+        // shadowOpacity: 0.05,
+        // shadowRadius: 4,
     },
     pointBadge: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
     },
     pointBadgeText: {
         color: '#fff',
         fontWeight: '700',
-        fontSize: 12,
+        fontSize: 14,
     },
     pointInfo: {
         flex: 1,
     },
     pointName: {
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '600',
     },
     deletePointButton: {
-        width: 32,
-        height: 32,
+        width: 36,
+        height: 36,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0,0,0,0.05)',
-        borderRadius: 16,
+        borderRadius: 18,
     }
 });

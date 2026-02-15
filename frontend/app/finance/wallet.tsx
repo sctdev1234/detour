@@ -116,7 +116,7 @@ export default function WalletScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 80, paddingBottom: 10 }]}>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 20, paddingBottom: 10 }]}>
                 <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
             </View>
 
@@ -285,6 +285,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         padding: 24,
+        paddingBottom: 0,
         boxShadow: '0px -4px 24px rgba(0,0,0,0.03)',
     },
     sectionHeader: {

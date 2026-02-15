@@ -86,6 +86,7 @@ export default function DriverLayout() {
             <SwipeableTabs.Screen name="add-route" options={{ swipeEnabled: false }} />
             <SwipeableTabs.Screen name="assign-car" options={{ swipeEnabled: false }} />
             <SwipeableTabs.Screen name="verification" options={{ swipeEnabled: false }} />
+            <SwipeableTabs.Screen name="find-clients" options={{ swipeEnabled: false }} />
 
         </SwipeableTabs>
     );

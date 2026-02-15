@@ -87,7 +87,7 @@ export default function EditProfileScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 20, paddingBottom: 10 }]}>
                 <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Edit Profile</Text>
             </View>
 

@@ -123,11 +123,12 @@ const styles = StyleSheet.create({
         opacity: 0.9,
     },
     actions: {
-        flexDirection: 'row',
-        gap: 16,
+        flexDirection: 'column-reverse', // Stack buttons on mobile
+        gap: 12,
+        width: '100%',
     },
     button: {
-        flex: 1,
+        width: '100%',
         height: 56,
         borderRadius: 28,
         justifyContent: 'center',
@@ -135,6 +136,7 @@ const styles = StyleSheet.create({
     },
     cancelButton: {
         borderWidth: 1,
+        backgroundColor: 'transparent',
     },
     confirmButton: {
         elevation: 4,
@@ -143,6 +145,7 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 16,
         fontWeight: '700',
+        textAlign: 'center',
     },
     inputContainer: {
         marginBottom: 28,

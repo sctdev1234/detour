@@ -1,12 +1,12 @@
-import { useUIStore } from '@/store/useUIStore';
+
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Check, User, X } from 'lucide-react-native';
+import { User, X } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
-import { useDriverRequests, useHandleJoinRequest } from '../../hooks/api/useTripQueries';
+import { useDriverRequests } from '../../hooks/api/useTripQueries';
 
 export default function DriverRequestsScreen() {
     const router = useRouter();
@@ -14,18 +14,6 @@ export default function DriverRequestsScreen() {
     const theme = Colors[colorScheme];
 
     const { data: driverRequests, isLoading } = useDriverRequests();
-    const { mutateAsync: handleJoinRequest } = useHandleJoinRequest();
-    const { showToast } = useUIStore();
-
-    const onRespond = async (requestId: string, status: 'accepted' | 'rejected') => {
-        try {
-            await handleJoinRequest({ requestId, status });
-            showToast(`Request ${status}`, 'success');
-        } catch (error) {
-            console.error(error);
-            showToast('Failed to respond', 'error');
-        }
-    };
 
     const renderRequestItem = ({ item, index }: { item: any, index: number }) => {
         const isSelfInitiated = item.initiatedBy === 'driver';
@@ -58,28 +46,11 @@ export default function DriverRequestsScreen() {
                     </View>
 
                     <View style={styles.actions}>
-                        {isSelfInitiated ? (
-                            <View style={[styles.actionBtn, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
-                                <Text style={[styles.btnText, { color: theme.icon }]}>Waiting for client response...</Text>
-                            </View>
-                        ) : (
-                            <>
-                                <TouchableOpacity
-                                    style={[styles.actionBtn, { backgroundColor: '#ef444420' }]}
-                                    onPress={() => onRespond(item.id, 'rejected')}
-                                >
-                                    <X size={20} color="#ef4444" />
-                                    <Text style={[styles.btnText, { color: '#ef4444' }]}>Reject</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.actionBtn, { backgroundColor: '#10b98120' }]}
-                                    onPress={() => onRespond(item.id, 'accepted')}
-                                >
-                                    <Check size={20} color="#10b981" />
-                                    <Text style={[styles.btnText, { color: '#10b981' }]}>Accept</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
+                        <View style={[styles.actionBtn, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
+                            <Text style={[styles.btnText, { color: theme.icon }]}>
+                                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                            </Text>
+                        </View>
                     </View>
                 </BlurView>
             </Animated.View>

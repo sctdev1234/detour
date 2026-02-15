@@ -4,6 +4,7 @@ export interface LatLng {
     latitude: number;
     longitude: number;
     heading?: number;
+    address?: string;
 }
 
 interface TripState {

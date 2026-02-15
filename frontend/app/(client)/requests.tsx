@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { useClientRequests, useHandleJoinRequest } from '../../hooks/api/useTripQueries';
+import { normalizeRoute } from '../../utils/location';
 
 export default function ClientRequestsScreen() {
     const colorScheme = useColorScheme() ?? 'light';
@@ -15,6 +16,9 @@ export default function ClientRequestsScreen() {
 
     const renderRequestItem = ({ item, index }: { item: any, index: number }) => {
         const driver = item.tripId?.driverId;
+        const normalizedDriverRoute = normalizeRoute(item.tripId?.routeId);
+        const normalizedClientRoute = normalizeRoute(item.clientRouteId);
+
         return (
             <Animated.View
                 entering={FadeInDown.delay(index * 100).springify()}
@@ -61,26 +65,33 @@ export default function ClientRequestsScreen() {
                         </View>
                     )}
 
-                    {/* Map Preview */}
-                    <View style={styles.mapContainer}>
-                        <DetourMap
-                            mode="trip"
-                            theme={theme}
-                            height={200}
-                            readOnly
-                            trip={{
-                                ...item.tripId,
-                                clients: [
-                                    ...(item.tripId?.clients || []),
-                                    {
-                                        routeId: item.clientRouteId,
-                                        userId: { photoURL: null, fullName: 'You' }, // Placeholder for self
-                                        price: item.proposedPrice
-                                    }
-                                ]
-                            }}
-                        />
-                    </View>
+                    {/* Map Preview - ONLY FOR PENDING */}
+                    {item.status === 'pending' && (
+                        <View style={styles.mapContainer}>
+                            <DetourMap
+                                mode="trip"
+                                theme={theme}
+                                height={200}
+                                readOnly
+                                savedPlaces={[]} // Hide saved places
+                                trip={{
+                                    ...item.tripId,
+                                    routeId: normalizedDriverRoute,
+                                    clients: [
+                                        ...(item.tripId?.clients?.map((c: any) => ({
+                                            ...c,
+                                            routeId: normalizeRoute(c.routeId)
+                                        })) || []),
+                                        {
+                                            routeId: normalizedClientRoute,
+                                            userId: { photoURL: null, fullName: 'You' }, // Placeholder for self
+                                            price: item.proposedPrice
+                                        }
+                                    ]
+                                }}
+                            />
+                        </View>
+                    )}
                 </BlurView>
             </Animated.View>
         );
@@ -98,11 +109,11 @@ export default function ClientRequestsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { justifyContent: 'center', paddingTop: 80, paddingBottom: 10 }]}>
+            <View style={[styles.header, { justifyContent: 'center', paddingTop: 20, paddingBottom: 10 }]}>
                 <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Ride Offers</Text>
             </View>
 
-            {isLoading && (!clientRequests || clientRequests.length === 0) ? (
+            {isLoading && (!clientRequests || (clientRequests as any[]).length === 0) ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>

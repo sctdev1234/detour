@@ -320,7 +320,16 @@ class TripService {
                 path: 'tripId',
                 populate: [
                     { path: 'driverId', select: 'fullName photoURL' },
-                    { path: 'routeId' }
+                    { path: 'routeId' },
+                    {
+                        path: 'clients.routeId',
+                        model: 'Route',
+                        select: 'routeGeometry startPoint endPoint' // Explicitly select geometry
+                    },
+                    {
+                        path: 'clients.userId',
+                        select: 'fullName photoURL'
+                    }
                 ]
             })
             .sort({ createdAt: -1 });

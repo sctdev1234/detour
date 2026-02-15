@@ -98,3 +98,26 @@ export const decodePolyline = (encoded: string): LatLng[] => {
     }
     return poly;
 };
+
+export const normalizePoint = (point: any): LatLng | undefined => {
+    if (!point) return undefined;
+    if (point.latitude !== undefined && point.longitude !== undefined) return point;
+    if (point.coordinates && Array.isArray(point.coordinates)) {
+        return {
+            latitude: point.coordinates[1],
+            longitude: point.coordinates[0],
+            address: point.address
+        };
+    }
+    return undefined;
+};
+
+export const normalizeRoute = (route: any) => {
+    if (!route) return null;
+    return {
+        ...route,
+        startPoint: normalizePoint(route.startPoint),
+        endPoint: normalizePoint(route.endPoint),
+        waypoints: route.waypoints?.map(normalizePoint).filter(Boolean) || []
+    };
+};
