@@ -6,6 +6,7 @@ import MapView, { Callout, Marker, Polyline } from 'react-native-maps';
 import { useAuthStore } from '../store/useAuthStore';
 import { LatLng, Trip } from '../types';
 import { decodePolyline } from '../utils/location';
+import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
 
 
 interface StopItem {
@@ -45,6 +46,7 @@ export interface MapProps {
     clientColors?: Record<string, string>;
     onMapPress?: () => void;
     edgePadding?: { top: number; right: number; bottom: number; left: number };
+    boundsPoints?: LatLng[];
 }
 
 // --- Helper: get icon for saved place ---
@@ -118,18 +120,24 @@ const PickerMarkers = React.memo(({ points, theme, readOnly, onPointRemove, onDr
     );
 });
 
-const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, clientColors }: {
-    trip: Trip, theme: any, selectedRouteId?: string | null, onRouteSelect?: (id: string) => void, clientColors?: Record<string, string>
+const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, clientColors, intermediatePoints }: {
+    trip: Trip, theme: any, selectedRouteId?: string | null, onRouteSelect?: (id: string) => void, clientColors?: Record<string, string>, intermediatePoints: RoutePoint[]
 }) => {
     if (!trip || !trip.routeId) return null;
     const driverRoute = trip.routeId;
-    const clients = trip.clients || [];
+
+    // Get first client's routeId for click-to-select on driver route elements
+    const firstClient = trip.clients?.[0];
+    const firstClientRouteId = (firstClient?.routeId as any)?._id;
+    const handleDriverRoutePress = () => {
+        if (firstClientRouteId && onRouteSelect) onRouteSelect(firstClientRouteId);
+    };
 
     return (
         <>
             {/* Driver Start */}
             {driverRoute.startPoint && (
-                <Marker coordinate={driverRoute.startPoint} pinColor="green">
+                <Marker coordinate={driverRoute.startPoint} pinColor="green" onPress={handleDriverRoutePress}>
                     <View style={[styles.markerBadge, { backgroundColor: '#10b981' }]}>
                         <Car size={14} color="#fff" />
                     </View>
@@ -138,86 +146,66 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
 
             {/* Driver End */}
             {driverRoute.endPoint && (
-                <Marker coordinate={driverRoute.endPoint} pinColor="red">
+                <Marker coordinate={driverRoute.endPoint} pinColor="red" onPress={handleDriverRoutePress}>
                     <View style={[styles.markerBadge, { backgroundColor: '#ef4444' }]}>
                         <MapPin size={14} color="#fff" />
                     </View>
                 </Marker>
             )}
 
-            {/* Driver Waypoints */}
-            {driverRoute.waypoints?.map((waypoint: LatLng, index: number) => (
-                waypoint?.latitude && (
-                    <Marker key={`waypoint-${index}`} coordinate={waypoint}>
-                        <View style={[styles.waypointMarker, { backgroundColor: theme.primary }]}>
-                            <Text style={styles.waypointText}>{index + 1}</Text>
-                        </View>
-                    </Marker>
-                )
+            {/* Waypoints from intermediatePoints */}
+            {intermediatePoints.filter(p => p.type === 'waypoint').map((wp, i) => (
+                <Marker
+                    key={`waypoint-${i}`}
+                    coordinate={{ latitude: wp.lat, longitude: wp.lon }}
+                    onPress={handleDriverRoutePress}
+                >
+                    <View style={[styles.waypointMarker, { backgroundColor: theme.primary }]}>
+                        <Text style={styles.waypointText}>{i + 1}</Text>
+                    </View>
+                </Marker>
             ))}
 
-            {/* Clients */}
-            {clients.map((client: any, index: number) => {
-                const routeId = client.routeId?._id;
+            {/* Client Pickup/Dropoff from intermediatePoints */}
+            {intermediatePoints.filter(p => p.type === 'pickup' || p.type === 'dropoff').map((p, i) => {
+                const client = trip.clients?.[p.clientIndex || 0];
+                const isPickup = p.type === 'pickup';
+                const routeId = (client?.routeId as any)?._id;
                 const isSelected = selectedRouteId === routeId;
-                // If a route is selected, others are dimmed or just dots.
-                // User requirement: "don't show the places icon until i click... show only start and end"
-                // Implication: By default (no selection), show small dots. If selected, show full markers for THAT route.
-                // If nothing selected, maybe show small dots for all?
-
+                const baseColor = isPickup ? '#10b981' : '#ef4444';
+                const color = clientColors?.[routeId] || baseColor;
                 const showFullMarker = isSelected;
-                const color = clientColors?.[routeId] || theme.secondary;
 
                 return (
-                    <React.Fragment key={`client-${index}`}>
+                    <React.Fragment key={`${p.type}-${p.clientIndex}`}>
                         <Marker
-                            coordinate={client.routeId.startPoint}
+                            coordinate={{ latitude: p.lat, longitude: p.lon }}
                             onPress={() => onRouteSelect?.(routeId)}
                             anchor={{ x: 0.5, y: 0.5 }}
                             zIndex={isSelected ? 10 : 1}
                         >
                             {showFullMarker ? (
                                 <React.Fragment>
-                                    {client.userId?.photoURL ? (
-                                        <View style={[styles.profileMarker, { borderColor: '#10b981' }]}>
+                                    {client?.userId?.photoURL ? (
+                                        <View style={[styles.profileMarker, { borderColor: baseColor }]}>
                                             <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
                                         </View>
                                     ) : (
                                         <View style={[styles.clientMarker, { backgroundColor: color }]}>
-                                            <User size={12} color="#fff" />
+                                            {isPickup ? <User size={12} color="#fff" /> : <MapPin size={12} color="#fff" />}
                                         </View>
                                     )}
                                     <Callout tooltip>
                                         <View style={styles.callout}>
                                             <View style={{ gap: 4, minWidth: 120 }}>
-                                                <Text style={[styles.calloutTitle, { color: theme.text }]}>Pickup: {client.userId?.fullName || 'Client'}</Text>
-                                                {client.price && <Text style={[styles.calloutPrice, { color: theme.primary }]}>{client.price} MAD</Text>}
+                                                <Text style={[styles.calloutTitle, { color: theme.text }]}>
+                                                    {isPickup ? 'Pickup: ' : 'Dropoff: '}{client?.userId?.fullName || 'Client'}
+                                                </Text>
+                                                {client?.price && <Text style={[styles.calloutPrice, { color: theme.primary }]}>{client.price} MAD</Text>}
+                                                {client?.seats && <Text style={{ fontSize: 12 }}>{client.seats} seat(s)</Text>}
                                             </View>
                                         </View>
                                     </Callout>
-                                </React.Fragment>
-                            ) : (
-                                <View style={[styles.dotMarker, { backgroundColor: color }]} />
-                            )}
-                        </Marker>
-
-                        <Marker
-                            coordinate={client.routeId.endPoint}
-                            onPress={() => onRouteSelect?.(routeId)}
-                            anchor={{ x: 0.5, y: 0.5 }}
-                            zIndex={isSelected ? 10 : 1}
-                        >
-                            {showFullMarker ? (
-                                <React.Fragment>
-                                    {client.userId?.photoURL ? (
-                                        <View style={[styles.profileMarker, { borderColor: '#ef4444' }]}>
-                                            <Image source={{ uri: client.userId.photoURL }} style={styles.profileImage} />
-                                        </View>
-                                    ) : (
-                                        <View style={[styles.clientMarker, { backgroundColor: color, opacity: 0.9 }]}>
-                                            <MapPin size={12} color="#fff" />
-                                        </View>
-                                    )}
                                 </React.Fragment>
                             ) : (
                                 <View style={[styles.dotMarker, { backgroundColor: color }]} />
@@ -281,7 +269,8 @@ const Map = React.memo(({
     onRouteSelect,
     clientColors,
     onMapPress,
-    edgePadding
+    edgePadding,
+    boundsPoints
 }: MapProps) => {
     // Fallback: use saved places from auth store if not passed as prop
     const storeUser = useAuthStore(s => s.user);
@@ -290,6 +279,7 @@ const Map = React.memo(({
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [routeCoordinates, setRouteCoordinates] = useState<LatLng[]>([]);
+    const [intermediatePoints, setIntermediatePoints] = useState<RoutePoint[]>([]);
 
     // Initial Location Request
     React.useEffect(() => {
@@ -308,52 +298,71 @@ const Map = React.memo(({
         }
     }, [initialPoints]);
 
-    // Calculate Route Polyline
+    // Calculate Trip/Route Data (synced with MapLeaflet)
     React.useEffect(() => {
-        if (trip?.routeId?.routeGeometry) {
-            const decoded = decodePolyline(trip.routeId.routeGeometry);
-            setRouteCoordinates(decoded);
-        } else if (trip?.routeId?.startPoint && trip?.routeId?.endPoint) {
-            setRouteCoordinates([
-                trip.routeId.startPoint,
-                ...(trip.routeId.waypoints || []),
-                trip.routeId.endPoint
-            ].filter(p => p && p.latitude));
+        if (mode === 'trip' && trip) {
+            const driverRoute = trip.routeId;
+            const clients = trip.clients || [];
+
+            // Decode driver route geometry for visual polyline (road-following)
+            if (driverRoute?.routeGeometry) {
+                const decoded = decodePolyline(driverRoute.routeGeometry);
+                setRouteCoordinates(decoded);
+            } else if (driverRoute?.startPoint && driverRoute?.endPoint) {
+                setRouteCoordinates([
+                    driverRoute.startPoint,
+                    ...(driverRoute.waypoints || []),
+                    driverRoute.endPoint
+                ].filter(p => p && p.latitude));
+            }
+
+            // Compute intermediate points for optimized stop ordering
+            if (customStopOrder && customStopOrder.length > 0) {
+                const coords = customStopOrder.map(s => ({
+                    latitude: s.latitude,
+                    longitude: s.longitude
+                }));
+                setRouteCoordinates(coords);
+            } else {
+                const { sortedPoints } = optimizeRoute(
+                    driverRoute?.startPoint,
+                    driverRoute?.endPoint,
+                    driverRoute?.waypoints,
+                    clients
+                );
+                setIntermediatePoints(sortedPoints);
+            }
+        } else if (mode === 'route' && startPoint && endPoint) {
+            const coords: LatLng[] = [startPoint, ...waypoints, endPoint];
+            setRouteCoordinates(coords);
         }
-    }, [trip?.routeId?.routeGeometry, trip?.routeId?.startPoint, trip?.routeId?.endPoint, trip?.routeId?.waypoints]);
+    }, [mode, trip, customStopOrder, startPoint, endPoint, waypoints]);
 
     // --- Optimized Auto-Center (Fit Bounds) ---
     // NO driverLocation in dependency array to avoid constant zooming
     React.useEffect(() => {
         let markersToFit: LatLng[] = [];
 
-        if (mode === 'picker') {
+        // If explicit boundsPoints provided, use those instead of auto-calculating
+        if (boundsPoints && boundsPoints.length > 0) {
+            markersToFit = [...boundsPoints];
+        } else if (mode === 'picker') {
             if (savedPlaces?.length) {
                 const saved = savedPlaces.map(p => ({ latitude: p.latitude, longitude: p.longitude }));
                 markersToFit.push(...saved);
             }
             markersToFit.push(...points);
-        }
-
-        if (mode === 'route') {
+        } else if (mode === 'route') {
             if (startPoint) markersToFit.push(startPoint);
             if (endPoint) markersToFit.push(endPoint);
             if (waypoints) markersToFit.push(...waypoints);
             if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
-        }
+        } else if (mode === 'trip' && trip) {
+            // Use getAllPointsFromTrip (synced with MapLeaflet)
+            const tripPoints = getAllPointsFromTrip(trip);
+            markersToFit.push(...tripPoints);
 
-        if (mode === 'trip' && trip) {
-            // Only include driver location on INITIAL load or if it's the *only* thing
-            // But generally we fit to the ROUTE + Clients
-            if (trip.routeId?.startPoint) markersToFit.push(trip.routeId.startPoint);
-            if (trip.routeId?.endPoint) markersToFit.push(trip.routeId.endPoint);
-            if (trip.routeId?.waypoints) markersToFit.push(...trip.routeId.waypoints);
-
-            trip.clients?.forEach((client: any) => {
-                if (client.routeId?.startPoint) markersToFit.push(client.routeId.startPoint);
-                if (client.routeId?.endPoint) markersToFit.push(client.routeId.endPoint);
-            });
-
+            // Include polyline points for better fit
             if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
         }
 
@@ -369,7 +378,7 @@ const Map = React.memo(({
                 });
             }, 100);
         }
-    }, [points, savedPlaces, trip?.id, startPoint, endPoint, waypoints, routeCoordinates, mode, edgePadding]);
+    }, [points, savedPlaces, trip?.id, startPoint, endPoint, waypoints, routeCoordinates, mode, edgePadding, boundsPoints]);
     // Note: removed driverLocation from dependencies.
     // If we want to initially center on driver, we can checking if it's the FIRST render with driver location.
     // But typically for a Trip view, seeing the whole Route is better.
@@ -482,6 +491,7 @@ const Map = React.memo(({
                         selectedRouteId={selectedRouteId}
                         onRouteSelect={onRouteSelect}
                         clientColors={clientColors}
+                        intermediatePoints={intermediatePoints}
                     />
                 )}
                 {mode === 'route' && <RouteMarkers startPoint={startPoint} endPoint={endPoint} waypoints={waypoints} />}
@@ -513,6 +523,14 @@ const Map = React.memo(({
                         coordinates={routeCoordinates}
                         strokeColor={theme.primary}
                         strokeWidth={4}
+                        tappable={true}
+                        onPress={() => {
+                            if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
+                                const firstClient = trip.clients[0];
+                                const routeId = (firstClient?.routeId as any)?._id;
+                                if (routeId) onRouteSelect(routeId);
+                            }
+                        }}
                     />
                 )}
 

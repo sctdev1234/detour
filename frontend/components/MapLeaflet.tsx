@@ -185,7 +185,8 @@ const MapLeaflet = React.memo(({
     onRouteSelect,
     clientColors,
     onMapPress,
-    edgePadding
+    edgePadding,
+    boundsPoints
 }: MapProps) => {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
@@ -259,14 +260,19 @@ const MapLeaflet = React.memo(({
 
         // Mode: Trip
         if (mode === 'trip' && trip) {
-            // REMOVED driverLocation from fitting logic to prevent constant re-zooming
+            // If explicit boundsPoints provided, use those instead
+            if (boundsPoints && boundsPoints.length > 0) {
+                markersToFit.push(...boundsPoints);
+            } else {
+                // REMOVED driverLocation from fitting logic to prevent constant re-zooming
 
-            // Trip Points (using helper or direct properties)
-            const tripPoints = getAllPointsFromTrip(trip);
-            markersToFit.push(...tripPoints);
+                // Trip Points (using helper or direct properties)
+                const tripPoints = getAllPointsFromTrip(trip);
+                markersToFit.push(...tripPoints);
 
-            // Include polyline points
-            if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+                // Include polyline points
+                if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+            }
         }
 
         // Filter invalid points strictly
@@ -282,7 +288,7 @@ const MapLeaflet = React.memo(({
             setAllPointsToFit(markersToFit);
         }
 
-    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, savedPlaces, routeCoordinates]);
+    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, savedPlaces, routeCoordinates, boundsPoints]);
     // NOTE: Removed driverLocation from dependencies
 
     // Handlers
@@ -418,94 +424,106 @@ const MapLeaflet = React.memo(({
                     )}
 
                     {/* --- Trip Markers using intermediatePoints (same as TripMapLeaflet logic) --- */}
-                    {mode === 'trip' && trip && (
-                        <>
-                            {/* Driver Start */}
-                            {trip.routeId?.startPoint?.latitude !== undefined && trip.routeId?.startPoint?.longitude !== undefined && (
-                                <Marker
-                                    position={[trip.routeId.startPoint.latitude, trip.routeId.startPoint.longitude]}
-                                    icon={createGenericIcon(<Car size={14} color="#fff" />, '#10b981')}
-                                />
-                            )}
-                            {/* Driver End */}
-                            {trip.routeId?.endPoint?.latitude !== undefined && trip.routeId?.endPoint?.longitude !== undefined && (
-                                <Marker
-                                    position={[trip.routeId.endPoint.latitude, trip.routeId.endPoint.longitude]}
-                                    icon={createGenericIcon(<MapPin size={14} color="#fff" />, '#ef4444')}
-                                />
-                            )}
+                    {mode === 'trip' && trip && (() => {
+                        // Get first client's routeId for click-to-select on driver route elements
+                        const firstClient = trip.clients?.[0];
+                        // @ts-ignore
+                        const firstClientRouteId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
+                        const handleDriverRouteClick = () => {
+                            if (firstClientRouteId && onRouteSelect) onRouteSelect(firstClientRouteId);
+                        };
+                        return (
+                            <>
+                                {/* Driver Start */}
+                                {trip.routeId?.startPoint?.latitude !== undefined && trip.routeId?.startPoint?.longitude !== undefined && (
+                                    <Marker
+                                        position={[trip.routeId.startPoint.latitude, trip.routeId.startPoint.longitude]}
+                                        icon={createGenericIcon(<Car size={14} color="#fff" />, '#10b981')}
+                                        eventHandlers={{ click: handleDriverRouteClick }}
+                                    />
+                                )}
+                                {/* Driver End */}
+                                {trip.routeId?.endPoint?.latitude !== undefined && trip.routeId?.endPoint?.longitude !== undefined && (
+                                    <Marker
+                                        position={[trip.routeId.endPoint.latitude, trip.routeId.endPoint.longitude]}
+                                        icon={createGenericIcon(<MapPin size={14} color="#fff" />, '#ef4444')}
+                                        eventHandlers={{ click: handleDriverRouteClick }}
+                                    />
+                                )}
 
-                            {/* Waypoints */}
-                            {intermediatePoints.filter(p => p.type === 'waypoint').map((wp, i) => (
-                                <Marker
-                                    key={`wp-${i}`}
-                                    position={[wp.lat, wp.lon]}
-                                    icon={createGenericIcon(<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}>{i + 1}</Text>, theme.primary || '#007AFF', 22)}
-                                />
-                            ))}
+                                {/* Waypoints */}
+                                {intermediatePoints.filter(p => p.type === 'waypoint').map((wp, i) => (
+                                    <Marker
+                                        key={`wp-${i}`}
+                                        position={[wp.lat, wp.lon]}
+                                        icon={createGenericIcon(<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}>{i + 1}</Text>, theme.primary || '#007AFF', 22)}
+                                        eventHandlers={{ click: handleDriverRouteClick }}
+                                    />
+                                ))}
 
-                            {/* Clients */}
-                            {intermediatePoints.filter(p => p.type === 'pickup' || p.type === 'dropoff').map((p, i) => {
-                                // Find client info
-                                const client = trip.clients?.[p.clientIndex || 0];
-                                const isPickup = p.type === 'pickup';
-                                // @ts-ignore
-                                const routeId = (client?.routeId as any)?._id || client?.routeId?.id;
-                                const isSelected = selectedRouteId === routeId;
-                                const baseColor = isPickup ? '#10b981' : '#ef4444';
-                                const color = clientColors?.[routeId] || baseColor;
-                                const Icon = isPickup ? User : MapPin;
-                                const showFullMarker = isSelected;
+                                {/* Clients */}
+                                {intermediatePoints.filter(p => p.type === 'pickup' || p.type === 'dropoff').map((p, i) => {
+                                    // Find client info
+                                    const client = trip.clients?.[p.clientIndex || 0];
+                                    const isPickup = p.type === 'pickup';
+                                    // @ts-ignore
+                                    const routeId = (client?.routeId as any)?._id || client?.routeId?.id;
+                                    const isSelected = selectedRouteId === routeId;
+                                    const baseColor = isPickup ? '#10b981' : '#ef4444';
+                                    const color = clientColors?.[routeId] || baseColor;
+                                    const Icon = isPickup ? User : MapPin;
+                                    const showFullMarker = isSelected;
 
-                                if (!showFullMarker) {
+                                    if (!showFullMarker) {
+                                        return (
+                                            <Marker
+                                                key={`${p.type}-${p.clientIndex}`}
+                                                position={[p.lat, p.lon]}
+                                                icon={createDotIcon(color)}
+                                                eventHandlers={{
+                                                    click: () => onRouteSelect?.(routeId)
+                                                }}
+                                            />
+                                        );
+                                    }
+
                                     return (
                                         <Marker
                                             key={`${p.type}-${p.clientIndex}`}
                                             position={[p.lat, p.lon]}
-                                            icon={createDotIcon(color)}
+                                            icon={client?.userId?.photoURL
+                                                ? createProfileIcon(client.userId.photoURL, baseColor)
+                                                : createGenericIcon(<Icon size={12} color="#fff" />, color, 24)
+                                            }
+                                            zIndexOffset={100}
                                             eventHandlers={{
                                                 click: () => onRouteSelect?.(routeId)
                                             }}
-                                        />
-                                    );
-                                }
-
-                                return (
-                                    <Marker
-                                        key={`${p.type}-${p.clientIndex}`}
-                                        position={[p.lat, p.lon]}
-                                        icon={client?.userId?.photoURL
-                                            ? createProfileIcon(client.userId.photoURL, baseColor)
-                                            : createGenericIcon(<Icon size={12} color="#fff" />, color, 24)
-                                        }
-                                        zIndexOffset={100}
-                                        eventHandlers={{
-                                            click: () => onRouteSelect?.(routeId)
-                                        }}
-                                    >
-                                        <Popup>
-                                            <div style={{ minWidth: '120px' }}>
-                                                <div style={{ fontWeight: '800', fontSize: '14px', marginBottom: '4px' }}>
-                                                    {isPickup ? 'Pickup: ' : 'Dropoff: '}{client?.userId?.fullName || 'Client'}
-                                                </div>
-                                                {client?.userId?.email && (
-                                                    <div style={{ fontSize: '12px', color: '#666' }}>{client.userId.email}</div>
-                                                )}
-                                                {client?.price && (
-                                                    <div style={{ fontSize: '12px', fontWeight: '700', color: theme.primary || '#007AFF', marginTop: '4px' }}>
-                                                        {client.price} MAD
+                                        >
+                                            <Popup>
+                                                <div style={{ minWidth: '120px' }}>
+                                                    <div style={{ fontWeight: '800', fontSize: '14px', marginBottom: '4px' }}>
+                                                        {isPickup ? 'Pickup: ' : 'Dropoff: '}{client?.userId?.fullName || 'Client'}
                                                     </div>
-                                                )}
-                                                {client?.seats && (
-                                                    <div style={{ fontSize: '12px' }}>{client.seats} seat(s)</div>
-                                                )}
-                                            </div>
-                                        </Popup>
-                                    </Marker>
-                                );
-                            })}
-                        </>
-                    )}
+                                                    {client?.userId?.email && (
+                                                        <div style={{ fontSize: '12px', color: '#666' }}>{client.userId.email}</div>
+                                                    )}
+                                                    {client?.price && (
+                                                        <div style={{ fontSize: '12px', fontWeight: '700', color: theme.primary || '#007AFF', marginTop: '4px' }}>
+                                                            {client.price} MAD
+                                                        </div>
+                                                    )}
+                                                    {client?.seats && (
+                                                        <div style={{ fontSize: '12px' }}>{client.seats} seat(s)</div>
+                                                    )}
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    );
+                                })}
+                            </>
+                        );
+                    })()}
 
                     {/* --- Route Markers --- */}
                     {mode === 'route' && (
@@ -552,6 +570,16 @@ const MapLeaflet = React.memo(({
                         <Polyline
                             positions={routeCoordinates.map(p => [p.latitude, p.longitude])}
                             pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }}
+                            eventHandlers={{
+                                click: () => {
+                                    if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
+                                        const firstClient = trip.clients[0];
+                                        // @ts-ignore
+                                        const routeId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
+                                        if (routeId) onRouteSelect(routeId);
+                                    }
+                                }
+                            }}
                         />
                     )}
 

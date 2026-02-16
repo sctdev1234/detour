@@ -70,18 +70,6 @@ export default function DriverFindClientsScreen() {
         };
     }, [activeTrip, matches]);
 
-    // Debug Logs
-    useEffect(() => {
-        console.log('[FindClients] State:', {
-            activeTripId,
-            activeRouteId,
-            hasMatches: !!matches,
-            matchesCount: matches?.length,
-            hasMapTripData: !!mapTripData,
-            viewMode
-        });
-    }, [activeTripId, activeRouteId, matches, mapTripData, viewMode]);
-
     const clientColors = useMemo(() => {
         if (!mapTripData) return {};
         const colors: Record<string, string> = {};
@@ -181,6 +169,7 @@ export default function DriverFindClientsScreen() {
                             interactive={false}
                             style={{ borderRadius: 16 }}
                             savedPlaces={[]}
+                            edgePadding={{ top: 20, right: 20, bottom: 20, left: 20 }}
                         />
                     )}
                 </View>
