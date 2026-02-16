@@ -28,6 +28,9 @@ export default function Support() {
 
     const handleUpdate = (updatedTicket) => {
         setReclamations(prev => prev.map(t => t._id === updatedTicket._id ? updatedTicket : t));
+        if (selectedTicket && selectedTicket._id === updatedTicket._id) {
+            setSelectedTicket(updatedTicket);
+        }
     };
 
     const filteredReclamations = reclamations.filter(ticket => {
@@ -50,6 +53,8 @@ export default function Support() {
                 return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"><CheckCircle className="w-3 h-3" /> Resolved</span>;
             case 'dismissed':
                 return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-slate-500 border border-slate-500/20"><XCircle className="w-3 h-3" /> Dismissed</span>;
+            case 'technical': // Optional: if status usage changes, but currently type is separate
+                return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20"><Clock className="w-3 h-3" /> Technical</span>;
             default:
                 return null;
         }
@@ -85,8 +90,8 @@ export default function Support() {
                         key={status}
                         onClick={() => setFilterStatus(status)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filterStatus === status
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
                             }`}
                     >
                         {status}

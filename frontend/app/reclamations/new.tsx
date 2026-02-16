@@ -16,23 +16,28 @@ export default function NewReclamationScreen() {
     const { showToast, showConfirm } = useUIStore();
     const { mutateAsync: addReclamation } = useAddReclamation();
 
-    const [type, setType] = useState<'accident' | 'behaving' | 'lost_item' | 'other'>('other');
+    const [type, setType] = useState<'accident' | 'behaving' | 'lost_item' | 'technical' | 'other'>('technical');
     const [subject, setSubject] = useState('');
     const [description, setDescription] = useState('');
-    const [image, setImage] = useState<string | null>(null);
+    const [images, setImages] = useState<string[]>([]);
     const [uploading, setUploading] = useState(false);
 
     const pickImage = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [4, 3],
+            allowsEditing: false, // Editing multiple images is complex, simplify for now
             quality: 0.8,
+            allowsMultipleSelection: true,
+            selectionLimit: 5
         });
 
         if (!result.canceled) {
-            setImage(result.assets[0].uri);
+            setImages(prev => [...prev, ...result.assets.map(a => a.uri)]);
         }
+    };
+
+    const removeImage = (index: number) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSubmit = async () => {
@@ -43,19 +48,25 @@ export default function NewReclamationScreen() {
 
         setUploading(true);
         try {
-            let evidenceUrl = undefined;
-            if (image) {
-                const id = Math.random().toString(36).substring(7);
-                evidenceUrl = await import('../../services/storageService').then(m =>
-                    m.uploadImage(image, `reclamations/${id}.jpg`)
-                );
+            const evidenceUrls = [];
+
+            if (images.length > 0) {
+                const uploadPromises = images.map(async (img) => {
+                    const id = Math.random().toString(36).substring(7);
+                    return await import('../../services/storageService').then(m =>
+                        m.uploadImage(img, `reclamations/${id}.jpg`)
+                    );
+                });
+
+                const uploadedUrls = await Promise.all(uploadPromises);
+                evidenceUrls.push(...uploadedUrls);
             }
 
             await addReclamation({
                 type,
                 subject,
                 description,
-                evidenceUrl,
+                evidenceUrls,
             });
 
             showConfirm({
@@ -86,7 +97,7 @@ export default function NewReclamationScreen() {
                     <View style={styles.group}>
                         <Text style={[styles.label, { color: theme.text }]}>Issue Type</Text>
                         <View style={styles.typeRow}>
-                            {(['accident', 'behaving', 'lost_item', 'other'] as const).map((t) => (
+                            {(['accident', 'behaving', 'lost_item', 'technical', 'other'] as const).map((t) => (
                                 <TouchableOpacity
                                     key={t}
                                     style={[
@@ -130,23 +141,28 @@ export default function NewReclamationScreen() {
                     </View>
 
                     <View style={styles.group}>
-                        <Text style={[styles.label, { color: theme.text }]}>Evidence (Optional)</Text>
-                        {image ? (
-                            <View style={[styles.imagePreview, { borderColor: theme.border }]}>
-                                <Image source={{ uri: image }} style={styles.thumb} contentFit="cover" transition={500} />
-                                <TouchableOpacity style={styles.removeBtn} onPress={() => setImage(null)}>
-                                    <X size={16} color="#fff" />
+                        <Text style={[styles.label, { color: theme.text }]}>Evidence (Optional) - {images.length}/5</Text>
+
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                            {images.map((img, index) => (
+                                <View key={index} style={[styles.imagePreview, { borderColor: theme.border, width: 100, height: 100 }]}>
+                                    <Image source={{ uri: img }} style={styles.thumb} contentFit="cover" transition={500} />
+                                    <TouchableOpacity style={styles.removeBtn} onPress={() => removeImage(index)}>
+                                        <X size={14} color="#fff" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+
+                            {images.length < 5 && (
+                                <TouchableOpacity
+                                    style={[styles.uploadBox, { borderColor: theme.border, backgroundColor: theme.surface, width: 100, height: 100 }]}
+                                    onPress={pickImage}
+                                >
+                                    <Camera size={24} color={theme.primary} style={{ opacity: 0.8 }} />
+                                    <Text style={[styles.uploadText, { color: theme.icon, fontSize: 12 }]}>Add</Text>
                                 </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <TouchableOpacity
-                                style={[styles.uploadBox, { borderColor: theme.border, backgroundColor: theme.surface }]}
-                                onPress={pickImage}
-                            >
-                                <Camera size={32} color={theme.primary} style={{ opacity: 0.8 }} />
-                                <Text style={[styles.uploadText, { color: theme.icon }]}>Tap to upload photo</Text>
-                            </TouchableOpacity>
-                        )}
+                            )}
+                        </View>
                     </View>
 
                     <TouchableOpacity

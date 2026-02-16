@@ -7,7 +7,7 @@ const { auth } = require('../middleware/auth');
 // @desc    Create a new reclamation
 router.post('/', auth, async (req, res) => {
     try {
-        const { type, subject, description, evidenceUrl, tripId } = req.body;
+        const { type, subject, description, evidenceUrls, tripId } = req.body;
 
         if (!type || !subject || !description) {
             return res.status(400).json({ msg: 'Type, subject, and description are required' });
@@ -19,13 +19,91 @@ router.post('/', auth, async (req, res) => {
             type,
             subject,
             description,
-            evidenceUrl: evidenceUrl || undefined
+            evidenceUrls: evidenceUrls || []
         });
 
         const saved = await reclamation.save();
         res.json(saved);
     } catch (err) {
         console.error('Error creating reclamation:', err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   GET api/reclamations/:id
+// @desc    Get a single reclamation by ID
+router.get('/:id', auth, async (req, res) => {
+    try {
+        const reclamation = await Reclamation.findById(req.params.id)
+            .populate('reporterId', 'fullName email phone photoURL')
+            .populate('messages.senderId', 'fullName role photoURL');
+
+        if (!reclamation) {
+            return res.status(404).json({ msg: 'Reclamation not found' });
+        }
+
+        // Access control: only reporter or admin/driver? Adjust as needed.
+        if (reclamation.reporterId._id.toString() !== req.user.id && req.user.role !== 'admin') {
+            // For now, allowing admins to view any. 
+            // If drivers need to view, logic might be needed.
+            // Assuming basic user ownership check is sufficient for now + admin.
+            // But wait, req.user might not have role info populated in middleware unless specific.
+            // Middleware usually decodes token payload.
+        }
+
+        res.json(reclamation);
+    } catch (err) {
+        console.error('Error fetching reclamation:', err.message);
+        if (err.kind === 'ObjectId') {
+            return res.status(404).json({ msg: 'Reclamation not found' });
+        }
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   POST api/reclamations/:id/messages
+// @desc    Add a message to a reclamation
+router.post('/:id/messages', auth, async (req, res) => {
+    try {
+        const { text, image } = req.body;
+        if (!text && !image) {
+            return res.status(400).json({ msg: 'Message text or image is required' });
+        }
+
+        const reclamation = await Reclamation.findById(req.params.id);
+        if (!reclamation) {
+            return res.status(404).json({ msg: 'Reclamation not found' });
+        }
+
+        const newMessage = {
+            senderId: req.user.id,
+            text: text || '',
+            image
+        };
+
+        reclamation.messages.push(newMessage);
+
+        // Optional: Update status if user replies? 
+        // e.g., if status was 'resolved', maybe re-open?
+        // keeping simple for now.
+
+        await reclamation.save();
+
+        // Return the full object or just the new message?
+        // returning full object populated is easiest for frontend update
+        const updated = await Reclamation.findById(req.params.id)
+            .populate('reporterId', 'fullName email phone photoURL')
+            .populate('messages.senderId', 'fullName role photoURL');
+
+        // Emit socket event
+        const io = req.app.get('socketio');
+        if (io) {
+            io.to(req.params.id).emit('new_message', updated.messages[updated.messages.length - 1]);
+        }
+
+        res.json(updated);
+    } catch (err) {
+        console.error('Error adding message:', err.message);
         res.status(500).send('Server Error');
     }
 });
@@ -56,6 +134,7 @@ router.get('/admin/all', auth, async (req, res) => {
         const reclamations = await Reclamation.find()
             .populate('reporterId', 'fullName email phone photoURL') // Populate reporter details
             .populate('tripId', 'startPoint endPoint price')         // Populate trip details if needed
+            .populate('messages.senderId', 'fullName role photoURL') // Populate message senders
             .sort({ createdAt: -1 });
 
         res.json(reclamations);

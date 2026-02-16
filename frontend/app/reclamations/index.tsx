@@ -23,17 +23,23 @@ export default function ReclamationsListScreen() {
         };
 
         return (
-            <View style={[styles.card, { backgroundColor: theme.surface }]}>
+
+            <TouchableOpacity
+                style={[styles.card, { backgroundColor: theme.surface }]}
+                onPress={() => router.push(`/reclamations/${item.id}`)}
+                activeOpacity={0.7}
+            >
                 <View style={styles.cardHeader}>
-                    <Text style={[styles.type, { color: theme.text }]}>{item.type.toUpperCase().replace('_', ' ')}</Text>
+                    <Text style={[styles.type, { color: theme.text }]}>#{item.id.substring(item.id.length - 6).toUpperCase()} • {item.type.toUpperCase().replace('_', ' ')}</Text>
                     <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
                         <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status.toUpperCase()}</Text>
                     </View>
                 </View>
                 <Text style={[styles.subject, { color: theme.text }]}>{item.subject}</Text>
                 <Text style={[styles.date, { color: theme.icon }]}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-            </View>
+            </TouchableOpacity>
         );
+
     };
 
     return (
@@ -164,4 +170,5 @@ const styles = StyleSheet.create({
         boxShadow: '0px 8px 16px rgba(0,0,0,0.25)',
     }
 });
+
 
