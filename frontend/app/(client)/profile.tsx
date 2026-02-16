@@ -239,7 +239,7 @@ export default function ProfileScreen() {
                         icon={AlertCircle}
                         title="Support & Reclamations"
                         subtitle="Get help with your trips"
-                        onPress={() => showToast('Contact support@detour.app', 'info')}
+                        onPress={() => router.push('/reclamations')}
                         index={0}
                     />
                     <MenuItem

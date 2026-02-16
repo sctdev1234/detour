@@ -16,7 +16,7 @@ export const useRouteGuard = () => {
         const isSignupScreen = segmentsArray.length > 1 && segmentsArray[1] === 'signup';
 
         // List of routes that are accessible to authenticated users regardless of role
-        const sharedRoutes = ['change-password', 'edit-profile', 'chat', 'modal', 'finance'];
+        const sharedRoutes = ['change-password', 'edit-profile', 'chat', 'modal', 'finance', 'reclamations'];
 
         if (!user) {
             if (!inAuthGroup || (!isLoginScreen && !isSignupScreen)) {
@@ -46,6 +46,7 @@ export const useRouteGuard = () => {
                 '(driver)/add-car',
                 'modal',
                 'chat', // Maybe allow support?
+                'reclamations',
                 '(client)/profile',
                 '(driver)/profile',
                 'edit-profile'

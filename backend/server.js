@@ -101,7 +101,37 @@ app.get('/', (req, res) => {
     res.send('Detour API is running');
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, {
+    cors: {
+        origin: "*", // Allow all origins for now, restrict in production
+        methods: ["GET", "POST"]
+    }
+});
+
+// Make io available in routes
+app.set('socketio', io);
+
+io.on('connection', (socket) => {
+    console.log('New client connected:', socket.id);
+
+    socket.on('join_reclamation', (reclamationId) => {
+        socket.join(reclamationId);
+        console.log(`Socket ${socket.id} joined reclamation room: ${reclamationId}`);
+    });
+
+    socket.on('leave_reclamation', (reclamationId) => {
+        socket.leave(reclamationId);
+        console.log(`Socket ${socket.id} left reclamation room: ${reclamationId}`);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+    });
+});
+
+
+
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
-// Force reload

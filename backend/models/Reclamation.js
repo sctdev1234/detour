@@ -12,7 +12,7 @@ const ReclamationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['accident', 'behaving', 'lost_item', 'other'],
+        enum: ['accident', 'behaving', 'lost_item', 'technical', 'other'],
         required: true
     },
     subject: {
@@ -25,14 +25,32 @@ const ReclamationSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    evidenceUrl: {
+    evidenceUrls: [{
         type: String
-    },
+    }],
     status: {
         type: String,
         enum: ['pending', 'investigating', 'resolved', 'dismissed'],
         default: 'pending'
-    }
+    },
+    messages: [{
+        senderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        text: {
+            type: String,
+            trim: true
+        },
+        image: {
+            type: String
+        },
+        createdAt: {
+            type: Date,
+            default: Date.now
+        }
+    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Reclamation', ReclamationSchema);
