@@ -12,7 +12,36 @@ export default function ReclamationModal({ reclamation, onClose, onUpdate }) {
         reclamationRef.current = reclamation;
     }, [reclamation]);
 
+
+
+    // Mark as read on open
     useEffect(() => {
+        const markAsRead = async () => {
+            try {
+                // Only mark if there are unread messages to avoid unnecessary calls?
+                // The backend handles "smart" update, but good to be efficient.
+                // Just call it.
+                await api.put(`/reclamations/${reclamation._id}/read`);
+                // We should technically update the local state to show them as read, 
+                // but since the modal doesn't explicitly show "read/unread" status per message, 
+                // it's more about clearing the notification in the parent list.
+                // We can trigger an update to parent.
+
+                // Construct a locally updated object where messages are read?
+                // Or just rely on the next fetch/socket update.
+                // Let's rely on the parent list refreshing or us calling onUpdate with result.
+
+                // Actually, the PUT returns the updated object.
+                // So we can do:
+                const res = await api.put(`/reclamations/${reclamation._id}/read`);
+                onUpdate(res.data);
+            } catch (err) {
+                console.error("Failed to mark as read", err);
+            }
+        };
+
+        markAsRead();
+
         const socket = io('http://localhost:5000');
 
         socket.emit('join_reclamation', reclamation._id);

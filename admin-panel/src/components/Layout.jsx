@@ -1,4 +1,5 @@
 import {
+    Bell,
     Car,
     CreditCard,
     DollarSign,
@@ -10,14 +11,96 @@ import {
     Tag,
     Users
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import api from '../lib/axios';
 
 export default function Layout() {
     const navigate = useNavigate();
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [socket, setSocket] = useState(null);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
         navigate('/login');
+    };
+
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const res = await api.get('/notifications');
+                setNotifications(res.data);
+            } catch (err) {
+                console.error("Failed to fetch notifications", err);
+            }
+        };
+        fetchNotifications();
+
+        const newSocket = io('http://localhost:5000');
+        setSocket(newSocket);
+
+        newSocket.on('new_notification', (notification) => {
+            console.log('Received new notification:', notification);
+            setNotifications(prev => [notification, ...prev]);
+        });
+
+        // We can still listen to other events if needed for other UI updates, 
+        // but for the bell icon, we rely on 'new_notification'
+
+        return () => newSocket.close();
+    }, []);
+
+
+    useEffect(() => {
+        // Add animation keyframes for content fade-in
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; margin-top: 10px; }
+                to { opacity: 1; margin-top: 0; }
+            }
+            .animate-fadeIn {
+                animation: fadeIn 0.4s ease-out forwards;
+            }
+        `;
+        document.head.appendChild(style);
+
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+
+    const handleNotificationClick = async (notif) => {
+        setShowNotifications(false);
+        // Remove notification from UI immediately
+        setNotifications(prev => prev.filter(n => n._id !== notif._id));
+
+        // Mark as read in backend if it has a real DB ID (string)
+        if (typeof notif._id === 'string' && notif._id.length === 24) { // Assuming MongoDB _id length
+            try {
+                await api.put(`/notifications/${notif._id}/read`);
+            } catch (err) {
+                console.error("Failed to mark notification as read:", err);
+            }
+        }
+
+        // Navigate to support and potentially to the specific ticket
+        if (notif.data && notif.data.reclamationId) {
+            navigate(`/support?ticketId=${notif.data.reclamationId}`);
+        } else {
+            navigate('/support');
+        }
+    };
+
+    const handleClearAll = async () => {
+        setNotifications([]); // Clear from UI
+        try {
+            await api.put('/notifications/read-all'); // Mark all as read in backend
+        } catch (err) {
+            console.error("Failed to clear all notifications:", err);
+        }
     };
 
     const navItems = [
@@ -82,9 +165,61 @@ export default function Layout() {
                     <div className="absolute bottom-[-20%] right-[10%] w-[600px] h-[600px] bg-purple-600/5 rounded-full blur-3xl"></div>
                 </div>
 
-                {/* Header (Optional, for page title) */}
-                <header className="mb-8 flex justify-between items-center">
-                    {/* Breadcrumbs or dynamic title could go here */}
+                {/* Header */}
+                <header className="mb-8 flex justify-end items-center relative z-20">
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowNotifications(!showNotifications)}
+                            className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-300 transition-colors relative"
+                        >
+                            <Bell className="w-5 h-5" />
+                            {notifications.length > 0 && (
+                                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse"></span>
+                            )}
+                        </button>
+
+                        {showNotifications && (
+                            <div className="absolute right-0 mt-4 w-80 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn">
+                                <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800">
+                                    <h3 className="font-bold text-white">Notifications</h3>
+                                    {notifications.length > 0 && (
+                                        <button
+                                            onClick={handleClearAll}
+                                            className="text-xs text-slate-400 hover:text-white"
+                                        >
+                                            Clear all
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="max-h-80 overflow-y-auto">
+                                    {notifications.length === 0 ? (
+                                        <div className="p-8 text-center text-slate-500 text-sm">
+                                            No new notifications
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-slate-700/50">
+                                            {notifications.map(notif => (
+                                                <div
+                                                    key={notif._id}
+                                                    onClick={() => handleNotificationClick(notif)}
+                                                    className="p-4 hover:bg-slate-700/50 cursor-pointer transition-colors"
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${notif.type === 'new_ticket' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
+                                                        <div>
+                                                            <div className="text-sm font-medium text-slate-200">{notif.title}</div>
+                                                            <div className="text-xs text-slate-400 mt-1">{notif.message}</div>
+                                                            <div className="text-[10px] text-slate-500 mt-2">{new Date(notif.createdAt).toLocaleTimeString()}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </header>
 
                 <div className="max-w-7xl mx-auto animate-fadeIn">
@@ -95,15 +230,4 @@ export default function Layout() {
     );
 }
 
-// Add animation keyframes for content fade-in
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes fadeIn {
-        from { opacity: 0; margin-top: 10px; }
-        to { opacity: 1; margin-top: 0; }
-    }
-    .animate-fadeIn {
-        animation: fadeIn 0.4s ease-out forwards;
-    }
-`;
-document.head.appendChild(style);
+

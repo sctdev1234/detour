@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { AlertCircle, Bell, CheckCircle, Clock, Send, User } from 'lucide-react-native';
+import { AlertCircle, Bell, CheckCircle, Clock, MessageCircle, Send, User } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -78,16 +78,47 @@ export default function NotificationsScreen() {
             });
         });
 
-        // Reclamation updates
-        const updatedReclamations = reclamations?.filter((r: any) => r.status !== 'pending') || [];
-        updatedReclamations.forEach((rec: any) => {
+        // Reclamation updates and messages
+        // Show ALL reclamations, but highlight those with recent activity or admin messages
+        const relevantReclamations = reclamations || [];
+
+        relevantReclamations.forEach((rec: any) => {
+            // Determine if there's a new message from admin
+            // We can check the last message. If it's from 'admin' or 'support', it's relevant.
+            const messages = rec.messages || [];
+            const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+            const isAdminMessage = lastMessage?.sender === 'admin' || lastMessage?.sender === 'support'; // Adjust sender check based on backend
+
+            // If status is resolved, show as resolved. 
+            // If status is pending/open BUT has an admin message, show as "New Message"
+
+            let title = `Reclamation ${rec.status}`;
+            let subtitle = rec.subject;
+            let icon = <AlertCircle size={20} color="#fff" />;
+            let color = '#F59E0B'; // Default orange (pending)
+
+            if (rec.status === 'resolved') {
+                title = 'Reclamation Resolved';
+                color = '#10B981'; // Green
+                icon = <CheckCircle size={20} color="#fff" />;
+            } else if (isAdminMessage) {
+                title = 'New Message from Support';
+                subtitle = lastMessage?.content || 'You have a new reply.';
+                color = '#3B82F6'; // Blue for info/message
+                icon = <MessageCircle size={20} color="#fff" />;
+            }
+
             items.push({
                 id: `rec-${rec.id}`,
-                icon: <AlertCircle size={20} color="#fff" />,
-                title: `Reclamation ${rec.status}`,
-                subtitle: rec.subject,
-                time: new Date(rec.createdAt).toLocaleDateString(),
-                color: rec.status === 'resolved' ? '#10B981' : '#F59E0B',
+                icon,
+                title,
+                subtitle: subtitle.length > 50 ? subtitle.substring(0, 50) + '...' : subtitle,
+                time: new Date(rec.updatedAt || rec.createdAt).toLocaleDateString(),
+                color,
+                onPress: () => router.push({
+                    pathname: '/reclamations/[id]',
+                    params: { id: rec.id }
+                })
             });
         });
 

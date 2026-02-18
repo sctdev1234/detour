@@ -1,4 +1,4 @@
-import { useRouter, useSegments } from 'expo-router';
+import { useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -6,8 +6,10 @@ export const useRouteGuard = () => {
     const { role, user, isLoading } = useAuthStore();
     const segments = useSegments();
     const router = useRouter();
+    const navigationState = useRootNavigationState();
 
     useEffect(() => {
+        if (!navigationState?.key) return;
         if (isLoading) return;
 
         const segmentsArray = segments as string[];
@@ -78,5 +80,5 @@ export const useRouteGuard = () => {
                 }
             }
         }
-    }, [user, role, segments, isLoading, router]);
+    }, [user, role, segments, isLoading, router, navigationState]);
 };

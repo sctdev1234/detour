@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Reclamation = require('../models/Reclamation');
+const Notification = require('../models/Notification');
 const { auth } = require('../middleware/auth');
 
 // @route   POST api/reclamations
@@ -29,11 +30,31 @@ router.post('/', auth, async (req, res) => {
             .populate('reporterId', 'fullName email phone photoURL')
             .populate('tripId', 'startPoint endPoint price');
 
+        // Create Persistent Notification
+        let notification = null;
+        try {
+            notification = await Notification.create({
+                recipient: 'admin',
+                type: 'new_ticket',
+                title: 'New Ticket',
+                message: `New ticket from ${populated.reporterId.fullName}: ${subject}`,
+                data: { reclamationId: saved._id }
+            });
+        } catch (notifErr) {
+            console.error('Failed to create notification:', notifErr);
+        }
+
         // Emit socket event
         const io = req.app.get('socketio');
         if (io) {
             console.log(`Emitting 'new_reclamation' for ticket ${saved._id}`);
             io.emit('new_reclamation', populated);
+
+            // Emit notification if created
+            if (notification) {
+                console.log(`Emitting 'new_notification' for ticket ${saved._id}`);
+                io.emit('new_notification', notification);
+            }
         } else {
             console.error('Socket.io instance not found on app!');
         }
@@ -116,20 +137,17 @@ router.post('/:id/messages', auth, async (req, res) => {
             console.log(`Emitting 'new_message' to room ${req.params.id}`);
             io.to(req.params.id).emit('new_message', updated.messages[updated.messages.length - 1]);
 
-            // Notification Logic
-            // Determine recipient: if sender is reporter, recipient is admin (we can skip specific admin notification if they use dashboard, 
-            // or emit to 'admin' room if we had one. For now focusing on Client Notification).
-            // If sender is ADMIN (or anyone else), and reporter is NOT sender, notify reporter.
+            // Broadcast update to admin list and others
+            io.emit('reclamation_updated', updated);
 
+            // Notification Logic & Persistence
             // Check if schema has populated reporterId correctly from findById above
             const reporterId = updated.reporterId._id.toString();
             const senderId = req.user.id;
-
-            console.log(`[DEBUG] Check Notification: Sender=${senderId}, Reporter=${reporterId}`);
+            const senderName = updated.messages[updated.messages.length - 1].senderId.fullName;
 
             if (reporterId !== senderId) {
                 // Sender is Admin (or driver), Recipient is Reporter
-                console.log(`[DEBUG] Emitting 'notification' to room: user:${reporterId}`);
                 io.to(`user:${reporterId}`).emit('notification', {
                     title: 'New Message',
                     body: `You have a new message regarding "${updated.subject}"`,
@@ -137,7 +155,23 @@ router.post('/:id/messages', auth, async (req, res) => {
                     message: newMessage
                 });
             } else {
-                console.log(`[DEBUG] Sender is Reporter, not emitting notification.`);
+                // Sender is Reporter (Client), Create notification for ADMIN
+                try {
+                    const notification = await Notification.create({
+                        recipient: 'admin',
+                        type: 'new_message',
+                        title: 'New Message',
+                        message: `New message from ${senderName} in: ${updated.subject}`,
+                        data: { reclamationId: updated._id }
+                    });
+
+                    // Emit notification event
+                    console.log(`Emitting 'new_notification' for message in ${updated._id}`);
+                    io.emit('new_notification', notification);
+
+                } catch (notifErr) {
+                    console.error('Failed to create admin notification:', notifErr);
+                }
             }
         }
 
@@ -180,6 +214,18 @@ router.put('/:id/read', auth, async (req, res) => {
 
         // Populate senderId before responding so frontend gets full data
         await reclamation.populate('messages.senderId', 'fullName photoURL');
+
+        // Emit update
+        const io = req.app.get('socketio');
+        if (io) {
+            // Re-populate everything needed for the list view
+            await reclamation.populate('reporterId', 'fullName email phone photoURL');
+            // tripId already populated? No, need to populate if we want full object update
+            await reclamation.populate('tripId', 'startPoint endPoint price');
+
+            io.emit('reclamation_updated', reclamation);
+        }
+
         res.json(reclamation);
     } catch (err) {
         console.error('Error marking messages as read:', err.message);
@@ -192,7 +238,7 @@ router.put('/:id/read', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
     try {
         const reclamations = await Reclamation.find({ reporterId: req.user.id })
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
         res.json(reclamations);
     } catch (err) {
         console.error('Error fetching reclamations:', err.message);
@@ -214,7 +260,7 @@ router.get('/admin/all', auth, async (req, res) => {
             .populate('reporterId', 'fullName email phone photoURL') // Populate reporter details
             .populate('tripId', 'startPoint endPoint price')         // Populate trip details if needed
             .populate('messages.senderId', 'fullName role photoURL') // Populate message senders
-            .sort({ createdAt: -1 });
+            .sort({ updatedAt: -1 });
 
         res.json(reclamations);
     } catch (err) {
@@ -240,6 +286,16 @@ router.put('/:id/status', auth, async (req, res) => {
 
         reclamation.status = status;
         await reclamation.save();
+
+        // Populate for emission
+        await reclamation.populate('reporterId', 'fullName email phone photoURL');
+        await reclamation.populate('tripId', 'startPoint endPoint price');
+        await reclamation.populate('messages.senderId', 'fullName role photoURL');
+
+        const io = req.app.get('socketio');
+        if (io) {
+            io.emit('reclamation_updated', reclamation);
+        }
 
         res.json(reclamation);
     } catch (err) {

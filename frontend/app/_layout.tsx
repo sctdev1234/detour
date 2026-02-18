@@ -21,9 +21,9 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
 
-if (Platform.OS === 'web') {
-  require('leaflet/dist/leaflet.css');
-}
+// if (Platform.OS === 'web') {
+//   require('leaflet/dist/leaflet.css');
+// }
 
 export const unstable_settings = {
   initialRouteName: '(auth)',
@@ -77,7 +77,13 @@ function AppContent() {
 
         // Show in-app toast on ALL platforms
         const { useUIStore } = require('../store/useUIStore');
-        useUIStore.getState().showToast(data.body || 'New message received', 'info');
+        const uiStore = useUIStore.getState();
+        uiStore.showToast(data.body || 'New message received', 'info');
+
+        // Set unread badge for profile tab if it's a reclamation update
+        if (data.reclamationId) {
+          uiStore.setUnreadReclamation({ reclamationId: data.reclamationId });
+        }
 
         // Additionally show system notification on native
         if (Platform.OS !== 'web') {

@@ -272,40 +272,48 @@ export default function ReclamationDetailScreen() {
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             />
 
-            <View style={[styles.inputArea, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
-                {selectedImage && (
-                    <View style={styles.previewContainer}>
-                        <Image source={{ uri: selectedImage }} style={styles.previewImage} />
-                        <TouchableOpacity style={styles.removePreview} onPress={() => setSelectedImage(null)}>
-                            <X size={16} color="#fff" />
+            {reclamation?.status === 'resolved' ? (
+                <View style={[styles.inputArea, { backgroundColor: theme.background, borderTopColor: theme.border, alignItems: 'center', paddingVertical: 20 }]}>
+                    <Text style={{ color: theme.icon, fontStyle: 'italic' }}>
+                        This ticket is resolved. You cannot send new messages.
+                    </Text>
+                </View>
+            ) : (
+                <View style={[styles.inputArea, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
+                    {selectedImage && (
+                        <View style={styles.previewContainer}>
+                            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+                            <TouchableOpacity style={styles.removePreview} onPress={() => setSelectedImage(null)}>
+                                <X size={16} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                    <View style={[styles.inputContainer, { backgroundColor: theme.surface }]}>
+                        <TouchableOpacity onPress={pickImage} style={styles.attachButton}>
+                            <Camera size={24} color={theme.primary} />
+                        </TouchableOpacity>
+                        <TextInput
+                            style={[styles.input, { color: theme.text }]}
+                            placeholder="Type a message..."
+                            placeholderTextColor={theme.icon}
+                            value={inputText}
+                            onChangeText={setInputText}
+                            multiline
+                        />
+                        <TouchableOpacity
+                            style={[styles.sendButton, { backgroundColor: theme.primary, opacity: (!inputText.trim() && !selectedImage || isSending) ? 0.5 : 1 }]}
+                            onPress={handleSend}
+                            disabled={(!inputText.trim() && !selectedImage) || isSending}
+                        >
+                            {isSending ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <Send size={20} color="#fff" />
+                            )}
                         </TouchableOpacity>
                     </View>
-                )}
-                <View style={[styles.inputContainer, { backgroundColor: theme.surface }]}>
-                    <TouchableOpacity onPress={pickImage} style={styles.attachButton}>
-                        <Camera size={24} color={theme.primary} />
-                    </TouchableOpacity>
-                    <TextInput
-                        style={[styles.input, { color: theme.text }]}
-                        placeholder="Type a message..."
-                        placeholderTextColor={theme.icon}
-                        value={inputText}
-                        onChangeText={setInputText}
-                        multiline
-                    />
-                    <TouchableOpacity
-                        style={[styles.sendButton, { backgroundColor: theme.primary, opacity: (!inputText.trim() && !selectedImage || isSending) ? 0.5 : 1 }]}
-                        onPress={handleSend}
-                        disabled={(!inputText.trim() && !selectedImage) || isSending}
-                    >
-                        {isSending ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                            <Send size={20} color="#fff" />
-                        )}
-                    </TouchableOpacity>
                 </View>
-            </View>
+            )}
         </KeyboardAvoidingView>
     );
 }

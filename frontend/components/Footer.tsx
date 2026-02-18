@@ -12,8 +12,8 @@ import { useAuthStore } from '../store/useAuthStore';
 const CLIENT_ROUTES = ['index', 'requests', 'routes', 'trips', 'places', 'profile'];
 const DRIVER_ROUTES = ['index', 'cars', 'requests', 'routes', 'trips', 'places', 'profile'];
 
-const TabItem = ({ route, index, state, descriptors, navigation, theme, badgeCount }: {
-    route: any, index: number, state: any, descriptors: any, navigation: any, theme: any, badgeCount?: number
+const TabItem = ({ route, index, state, descriptors, navigation, theme, badgeCount, onPressOverride }: {
+    route: any, index: number, state: any, descriptors: any, navigation: any, theme: any, badgeCount?: number, onPressOverride?: () => void
 }) => {
     const { options } = descriptors[route.key];
     const isFocused = state.index === index;
@@ -34,6 +34,11 @@ const TabItem = ({ route, index, state, descriptors, navigation, theme, badgeCou
     });
 
     const onPress = () => {
+        if (onPressOverride) {
+            onPressOverride();
+            return;
+        }
+
         const event = navigation.emit({
             type: 'tabPress',
             target: route.key,
@@ -92,10 +97,33 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user, role } = useAuthStore();
+    // const { unreadReclamation } = useUIStore(); // Deprecated in favor of direct query
 
     // Notification Logic
     const { data: driverRequests } = useDriverRequests();
     const { data: clientRequests } = useClientRequests();
+
+    // Fetch reclamations to get accurate unread count
+    const { useReclamations } = require('../hooks/api/useReclamationQueries');
+    const { data: reclamations } = useReclamations();
+
+    // Calculate unread reclamations count
+    const unreadReclamationCount = React.useMemo(() => {
+        if (!reclamations) return 0;
+        return reclamations.filter((r: any) => {
+            // Logic must match requests.tsx: unread admin message
+            if (r.status === 'resolved') return false;
+
+            const lastMsg = r.messages && r.messages.length > 0 ? r.messages[r.messages.length - 1] : null;
+            if (!lastMsg) return false;
+
+            const reporterId = typeof r.reporterId === 'object' ? r.reporterId._id : r.reporterId;
+            const senderId = typeof lastMsg.senderId === 'object' ? lastMsg.senderId._id : lastMsg.senderId;
+
+            // Check if message is from admin (not us) and unread
+            return String(reporterId) !== String(senderId) && !lastMsg.read;
+        }).length;
+    }, [reclamations]);
 
     // Calculate pending notifications based on role
     const notificationCount = React.useMemo(() => {
@@ -158,6 +186,20 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
             >
                 {routesToShow.map((route, index) => {
                     const realIndex = state.routes.indexOf(route);
+
+                    // Determine badge count
+                    let badgeCount: number | undefined = undefined;
+
+                    if (route.name === 'requests') {
+                        // Requests tab (Bell icon) gets both trip requests and reclamation notifications
+                        const reqCount = notificationCount || 0;
+                        const recCount = unreadReclamationCount || 0;
+                        const total = reqCount + recCount;
+                        if (total > 0) badgeCount = total;
+                    }
+
+                    // Removed badge from profile as per user request ("but no... i want it to appear in the notification")
+
                     return (
                         <TabItem
                             key={route.key}
@@ -167,7 +209,10 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
                             descriptors={descriptors}
                             navigation={navigation}
                             theme={theme}
-                            badgeCount={route.name === 'requests' ? notificationCount : undefined}
+                            badgeCount={badgeCount}
+                        // Removed the onPressOverride for profile since we are moving the notification to the requests tab
+                        // The user will see the badge on Requests, click it, go to Requests screen, 
+                        // and see the Notification Card at the top (implemented in requests.tsx).
                         />
                     );
                 })}

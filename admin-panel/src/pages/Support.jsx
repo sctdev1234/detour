@@ -4,42 +4,63 @@ import { io } from 'socket.io-client';
 import ReclamationModal from '../components/ReclamationModal';
 import api from '../lib/axios';
 
+import { useSearchParams } from 'react-router-dom';
+
 export default function Support() {
     const [reclamations, setReclamations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [filterStatus, setFilterStatus] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [searchParams, setSearchParams] = useSearchParams();
 
     useEffect(() => {
+        // ... (existing fetch logic remains effectively the same, just wrapped)
         fetchReclamations();
 
-        // Socket connection for real-time updates
+        // Socket logic...
         const socket = io('http://localhost:5000', {
-            transports: ['websocket'], // Force WebSocket transport
+            transports: ['websocket'],
         });
 
-        socket.on('connect', () => {
-            console.log('Connected to WebSocket server:', socket.id);
-        });
-
-        socket.on('connect_error', (err) => {
-            console.error('WebSocket connection error:', err);
-        });
+        // ... socket events ...
+        socket.on('connect', () => console.log('Connected to WebSocket server:', socket.id));
+        socket.on('connect_error', (err) => console.error('WebSocket connection error:', err));
 
         socket.on('new_reclamation', (newTicket) => {
-            console.log('Received new reclamation via socket:', newTicket);
             setReclamations(prev => [newTicket, ...prev]);
         });
 
-        // Also listen for status updates from other admins if needed, 
-        // though Modal handles its own. But if another admin updates status, list should reflect it.
-        // We'll leave that for now or add if requested.
+        socket.on('reclamation_updated', (updatedTicket) => {
+            setReclamations(prev => {
+                const others = prev.filter(t => t._id !== updatedTicket._id);
+                return [updatedTicket, ...others];
+            });
+            setSelectedTicket(current => {
+                if (current && current._id === updatedTicket._id) {
+                    return updatedTicket;
+                }
+                return current;
+            });
+        });
 
         return () => {
             socket.disconnect();
         };
     }, []);
+
+    // Effect to handle URL query param for opening specific ticket
+    useEffect(() => {
+        const ticketId = searchParams.get('ticketId');
+        if (ticketId && reclamations.length > 0) {
+            const ticketToOpen = reclamations.find(t => t._id === ticketId);
+            if (ticketToOpen) {
+                setSelectedTicket(ticketToOpen);
+                // Optional: clear param so it doesn't reopen on close? 
+                // Leaving it allows refresh to reopen, which is often desired.
+            }
+        }
+    }, [searchParams, reclamations]);
 
     const fetchReclamations = async () => {
         setLoading(true);
@@ -69,6 +90,24 @@ export default function Support() {
 
         return matchesStatus && matchesSearch;
     });
+
+    const hasUnreadMessages = (ticket) => {
+        if (!ticket.messages || !Array.isArray(ticket.messages)) return false;
+        // Check if there is any message that is NOT read and NOT sent by an admin (or current user proxy)
+        // Since we don't have easy access to current admin ID here without auth context, we can check if the LAST message is not read.
+        // Or if any message has read: false and senderId is the reporter.
+
+        // Better heuristic: Check if the last message is from the reporter and is not read.
+        const lastMsg = ticket.messages[ticket.messages.length - 1];
+        if (!lastMsg) return false;
+
+        // Assume if senderId matches reporterId, it's a user message.
+        // Need to handle if senderId is populated object or string
+        const senderId = lastMsg.senderId?._id || lastMsg.senderId;
+        const reporterId = ticket.reporterId?._id || ticket.reporterId;
+
+        return senderId === reporterId && !lastMsg.read;
+    };
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -162,7 +201,12 @@ export default function Support() {
                                         <div className="text-xs text-slate-500">{ticket.reporterId?.email}</div>
                                     </td>
                                     <td className="p-4">
-                                        <div className="font-medium text-slate-300">{ticket.subject}</div>
+                                        <div className="font-medium text-slate-300 flex items-center gap-2">
+                                            {ticket.subject}
+                                            {hasUnreadMessages(ticket) && (
+                                                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" title="New Message"></span>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-slate-500 truncate max-w-[200px]">{ticket.description}</div>
                                     </td>
                                     <td className="p-4">
@@ -192,7 +236,10 @@ export default function Support() {
             {selectedTicket && (
                 <ReclamationModal
                     reclamation={selectedTicket}
-                    onClose={() => setSelectedTicket(null)}
+                    onClose={() => {
+                        setSelectedTicket(null);
+                        setSearchParams({}); // Clear URL params so it doesn't reopen
+                    }}
                     onUpdate={handleUpdate}
                 />
             )}

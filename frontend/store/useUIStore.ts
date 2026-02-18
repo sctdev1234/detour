@@ -32,6 +32,10 @@ interface ConfirmSlice {
     setConfirmInput: (text: string) => void;
     showConfirm: (options: ConfirmOptions) => void;
     hideConfirm: () => void;
+
+    // Unread Notification State
+    unreadReclamation: { reclamationId: string } | null;
+    setUnreadReclamation: (data: { reclamationId: string } | null) => void;
 }
 
 export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
@@ -73,4 +77,8 @@ export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
         isConfirmVisible: true
     }),
     hideConfirm: () => set({ isConfirmVisible: false }),
+
+    // Unread Reclamation State
+    unreadReclamation: null,
+    setUnreadReclamation: (data) => set({ unreadReclamation: data }),
 }));
