@@ -11,6 +11,7 @@
 [X] - tasks Page
 
 [X] - when chose role Driver require one car at least. the continue
+[ ] - show the driver the initial route in blue and the corrected route in green
 [ ] - in task page allow the user to acces his profile
 [ ] - Driver abonnement for ex : 10% of profit for each trajet (minimum 5 MAD for every place in the trip).
 
