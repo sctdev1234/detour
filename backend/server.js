@@ -120,6 +120,11 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} joined reclamation room: ${reclamationId}`);
     });
 
+    socket.on('join_user', (userId) => {
+        socket.join(`user:${userId}`);
+        console.log(`Socket ${socket.id} joined user room: user:${userId}`);
+    });
+
     socket.on('leave_reclamation', (reclamationId) => {
         socket.leave(reclamationId);
         console.log(`Socket ${socket.id} left reclamation room: ${reclamationId}`);

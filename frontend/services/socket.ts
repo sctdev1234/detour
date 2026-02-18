@@ -54,6 +54,23 @@ class SocketService {
             this.socket = null;
         }
     }
+
+    public joinReclamation(reclamationId: string) {
+        this.socket?.emit('join_reclamation', reclamationId);
+    }
+
+    public leaveReclamation(reclamationId: string) {
+        this.socket?.emit('leave_reclamation', reclamationId);
+    }
+
+    public joinUserRoom(userId: string) {
+        console.log(`[SocketService] Joining user room: user:${userId}`);
+        if (!this.socket) {
+            console.warn('[SocketService] Socket is null! Cannot join user room.');
+            return;
+        }
+        this.socket.emit('join_user', userId);
+    }
 }
 
 export default SocketService.getInstance();

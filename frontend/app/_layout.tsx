@@ -38,6 +38,18 @@ const queryClient = new QueryClient({
   },
 });
 
+import SocketService from '../services/socket';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 function AppContent() {
   const colorScheme = useColorScheme() ?? 'light';
   // Use useUser to fetch/validate user session on app start
@@ -55,6 +67,44 @@ function AppContent() {
   const router = useRouter();
 
   useEffect(() => {
+    if (user) {
+      console.log('[Layout] Connecting socket for user:', user.id);
+      SocketService.connect();
+      SocketService.joinUserRoom(user.id);
+
+      const handleNotification = (data: any) => {
+        console.log('Received notification socket event:', data);
+
+        // Show in-app toast on ALL platforms
+        const { useUIStore } = require('../store/useUIStore');
+        useUIStore.getState().showToast(data.body || 'New message received', 'info');
+
+        // Additionally show system notification on native
+        if (Platform.OS !== 'web') {
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: data.title,
+              body: data.body,
+              data: { reclamationId: data.reclamationId },
+            },
+            trigger: null,
+          });
+        }
+
+        // Invalidate reclamation queries to refresh unread badges
+        queryClient.invalidateQueries({ queryKey: ['reclamations'] });
+      };
+
+      const socket = SocketService.getSocket();
+      socket?.on('notification', handleNotification);
+
+      return () => {
+        socket?.off('notification', handleNotification);
+      };
+    }
+  }, [user]);
+
+  useEffect(() => {
     // Register for push notifications
     registerForPushNotificationsAsync();
 
@@ -64,8 +114,9 @@ function AppContent() {
     if (Constants.appOwnership !== 'expo' || Platform.OS !== 'android') {
       notificationListener = Notifications.addNotificationResponseReceivedListener(response => {
         const data = response.notification.request.content.data;
-        if (data?.tripId) {
-          // Navigate based on data if needed
+        if (data?.reclamationId) {
+          router.push(`/reclamations/${data.reclamationId}`);
+        } else if (data?.tripId) {
           console.log('Notification data:', data);
         }
       });
@@ -119,6 +170,7 @@ function AppContent() {
           <Stack.Screen name="finance/wallet" options={{ headerShown: false }} />
           <Stack.Screen name="reclamations/new" options={{ headerShown: false }} />
           <Stack.Screen name="reclamations/index" options={{ headerShown: false }} />
+          <Stack.Screen name="reclamations/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
         </Stack>
         <LocationTracker />

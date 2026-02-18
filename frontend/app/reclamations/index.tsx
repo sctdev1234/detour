@@ -4,11 +4,13 @@ import React from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { Reclamation, useReclamations } from '../../hooks/api/useReclamationQueries';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function ReclamationsListScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const { user } = useAuthStore();
 
     const { data: myReclamations, isLoading } = useReclamations();
 
@@ -22,6 +24,11 @@ export default function ReclamationsListScreen() {
             }
         };
 
+        const unreadCount = item.messages?.filter(m => {
+            const senderId = typeof m.senderId === 'string' ? m.senderId : (m.senderId as any)._id;
+            return senderId !== user?.id && !m.read;
+        }).length || 0;
+
         return (
 
             <TouchableOpacity
@@ -31,8 +38,15 @@ export default function ReclamationsListScreen() {
             >
                 <View style={styles.cardHeader}>
                     <Text style={[styles.type, { color: theme.text }]}>#{item.id.substring(item.id.length - 6).toUpperCase()} • {item.type.toUpperCase().replace('_', ' ')}</Text>
-                    <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                        <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status.toUpperCase()}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {unreadCount > 0 && (
+                            <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+                                <Text style={[styles.badgeText, { color: '#fff' }]}>{unreadCount} new</Text>
+                            </View>
+                        )}
+                        <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                            <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status.toUpperCase()}</Text>
+                        </View>
                     </View>
                 </View>
                 <Text style={[styles.subject, { color: theme.text }]}>{item.subject}</Text>

@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera, ChevronLeft, Send, X } from 'lucide-react-native';
+import { Camera, Send, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -17,7 +17,7 @@ import {
     View
 } from 'react-native';
 import { Colors } from '../../constants/theme';
-import { reclamationKeys, useAddMessage, useReclamation } from '../../hooks/api/useReclamationQueries';
+import { reclamationKeys, useAddMessage, useMarkReclamationRead, useReclamation } from '../../hooks/api/useReclamationQueries';
 import api from '../../services/api';
 import SocketService from '../../services/socket';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -33,6 +33,13 @@ export default function ReclamationDetailScreen() {
     // Hooks
     const { data: reclamation, isLoading } = useReclamation(id);
     const { mutate: sendMessage, isPending: isSending } = useAddMessage(id);
+    const { mutate: markRead } = useMarkReclamationRead();
+
+    useEffect(() => {
+        if (id) {
+            markRead(id);
+        }
+    }, [id]);
 
     const [inputText, setInputText] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -229,7 +236,7 @@ export default function ReclamationDetailScreen() {
                     </View>
                 )}
                 <Text style={[styles.date, { color: theme.icon }]}>
-                    Ticket #{reclamation?.id.substring(reclamation.id.length - 6).toUpperCase()} • {new Date(reclamation?.createdAt || Date.now()).toLocaleDateString()}
+                    Ticket #{reclamation?.id ? reclamation.id.substring(reclamation.id.length - 6).toUpperCase() : '...'} • {new Date(reclamation?.createdAt || Date.now()).toLocaleDateString()}
                 </Text>
             </View>
 
@@ -254,16 +261,6 @@ export default function ReclamationDetailScreen() {
             style={[styles.container, { backgroundColor: theme.background }]}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
-            <View style={[styles.header, { backgroundColor: theme.background }]}>
-                <TouchableOpacity
-                    style={[styles.backButton, { backgroundColor: theme.surface }]}
-                    onPress={() => router.back()}
-                >
-                    <ChevronLeft size={24} color={theme.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: theme.text }]}>Reclamation Details</Text>
-                <View style={{ width: 44 }} />
-            </View>
 
             <FlatList
                 ref={flatListRef}

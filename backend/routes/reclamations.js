@@ -23,7 +23,22 @@ router.post('/', auth, async (req, res) => {
         });
 
         const saved = await reclamation.save();
-        res.json(saved);
+
+        // Populate for admin panel real-time update
+        const populated = await Reclamation.findById(saved._id)
+            .populate('reporterId', 'fullName email phone photoURL')
+            .populate('tripId', 'startPoint endPoint price');
+
+        // Emit socket event
+        const io = req.app.get('socketio');
+        if (io) {
+            console.log(`Emitting 'new_reclamation' for ticket ${saved._id}`);
+            io.emit('new_reclamation', populated);
+        } else {
+            console.error('Socket.io instance not found on app!');
+        }
+
+        res.json(populated);
     } catch (err) {
         console.error('Error creating reclamation:', err.message);
         res.status(500).send('Server Error');
@@ -95,15 +110,79 @@ router.post('/:id/messages', auth, async (req, res) => {
             .populate('reporterId', 'fullName email phone photoURL')
             .populate('messages.senderId', 'fullName role photoURL');
 
-        // Emit socket event
+        // Emit socket event to the reclamation room (for chat updates)
         const io = req.app.get('socketio');
         if (io) {
+            console.log(`Emitting 'new_message' to room ${req.params.id}`);
             io.to(req.params.id).emit('new_message', updated.messages[updated.messages.length - 1]);
+
+            // Notification Logic
+            // Determine recipient: if sender is reporter, recipient is admin (we can skip specific admin notification if they use dashboard, 
+            // or emit to 'admin' room if we had one. For now focusing on Client Notification).
+            // If sender is ADMIN (or anyone else), and reporter is NOT sender, notify reporter.
+
+            // Check if schema has populated reporterId correctly from findById above
+            const reporterId = updated.reporterId._id.toString();
+            const senderId = req.user.id;
+
+            console.log(`[DEBUG] Check Notification: Sender=${senderId}, Reporter=${reporterId}`);
+
+            if (reporterId !== senderId) {
+                // Sender is Admin (or driver), Recipient is Reporter
+                console.log(`[DEBUG] Emitting 'notification' to room: user:${reporterId}`);
+                io.to(`user:${reporterId}`).emit('notification', {
+                    title: 'New Message',
+                    body: `You have a new message regarding "${updated.subject}"`,
+                    reclamationId: updated._id,
+                    message: newMessage
+                });
+            } else {
+                console.log(`[DEBUG] Sender is Reporter, not emitting notification.`);
+            }
         }
 
         res.json(updated);
     } catch (err) {
         console.error('Error adding message:', err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   PUT api/reclamations/:id/read
+// @desc    Mark all messages from others as read
+router.put('/:id/read', auth, async (req, res) => {
+    try {
+        const reclamation = await Reclamation.findById(req.params.id);
+        if (!reclamation) {
+            return res.status(404).json({ msg: 'Reclamation not found' });
+        }
+
+        const currentUserId = req.user.id;
+        console.log(`[DEBUG] Mark as read: currentUser=${currentUserId}, reclamation=${req.params.id}`);
+
+        // Mark all messages NOT sent by current user as read
+        let updated = false;
+        reclamation.messages.forEach(msg => {
+            const msgSenderId = msg.senderId._id ? msg.senderId._id.toString() : msg.senderId.toString();
+            if (msgSenderId !== currentUserId && !msg.read) {
+                console.log(`[DEBUG] Marking message ${msg._id} as read (sender: ${msgSenderId})`);
+                msg.read = true;
+                updated = true;
+            }
+        });
+
+        if (updated) {
+            await reclamation.save();
+            console.log(`[DEBUG] Saved ${req.params.id} with updated read status`);
+        } else {
+            console.log(`[DEBUG] No messages to mark as read`);
+        }
+
+        // Populate senderId before responding so frontend gets full data
+        await reclamation.populate('messages.senderId', 'fullName photoURL');
+        res.json(reclamation);
+    } catch (err) {
+        console.error('Error marking messages as read:', err.message);
         res.status(500).send('Server Error');
     }
 });

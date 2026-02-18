@@ -46,6 +46,10 @@ const ReclamationSchema = new mongoose.Schema({
         image: {
             type: String
         },
+        read: {
+            type: Boolean,
+            default: false
+        },
         createdAt: {
             type: Date,
             default: Date.now

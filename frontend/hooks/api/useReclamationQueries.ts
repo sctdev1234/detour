@@ -19,6 +19,7 @@ export interface Reclamation {
             photoURL?: string;
         } | string;
         text: string;
+        read: boolean;
         createdAt: string;
     }[];
 }
@@ -44,8 +45,24 @@ export const useReclamations = () => {
                 evidenceUrls: r.evidenceUrls || (r.evidenceUrl ? [r.evidenceUrl] : []),
                 status: r.status,
                 createdAt: r.createdAt,
+                messages: r.messages || [],
             }));
         }
+    });
+};
+
+export const useMarkReclamationRead = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (reclamationId: string) => {
+            const res = await api.put(`/reclamations/${reclamationId}/read`);
+            return res.data;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: reclamationKeys.all });
+            queryClient.setQueryData(reclamationKeys.detail(data._id), data);
+        },
     });
 };
 

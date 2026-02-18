@@ -1,5 +1,6 @@
 import { CheckCircle, Clock, Filter, MessageSquare, Search, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import ReclamationModal from '../components/ReclamationModal';
 import api from '../lib/axios';
 
@@ -12,6 +13,32 @@ export default function Support() {
 
     useEffect(() => {
         fetchReclamations();
+
+        // Socket connection for real-time updates
+        const socket = io('http://localhost:5000', {
+            transports: ['websocket'], // Force WebSocket transport
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server:', socket.id);
+        });
+
+        socket.on('connect_error', (err) => {
+            console.error('WebSocket connection error:', err);
+        });
+
+        socket.on('new_reclamation', (newTicket) => {
+            console.log('Received new reclamation via socket:', newTicket);
+            setReclamations(prev => [newTicket, ...prev]);
+        });
+
+        // Also listen for status updates from other admins if needed, 
+        // though Modal handles its own. But if another admin updates status, list should reflect it.
+        // We'll leave that for now or add if requested.
+
+        return () => {
+            socket.disconnect();
+        };
     }, []);
 
     const fetchReclamations = async () => {

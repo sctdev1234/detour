@@ -1,6 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { Component, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { MapProps } from './Map';
+
+// Error boundary to catch Leaflet DOM errors
+class MapErrorBoundary extends Component<{ children: React.ReactNode; height?: any; theme?: any }, { hasError: boolean }> {
+    state = { hasError: false };
+    static getDerivedStateFromError() { return { hasError: true }; }
+    componentDidCatch(error: any) { console.warn('[MapErrorBoundary] Leaflet error caught:', error.message); }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View style={[styles.loadingContainer, { height: this.props.height || 300 }]}>
+                    <Text style={{ color: this.props.theme?.icon || '#666', fontSize: 14 }}>Map unavailable</Text>
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 // Dynamically import the Leaflet component on client-side only
 export default function Map(props: MapProps) {
@@ -34,7 +51,11 @@ export default function Map(props: MapProps) {
         );
     }
 
-    return <MapComponent {...props} />;
+    return (
+        <MapErrorBoundary height={props.height} theme={props.theme}>
+            <MapComponent {...props} />
+        </MapErrorBoundary>
+    );
 }
 
 const styles = StyleSheet.create({
