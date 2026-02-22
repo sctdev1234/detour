@@ -37,6 +37,26 @@ export const getNextTripOccurrence = (timeStart: string | undefined, days: strin
     return closestDate;
 };
 
+export const getLateDurationString = (targetDate: Date | null, now: Date = new Date()): string | null => {
+    if (!targetDate) return null;
+
+    const diffMs = now.getTime() - targetDate.getTime();
+    if (diffMs <= 0) return null; // not late yet
+
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const remainingSecs = diffSecs % 60;
+
+    if (diffMins < 60) {
+        return `Late by ${diffMins}m ${remainingSecs}s`;
+    }
+
+    const diffHours = Math.floor(diffMins / 60);
+    const remainingMins = diffMins % 60;
+
+    return `Late by ${diffHours}h ${remainingMins}m ${remainingSecs}s`;
+};
+
 export const getCountdownString = (targetDate: Date | null, now: Date = new Date()): string | null => {
     if (!targetDate) return null;
 

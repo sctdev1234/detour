@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
-import { Check, Navigation, User } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { AlertTriangle, Check, Navigation, User } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, BackHandler, Easing, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useCancelDropoff, useCancelPickup, useCancelTrip, useConfirmDropoff, useConfirmPickup, useDriverArrived, useDriverReady, useFinishTrip, useRemoveClient, useStartTrip } from '../hooks/api/useTripQueries';
+import { useLateDuration } from '../hooks/useCountdown';
 import SocketService from '../services/socket';
 import { useLocationStore } from '../store/useLocationStore';
+import { getNextTripOccurrence } from '../utils/timeUtils';
 import DetourMap from './Map';
 
 export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
@@ -28,6 +30,28 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
     const socket = SocketService.getSocket();
     const [actionLoading, setActionLoading] = useState(false);
     const [hasShownDestinationAlert, setHasShownDestinationAlert] = useState(false);
+
+    // Compute the scheduled start date and late duration
+    const scheduledDate = useMemo(() => {
+        return getNextTripOccurrence(trip.routeId?.timeStart, trip.routeId?.days || []);
+    }, [trip.routeId?.timeStart, trip.routeId?.days]);
+
+    const lateDuration = useLateDuration(scheduledDate);
+    const isLate = !!lateDuration && trip.status !== 'STARTED' && trip.status !== 'IN_PROGRESS' && trip.status !== 'PICKUP_IN_PROGRESS' && trip.status !== 'COMPLETED';
+
+    // Pulsing animation for the late banner
+    const pulseAnim = useMemo(() => new Animated.Value(1), []);
+    useEffect(() => {
+        if (!isLate) return;
+        const pulse = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 0.6, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            ])
+        );
+        pulse.start();
+        return () => pulse.stop();
+    }, [isLate]);
 
     // Stream driver location to backend for 1km proximity alerts
     useEffect(() => {
@@ -255,6 +279,14 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
                 <Text style={styles.statusText}>{trip.status ? trip.status.toUpperCase() : 'PENDING'} • HARD LOCKED UI</Text>
             </View>
 
+            {isLate && (
+                <Animated.View style={[styles.lateBanner, { opacity: pulseAnim }]}>
+                    <AlertTriangle size={20} color="#fff" />
+                    <Text style={styles.lateText}>{lateDuration}</Text>
+                    <Text style={styles.lateSubText}>You should have started already!</Text>
+                </Animated.View>
+            )}
+
             <View style={{ flex: 1 }}>
                 <DetourMap mode="trip" trip={trip} theme={theme} />
             </View>
@@ -395,6 +427,9 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { padding: 20, paddingTop: 40, alignItems: 'center', backgroundColor: '#ef4444' },
     title: { fontSize: 18, fontWeight: '900', color: '#fff' },
+    lateBanner: { backgroundColor: '#dc2626', paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' },
+    lateText: { color: '#fff', fontSize: 18, fontWeight: '900', letterSpacing: 0.5 },
+    lateSubText: { color: '#fecaca', fontSize: 12, fontWeight: '600', width: '100%', textAlign: 'center' },
     statusBanner: { padding: 10, alignItems: 'center', justifyContent: 'center' },
     statusText: { color: '#fff', fontSize: 14, fontWeight: '800' },
     content: { padding: 20, paddingBottom: 100 },
