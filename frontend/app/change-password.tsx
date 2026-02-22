@@ -14,14 +14,14 @@ import {
 } from 'react-native';
 import { PremiumInput } from '../components/PremiumInput';
 import { Colors } from '../constants/theme';
-import { useAuthStore } from '../store/useAuthStore';
+import { useChangePassword } from '../hooks/api/useAuthQueries';
 import { useUIStore } from '../store/useUIStore';
 
 export default function ChangePasswordScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { changePassword } = useAuthStore();
+    const { mutateAsync: changePassword } = useChangePassword();
     const { showToast } = useUIStore();
 
     const [oldPassword, setOldPassword] = useState('');
@@ -47,11 +47,11 @@ export default function ChangePasswordScreen() {
 
         setIsLoading(true);
         try {
-            await changePassword(oldPassword, newPassword);
+            await changePassword({ oldPassword, newPassword });
             showToast('Password updated successfully', 'success');
             router.back();
         } catch (error: any) {
-            showToast(error.message || 'Failed to update password', 'error');
+            showToast(error.response?.data?.msg || error.message || 'Failed to update password', 'error');
         } finally {
             setIsLoading(false);
         }

@@ -5,6 +5,29 @@ const User = require('../models/User');
 const transactionService = require('./transactionService');
 
 class TripService {
+    constructor() {
+        this.io = null;
+        this.calculateDistance = this.calculateDistance.bind(this);
+    }
+
+    setIO(io) {
+        this.io = io;
+    }
+
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // metres
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
+    }
     async createRoute(userId, routeData) {
         const {
             role, carId, startPoint, endPoint, waypoints,
@@ -340,13 +363,109 @@ class TripService {
             .sort({ createdAt: -1 });
     }
 
+    async driverConfirmReady(userId, tripId) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+        if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
+
+        if (trip.status !== 'STARTING_SOON') {
+            throw new Error(`Cannot confirm ready from state: ${trip.status}`);
+        }
+
+        trip.driverReady = true;
+        await trip.save();
+
+        if (this.io) {
+            this.io.to(`trip:${tripId}`).emit('trip_updated', { tripId });
+        }
+        return trip;
+    }
+
+    async clientConfirmReady(userId, tripId) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        const client = trip.clients.find(c => c.userId.toString() === userId);
+        if (!client) throw new Error('Client not found in trip');
+
+        if (trip.status !== 'STARTING_SOON' && trip.status !== 'CONFIRMED' && trip.status !== 'PARTIAL') {
+            throw new Error(`Trip is not in a valid state to confirm readiness: ${trip.status}`);
+        }
+
+        if (client.status !== 'WAITING') {
+            throw new Error(`Cannot confirm readiness. You are currently: ${client.status}`);
+        }
+
+        client.status = 'READY';
+        await trip.save();
+
+        if (this.io) {
+            this.io.to(`trip:${tripId}`).emit('trip_updated', { tripId });
+            this.io.to(`user:${trip.driverId}`).emit('client_ready', { tripId, clientId: userId });
+        }
+        return trip;
+    }
+
+    async cancelTrip(userId, { tripId, reason }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        const isDriver = trip.driverId.toString() === userId;
+        const isClient = trip.clients.some(c => c.userId.toString() === userId);
+
+        if (!isDriver && !isClient) throw new Error('Not authorized to cancel this trip');
+
+        if (isDriver) {
+            trip.status = 'CANCELLED';
+            trip.cancellationReason = reason || 'Cancelled by driver';
+            trip.cancelledBy = userId;
+
+            // Mark all clients as cancelled
+            trip.clients.forEach(c => {
+                c.status = 'CANCELLED';
+            });
+
+            await trip.save();
+
+            if (this.io) {
+                this.io.to(`trip:${tripId}`).emit('trip_cancelled', { tripId, reason, cancelledBy: 'Driver' });
+            }
+        } else if (isClient) {
+            // Client cancelling their seat
+            const clientIndex = trip.clients.findIndex(c => c.userId.toString() === userId);
+            if (clientIndex === -1) throw new Error('Client not found');
+
+            trip.clients[clientIndex].status = 'CANCELLED';
+
+            // Refund logic could go here if payment was authorized/hold
+
+            await trip.save();
+
+            if (this.io) {
+                this.io.to(`user:${trip.driverId}`).emit('client_cancelled', { tripId, clientId: userId, reason });
+            }
+        }
+
+        return trip;
+    }
+
     async startTrip(userId, tripId) {
         const trip = await Trip.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
 
+        if (trip.status !== 'CONFIRMED' && trip.status !== 'PARTIAL' && trip.status !== 'STARTING_SOON') {
+            throw new Error(`Invalid Transition: Cannot start trip from state ${trip.status}`);
+        }
+
+        if (trip.status === 'STARTING_SOON' && !trip.driverReady) {
+            throw new Error(`Invalid Transition: You must confirm you are ready before starting the trip.`);
+        }
+
         trip.status = 'STARTED';
+        trip.stateTimestamps = trip.stateTimestamps || {};
+        trip.stateTimestamps.startedAt = new Date();
         await trip.save();
 
         return trip;
@@ -358,7 +477,13 @@ class TripService {
 
         if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
 
+        if (trip.status !== 'IN_PROGRESS' && trip.status !== 'STARTED') {
+            throw new Error(`Invalid Transition: Cannot complete trip from state ${trip.status}`);
+        }
+
         trip.status = 'COMPLETED';
+        trip.stateTimestamps = trip.stateTimestamps || {};
+        trip.stateTimestamps.completedAt = new Date();
         await trip.save();
 
         return trip;
@@ -381,8 +506,8 @@ class TripService {
         // Remove client from trip
         trip.clients.splice(clientIndex, 1);
 
-        // Reset trip status to 'pending'
-        trip.status = 'pending';
+        // Reset trip status to 'PENDING'
+        trip.status = 'PENDING';
 
         await trip.save();
 
@@ -399,28 +524,39 @@ class TripService {
 
         return trip;
     }
-    async confirmPickup(driverId, { tripId, clientId }) {
-        const trip = await Trip.findById(tripId);
+
+    async confirmPickup(driverId, { tripId, clientId, driverLocation }) {
+        const trip = await Trip.findById(tripId).populate('clients.routeId').populate('routeId');
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
+
+        if (trip.status !== 'ARRIVED_PICKUP' && trip.status !== 'IN_PROGRESS' && trip.status !== 'STARTED') {
+            throw new Error(`Invalid Transition: Cannot confirm pickup from state ${trip.status}`);
+        }
 
         const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
         if (clientIndex === -1) throw new Error('Client not found in trip');
 
         const clientEntry = trip.clients[clientIndex];
 
-        if (clientEntry.status === 'PICKED_UP') throw new Error('Client already picked up');
+        if (clientEntry.status !== 'PICKUP_INCOMING' && clientEntry.status !== 'READY' && clientEntry.status !== 'WAITING') {
+            throw new Error(`Invalid Client Transition: Cannot confirm pickup for client in state ${clientEntry.status}`);
+        }
 
-        // Update status
-        clientEntry.status = 'PICKED_UP';
+        if (driverLocation && clientEntry.routeId && clientEntry.routeId.startPoint) {
+            const pickupCoords = clientEntry.routeId.startPoint.coordinates; // [lng, lat]
+            const distance = this.calculateDistance(driverLocation.lat, driverLocation.lng, pickupCoords[1], pickupCoords[0]);
+            if (distance > 200) { // 200 meters radius
+                throw new Error(`Location validation failed: You are ${Math.round(distance)}m away from pickup`);
+            }
+        }
+
+        clientEntry.status = 'IN_CAR';
         trip.status = 'IN_PROGRESS';
 
-        // Use the agreed price stored in the trip
-        const price = clientEntry.price;
-
+        let price = clientEntry.price;
         if (!price) {
-            // Fallback if price is missing (legacy data?)
             const driverRoute = await Route.findById(trip.routeId);
             price = driverRoute.price.amount;
         }
@@ -431,13 +567,6 @@ class TripService {
         } catch (paymentError) {
             console.error('Payment failed:', paymentError);
             clientEntry.paymentStatus = 'failed';
-            // We still mark as picked up, but maybe flag it? 
-            // Requirement: "if he has enough balance to pay... Driver confirm PickUp... System Deducted"
-            // If payment fails, should we block pickup? The requirement says "Driver see... if he has enough balance".
-            // So we should have checked before. But `processTripPayment` checks balance.
-            // If it fails, we should probably throw an error and NOT confirm pickup? 
-            // "notify the [Driver] that [System] he received the money" happens AFTER pickup confirm.
-            // Let's block if payment fails.
             throw new Error(`Payment failed: ${paymentError.message}`);
         }
 
@@ -445,19 +574,36 @@ class TripService {
         return trip;
     }
 
-    async confirmDropoff(driverId, { tripId, clientId }) {
-        const trip = await Trip.findById(tripId);
+    async confirmDropoff(driverId, { tripId, clientId, driverLocation }) {
+        const trip = await Trip.findById(tripId).populate('clients.routeId');
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
 
+        if (trip.status !== 'IN_PROGRESS') {
+            throw new Error(`Invalid Transition: Cannot confirm dropoff from state ${trip.status}`);
+        }
+
         const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
         if (clientIndex === -1) throw new Error('Client not found in trip');
 
-        trip.clients[clientIndex].status = 'DROPPED_OFF';
-        trip.status = 'IN_PROGRESS';
-        await trip.save();
+        const clientEntry = trip.clients[clientIndex];
 
+        if (clientEntry.status !== 'IN_CAR') {
+            throw new Error(`Invalid Client Transition: Cannot confirm dropoff for client in state ${clientEntry.status}`);
+        }
+
+        if (driverLocation && clientEntry.routeId && clientEntry.routeId.endPoint) {
+            const dropoffCoords = clientEntry.routeId.endPoint.coordinates; // [lng, lat]
+            const distance = this.calculateDistance(driverLocation.lat, driverLocation.lng, dropoffCoords[1], dropoffCoords[0]);
+            if (distance > 200) { // 200 meters radius
+                throw new Error(`Location validation failed: You are ${Math.round(distance)}m away from dropoff`);
+            }
+        }
+
+        clientEntry.status = 'DROPPED_OFF';
+
+        await trip.save();
         return trip;
     }
 
@@ -468,24 +614,191 @@ class TripService {
         const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
         if (clientIndex === -1) throw new Error('Client not found in trip');
 
-        trip.clients[clientIndex].status = 'WAITING_AT_PICKUP';
-        // Spec: "Client1 state updated -> WAITING_AT_PICKUP"
+        const clientEntry = trip.clients[clientIndex];
+
+        if (clientEntry.status !== 'WAITING') {
+            throw new Error(`Invalid Client Transition: Cannot ready from state ${clientEntry.status}`);
+        }
+
+        clientEntry.status = 'READY';
         await trip.save();
         return trip;
     }
 
-    async driverArrivedAtPickup(driverId, { tripId, clientId }) {
-        const trip = await Trip.findById(tripId);
+    async driverArrivedAtPickup(driverId, { tripId, clientId, driverLocation }) {
+        const trip = await Trip.findById(tripId).populate('clients.routeId');
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
 
+        if (trip.status !== 'STARTED' && trip.status !== 'IN_PROGRESS') {
+            throw new Error(`Invalid Transition: Cannot arrive at pickup from state ${trip.status}`);
+        }
+
         const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
         if (clientIndex === -1) throw new Error('Client not found in trip');
 
-        // Spec: "Trip state -> PICKUP_IN_PROGRESS"
-        trip.status = 'PICKUP_IN_PROGRESS';
+        const clientEntry = trip.clients[clientIndex];
+
+        if (clientEntry.status !== 'READY' && clientEntry.status !== 'WAITING') {
+            throw new Error(`Invalid Client Transition: Cannot arrive for client in state ${clientEntry.status}`);
+        }
+
+        if (driverLocation && clientEntry.routeId && clientEntry.routeId.startPoint) {
+            const pickupCoords = clientEntry.routeId.startPoint.coordinates; // [lng, lat]
+            const distance = this.calculateDistance(driverLocation.lat, driverLocation.lng, pickupCoords[1], pickupCoords[0]);
+            if (distance > 200) { // 200 meters radius
+                throw new Error(`Location validation failed: You are ${Math.round(distance)}m away from pickup`);
+            }
+        }
+
+        trip.status = 'ARRIVED_PICKUP';
+        clientEntry.status = 'PICKUP_INCOMING';
         await trip.save();
+        return trip;
+    }
+    // ============================================
+    // PHASE 7: PICKUP, DROPOFF, & DISPUTES
+    // ============================================
+
+    async cancelPickup(driverId, { tripId, clientId, reason }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+        if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
+
+        const clientEntry = trip.clients.find(c => c.userId.toString() === clientId);
+        if (!clientEntry) throw new Error('Client not found in trip');
+
+        if (clientEntry.status !== 'WAITING' && clientEntry.status !== 'READY' && clientEntry.status !== 'PICKUP_INCOMING') {
+            throw new Error(`Cannot cancel pickup from state ${clientEntry.status}`);
+        }
+
+        clientEntry.status = 'CANCELLED_AT_PICKUP';
+        trip.cancellationReason = reason;
+
+        await trip.save();
+
+        if (this.io) {
+            this.io.to(`user:${clientId}`).emit('trip_cancelled_at_pickup', { tripId, reason });
+            this.io.to(`user:${driverId}`).emit('trip_updated', { tripId });
+        }
+
+        return trip;
+    }
+
+    async cancelDropoff(driverId, { tripId, clientId, reason }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+        if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
+
+        const clientEntry = trip.clients.find(c => c.userId.toString() === clientId);
+        if (!clientEntry) throw new Error('Client not found in trip');
+
+        if (clientEntry.status !== 'IN_CAR') {
+            throw new Error(`Cannot cancel dropoff from state ${clientEntry.status}`);
+        }
+
+        clientEntry.status = 'CANCELLED_AT_DROPOFF';
+        trip.cancellationReason = reason;
+
+        await trip.save();
+
+        if (this.io) {
+            this.io.to(`user:${clientId}`).emit('trip_cancelled_at_dropoff', { tripId, reason });
+            this.io.to(`user:${driverId}`).emit('trip_updated', { tripId });
+        }
+
+        return trip;
+    }
+
+    async clientConfirmPickedUp(clientId, { tripId, isConfirmed, rating, reason }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        const clientEntry = trip.clients.find(c => c.userId.toString() === clientId);
+        if (!clientEntry) throw new Error('Client not found in trip');
+
+        // Driver must have marked them IN_CAR first
+        if (clientEntry.status !== 'IN_CAR' && clientEntry.status !== 'PICKUP_DISPUTED') {
+            throw new Error(`Cannot confirm pickup from state ${clientEntry.status}`);
+        }
+
+        if (isConfirmed) {
+            // No status change (they are IN_CAR), but we can record the rating for the driver arriving on time
+            if (rating) clientEntry.driverRating = rating;
+        } else {
+            clientEntry.status = 'PICKUP_DISPUTED';
+            trip.cancellationReason = `Client Disputed Pickup: ${reason}`;
+            // System could trigger refund or admin review here
+        }
+
+        await trip.save();
+
+        if (this.io) {
+            this.io.to(`user:${trip.driverId.toString()}`).emit('client_pickup_confirmed', { tripId, clientId, isConfirmed, rating });
+        }
+
+        return trip;
+    }
+
+    async clientConfirmDroppedOff(clientId, { tripId, isConfirmed, rating, reason }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        const clientEntry = trip.clients.find(c => c.userId.toString() === clientId);
+        if (!clientEntry) throw new Error('Client not found in trip');
+
+        // Driver must have marked them DROPPED_OFF first
+        if (clientEntry.status !== 'DROPPED_OFF' && clientEntry.status !== 'DROPOFF_DISPUTED') {
+            throw new Error(`Cannot confirm dropoff from state ${clientEntry.status}`);
+        }
+
+        if (isConfirmed) {
+            clientEntry.status = 'COMPLETED';
+            if (rating) clientEntry.driverRating = rating;
+
+            // Check if all clients are completed to auto-complete trip? (Prompt says Driver finishes trip)
+        } else {
+            clientEntry.status = 'DROPOFF_DISPUTED';
+            trip.cancellationReason = `Client Disputed Dropoff: ${reason}`;
+        }
+
+        await trip.save();
+
+        if (this.io) {
+            this.io.to(`user:${trip.driverId.toString()}`).emit('client_dropoff_confirmed', { tripId, clientId, isConfirmed, rating });
+        }
+
+        return trip;
+    }
+
+    async finishTrip(driverId, tripId) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+        if (trip.driverId.toString() !== driverId.toString()) throw new Error('Not authorized');
+        if (trip.status !== 'STARTED' && trip.status !== 'IN_PROGRESS') {
+            throw new Error(`Cannot finish trip from state: ${trip.status}`);
+        }
+
+        // Verify that all clients are in terminal states
+        const nonTerminalStates = ['PENDING', 'WAITING', 'CONFIRMED', 'READY', 'STARTING_SOON', 'IN_CAR'];
+        const unfinishedClients = trip.clients.filter(c => nonTerminalStates.includes(c.status));
+
+        if (unfinishedClients.length > 0) {
+            throw new Error(`Cannot finish trip: ${unfinishedClients.length} client(s) are still active.`);
+        }
+
+        trip.status = 'COMPLETED';
+        await trip.save();
+
+        if (this.io) {
+            this.io.to(`trip:${tripId}`).emit('trip_completed', { tripId });
+            this.io.to(`user:${driverId}`).emit('trip_updated', { tripId });
+            trip.clients.forEach(c => {
+                this.io.to(`user:${c.userId}`).emit('trip_updated', { tripId });
+            });
+        }
+
         return trip;
     }
 }

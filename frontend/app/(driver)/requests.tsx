@@ -67,7 +67,7 @@ export default function DriverRequestsScreen() {
                 <View style={{ width: 44 }} />
             </View>
 
-            {isLoading && !driverRequests?.length ? (
+            {isLoading && (!driverRequests || (driverRequests as any[]).length === 0) ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>

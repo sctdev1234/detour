@@ -129,8 +129,7 @@ export default function AddCarScreen() {
                 places: parseInt(form.places) || 4,
                 isDefault: isFirstCar ? true : form.isDefault,
                 images: uploadedImages,
-                documents: uploadedDocs,
-                ownerId: user.id
+                documents: uploadedDocs
             });
 
             router.back();

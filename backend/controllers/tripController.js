@@ -174,8 +174,8 @@ exports.removeClient = async (req, res) => {
 
 exports.confirmPickup = async (req, res) => {
     try {
-        const { tripId, clientId } = req.body;
-        const trip = await tripService.confirmPickup(req.user.id, { tripId, clientId });
+        const { tripId, clientId, driverLocation } = req.body;
+        const trip = await tripService.confirmPickup(req.user.id, { tripId, clientId, driverLocation });
 
         // Notify participants
         const io = req.app.get('socketio');
@@ -196,8 +196,8 @@ exports.confirmPickup = async (req, res) => {
 
 exports.confirmDropoff = async (req, res) => {
     try {
-        const { tripId, clientId } = req.body;
-        const trip = await tripService.confirmDropoff(req.user.id, { tripId, clientId });
+        const { tripId, clientId, driverLocation } = req.body;
+        const trip = await tripService.confirmDropoff(req.user.id, { tripId, clientId, driverLocation });
 
         // Notify participants
         const io = req.app.get('socketio');
@@ -238,8 +238,8 @@ exports.clientConfirmWaiting = async (req, res) => {
 
 exports.driverArrivedAtPickup = async (req, res) => {
     try {
-        const { tripId, clientId } = req.body;
-        const trip = await tripService.driverArrivedAtPickup(req.user.id, { tripId, clientId });
+        const { tripId, clientId, driverLocation } = req.body;
+        const trip = await tripService.driverArrivedAtPickup(req.user.id, { tripId, clientId, driverLocation });
 
         // Notify participants
         const io = req.app.get('socketio');
@@ -254,6 +254,109 @@ exports.driverArrivedAtPickup = async (req, res) => {
         if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
         if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
         if (err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.cancelPickup = async (req, res) => {
+    try {
+        const { tripId, clientId, reason } = req.body;
+        const trip = await tripService.cancelPickup(req.user.id, { tripId, clientId, reason });
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in cancelPickup:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        if (err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.driverConfirmReady = async (req, res) => {
+    try {
+        const trip = await tripService.driverConfirmReady(req.user.id, req.params.id);
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in driverConfirmReady:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        res.status(400).json({ msg: err.message });
+    }
+};
+
+exports.clientConfirmReady = async (req, res) => {
+    try {
+        const trip = await tripService.clientConfirmReady(req.user.id, req.params.id);
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in clientConfirmReady:", err.message);
+        if (err.message === 'Trip not found' || err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
+        res.status(400).json({ msg: err.message });
+    }
+};
+
+exports.cancelTrip = async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const trip = await tripService.cancelTrip(req.user.id, { tripId: req.params.id, reason });
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in cancelTrip:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized to cancel this trip') return res.status(401).json({ msg: err.message });
+        res.status(400).json({ msg: err.message });
+    }
+};
+
+exports.cancelDropoff = async (req, res) => {
+    try {
+        const { tripId, clientId, reason } = req.body;
+        const trip = await tripService.cancelDropoff(req.user.id, { tripId, clientId, reason });
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in cancelDropoff:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        if (err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.clientConfirmPickedUp = async (req, res) => {
+    try {
+        const { tripId, isConfirmed, rating, reason } = req.body;
+        const trip = await tripService.clientConfirmPickedUp(req.user.id, { tripId, isConfirmed, rating, reason });
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in clientConfirmPickedUp:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.clientConfirmDroppedOff = async (req, res) => {
+    try {
+        const { tripId, isConfirmed, rating, reason } = req.body;
+        const trip = await tripService.clientConfirmDroppedOff(req.user.id, { tripId, isConfirmed, rating, reason });
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in clientConfirmDroppedOff:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.finishTrip = async (req, res) => {
+    try {
+        const trip = await tripService.finishTrip(req.user.id, req.params.tripId);
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in finishTrip:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        if (err.message.startsWith('Cannot finish trip')) return res.status(400).json({ msg: err.message });
         res.status(500).send('Server Error');
     }
 };

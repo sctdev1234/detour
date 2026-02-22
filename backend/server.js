@@ -134,6 +134,49 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
+
+    // Proximity Tracking (Phase 7)
+    socket.on('driver_location_update', async (data) => {
+        try {
+            const { driverId, tripId, latitude, longitude } = data;
+            if (!driverId || !tripId || !latitude || !longitude) return;
+
+            // Re-broadcast standard location for clients looking at map
+            socket.to(tripId).emit('driver_location_changed', { latitude, longitude });
+
+            // Fetch trip to check proximity for WAITING/READY clients
+            const Trip = require('./models/Trip');
+            const trip = await Trip.findById(tripId).populate('clients.routeId');
+            if (!trip || trip.driverId.toString() !== driverId) return;
+
+            const tripService = require('./services/tripService');
+
+            trip.clients.forEach(client => {
+                // If client is waiting for pickup
+                if (client.status === 'WAITING' || client.status === 'READY') {
+                    const pickupLat = client.routeId?.startPoint?.latitude;
+                    const pickupLng = client.routeId?.startPoint?.longitude;
+
+                    if (pickupLat && pickupLng) {
+                        const distMeters = tripService.calculateDistance(latitude, longitude, pickupLat, pickupLng);
+
+                        // If within 1km (1000m) emit approaching alert
+                        if (distMeters <= 1000) {
+                            // In a full prod system, we'd add a flag to prevent spamming this event
+                            // For this iteration, client handles idempotency/throttling locally
+                            io.to(`user:${client.userId.toString()}`).emit('driver_approaching', {
+                                tripId,
+                                driverId,
+                                distance: distMeters
+                            });
+                        }
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Socket driver_location_update Error:', err);
+        }
+    });
 });
 
 // Initialize Pre-Trip Notifications Cron Job

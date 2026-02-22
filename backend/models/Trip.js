@@ -30,8 +30,13 @@ const TripSchema = new mongoose.Schema({
         },
         status: {
             type: String,
-            enum: ['ROUTE_CREATED', 'WAITING_AT_PICKUP', 'PICKED_UP', 'DROPPED_OFF', 'CANCELLED'],
-            default: 'ROUTE_CREATED'
+            enum: ['WAITING', 'READY', 'PICKUP_INCOMING', 'IN_CAR', 'DROPPED_OFF', 'COMPLETED', 'CANCELLED', 'CANCELLED_AT_PICKUP', 'CANCELLED_AT_DROPOFF', 'PICKUP_DISPUTED', 'DROPOFF_DISPUTED'],
+            default: 'WAITING'
+        },
+        driverRating: {
+            type: Number,
+            min: 1,
+            max: 5
         },
         paymentStatus: {
             type: String,
@@ -41,8 +46,24 @@ const TripSchema = new mongoose.Schema({
     }],
     status: {
         type: String,
-        enum: ['CREATED', 'PENDING', 'MATCHING', 'PARTIAL', 'FULL', 'CONFIRMED', 'STARTING', 'STARTED', 'PICKUP_IN_PROGRESS', 'IN_PROGRESS', 'DROPOFF_IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+        enum: ['CREATED', 'PENDING', 'FULL', 'CONFIRMED', 'STARTING_SOON', 'STARTED', 'IN_PROGRESS', 'ARRIVED_PICKUP', 'CLIENT_PICKED_UP', 'CLIENT_DROPPED_OFF', 'COMPLETED', 'CANCELLED'],
         default: 'CREATED'
+    },
+    driverReady: {
+        type: Boolean,
+        default: false
+    },
+    cancellationReason: {
+        type: String
+    },
+    cancelledBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    stateTimestamps: {
+        startedAt: Date,
+        completedAt: Date,
+        cancelledAt: Date
     },
     createdAt: {
         type: Date,

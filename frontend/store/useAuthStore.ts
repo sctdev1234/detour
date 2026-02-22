@@ -22,7 +22,7 @@ interface AuthState {
     setSession: (user: User, token: string) => void;
     logout: () => void;
     updateUser: (user: Partial<User>) => void;
-    setRole: (role: 'client' | 'driver') => void;
+    setRole: (role: Role) => void;
     setVerificationStatus: (status: 'pending' | 'verified' | 'rejected' | 'unverified') => void;
     updateDocuments: (docs: Partial<AuthState['documents']>) => void;
     setLoading: (loading: boolean) => void;

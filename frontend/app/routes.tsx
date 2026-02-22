@@ -98,7 +98,7 @@ export default function RoutesScreen() {
                 </TouchableOpacity>
             </View>
 
-            {isLoading && !routes?.length ? (
+            {isLoading && (!routes || (routes as any[]).length === 0) ? (
                 <View style={styles.emptyContainer}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>

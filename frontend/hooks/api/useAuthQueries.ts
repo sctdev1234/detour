@@ -232,3 +232,12 @@ export const useDeleteAccount = () => {
         }
     });
 };
+
+export const useChangePassword = () => {
+    return useMutation({
+        mutationFn: async (data: { oldPassword: string; newPassword: string }) => {
+            const res = await api.put('/auth/change-password', data);
+            return res.data;
+        }
+    });
+};

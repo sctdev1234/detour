@@ -1,5 +1,5 @@
-export const IN_PROGRESS_STATUSES = ['STARTING', 'STARTED', 'PICKUP_IN_PROGRESS', 'IN_PROGRESS', 'DROPOFF_IN_PROGRESS'];
-export const IN_PROGRESS_REQUEST_STATUSES = ['started', 'picked_up', 'in_progress'];
+export const IN_PROGRESS_STATUSES = ['STARTING_SOON', 'STARTED', 'PICKUP_IN_PROGRESS', 'IN_PROGRESS', 'ARRIVED_PICKUP', 'CLIENT_PICKED_UP', 'CLIENT_DROPPED_OFF'];
+export const IN_PROGRESS_REQUEST_STATUSES = ['started', 'picked_up', 'in_progress', 'IN_CAR'];
 
 export const getNextTripOccurrence = (timeStart: string | undefined, days: string[] | undefined): Date | null => {
     if (!timeStart || !days || days.length === 0) return null;

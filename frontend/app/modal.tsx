@@ -7,7 +7,8 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacit
 import DetourMap from '../components/Map';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
 import { Colors } from '../constants/theme';
-import { useClientConfirmWaiting, useCompleteTrip, useConfirmDropoff, useConfirmPickup, useDriverArrived, useDriverRequests, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
+import { useCancelTrip, useClientConfirmDropoff, useClientConfirmPickup, useClientConfirmWaiting, useClientReady, useCompleteTrip, useConfirmDropoff, useConfirmPickup, useDriverArrived, useDriverRequests, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
+import SocketService from '../services/socket';
 import { useAuthStore } from '../store/useAuthStore';
 import { IN_PROGRESS_STATUSES } from '../utils/timeUtils';
 
@@ -19,6 +20,8 @@ export default function ModalScreen() {
   const { user } = useAuthStore();
 
   const { data: trips } = useTrips();
+  const trip = trips?.find((t: any) => t.id === id);
+
   const { mutateAsync: startTrip } = useStartTrip();
   const { mutateAsync: completeTrip } = useCompleteTrip();
   const { mutateAsync: removeClient } = useRemoveClient();
@@ -26,6 +29,71 @@ export default function ModalScreen() {
   const { mutateAsync: confirmDropoff } = useConfirmDropoff();
   const { mutateAsync: clientConfirmWaiting } = useClientConfirmWaiting();
   const { mutateAsync: driverArrived } = useDriverArrived();
+  const { mutateAsync: clientReady } = useClientReady();
+  const { mutateAsync: cancelTrip } = useCancelTrip();
+  const { mutateAsync: clientConfirmPickup } = useClientConfirmPickup();
+  const { mutateAsync: clientConfirmDropoff } = useClientConfirmDropoff();
+
+  // Socket for proximity alerts
+  React.useEffect(() => {
+    const socket = SocketService.getSocket();
+    if (!socket || !user?.id) return;
+
+    // Proximity event comes directly from tripService using user's room
+    const handleApproaching = (data: { tripId: string, driverId: string, distance: number }) => {
+      if (trip && (trip.id === data.tripId || (trip as any)._id === data.tripId)) {
+        // Optional: Check distance to trigger local notification or change state
+        if (data.distance <= 1000) {
+          // Showing this alert could get annoying if not throttled, but helps for MVP check
+          // Alert.alert('Driver Nearby!', 'Your driver is less than 1km away. Please head to the pickup point.');
+        }
+      }
+    };
+
+    socket.on('driver_approaching', handleApproaching);
+    return () => {
+      socket.off('driver_approaching', handleApproaching);
+    };
+  }, [user?.id, trip]);
+
+  const handleClientReadyState = async (tripId: string) => {
+    setActionLoading(true);
+    try {
+      await clientReady(tripId);
+      Alert.alert('Success', 'You have confirmed you are ready.');
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Error', e.response?.data?.msg || 'Failed to confirm readiness.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const promptClientCancel = (tripId: string) => {
+    Alert.prompt(
+      "Cancel Seat",
+      "Are you sure you want to cancel your seat? Please provide a reason.",
+      [
+        { text: "Nevermind", style: "cancel" },
+        {
+          text: "Cancel Seat",
+          style: "destructive",
+          onPress: async (reason?: string) => {
+            if (!reason) return Alert.alert("Required", "You must provide a cancellation reason.");
+            setActionLoading(true);
+            try {
+              await cancelTrip({ tripId, reason });
+            } catch (e: any) {
+              Alert.alert("Error", e.response?.data?.msg || "Failed to cancel.");
+            } finally {
+              setActionLoading(false);
+            }
+          }
+        }
+      ],
+      "plain-text"
+    );
+  };
 
   const handleClientWaiting = async (tripId: string) => {
     setActionLoading(true);
@@ -75,8 +143,6 @@ export default function ModalScreen() {
     }
   };
 
-  // Find the trip
-  const trip = trips?.find((t: any) => t.id === id);
   const [actionLoading, setActionLoading] = useState(false);
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [customStopOrder, setCustomStopOrder] = useState<StopItem[] | null>(null);
@@ -176,6 +242,78 @@ export default function ModalScreen() {
 
   const isDriver = trip.driverId._id === user?.id || (trip.driverId as any) === user?.id;
   const isActiveDriverRun = isDriver && (IN_PROGRESS_STATUSES.includes(trip.status) || trip.status === 'active');
+
+  const submitClientConfirmation = async (tripId: string, type: 'pickup' | 'dropoff', isConfirmed: boolean, rating?: number, reason?: string) => {
+    try {
+      setActionLoading(true);
+      if (type === 'pickup') {
+        await clientConfirmPickup({ tripId, isConfirmed, rating, reason });
+      } else {
+        await clientConfirmDropoff({ tripId, isConfirmed, rating, reason });
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.msg || `Failed to confirm ${type}.`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const promptRatingOrDispute = (tripId: string, type: 'pickup' | 'dropoff') => {
+    Alert.alert(
+      `Confirm ${type === 'pickup' ? 'Pickup' : 'Dropoff'}`,
+      `Are you safely ${type === 'pickup' ? 'in the car' : 'at your destination'}?`,
+      [
+        {
+          text: 'Dispute / No',
+          style: 'destructive',
+          onPress: () => {
+            Alert.prompt(
+              'Dispute Reason',
+              'Please explain what went wrong:',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Submit Dispute',
+                  onPress: async (reason?: string) => {
+                    if (!reason) return Alert.alert("Required", "Reason required for dispute.");
+                    await submitClientConfirmation(tripId, type, false, undefined, reason);
+                  }
+                }
+              ]
+            );
+          }
+        },
+        {
+          text: 'Yes, Confirm',
+          style: 'default',
+          onPress: () => {
+            Alert.prompt(
+              `Rate Driver (1-5)`,
+              `Optionally rate your driver experience:`,
+              [
+                {
+                  text: 'Skip',
+                  style: 'cancel',
+                  onPress: async () => submitClientConfirmation(tripId, type, true)
+                },
+                {
+                  text: 'Submit Rating',
+                  onPress: async (ratingStr?: string) => {
+                    let rating = parseInt(ratingStr || '0', 10);
+                    if (isNaN(rating) || rating < 1 || rating > 5) rating = 0;
+                    await submitClientConfirmation(tripId, type, true, rating || undefined);
+                  }
+                }
+              ],
+              'plain-text',
+              '5',
+              'number-pad'
+            );
+          }
+        }
+      ]
+    );
+  };
 
   const handleStartTrip = async () => {
     setActionLoading(true);
@@ -429,9 +567,9 @@ export default function ModalScreen() {
                     <Text style={[styles.userName, { color: theme.text }]}>{client.userId?.fullName}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={[styles.userRole, { color: theme.icon }]}>Passenger</Text>
-                      <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: client.status === 'picked_up' ? '#3b82f620' : client.status === 'dropped_off' ? '#10b98120' : '#f59e0b20' }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: client.status === 'picked_up' ? '#3b82f6' : client.status === 'dropped_off' ? '#10b981' : '#f59e0b' }}>
-                          {client.status ? client.status.toUpperCase() : 'PENDING'}
+                      <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: client.status === 'IN_CAR' ? '#3b82f620' : client.status === 'DROPPED_OFF' ? '#10b98120' : '#f59e0b20' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: client.status === 'IN_CAR' ? '#3b82f6' : client.status === 'DROPPED_OFF' ? '#10b981' : '#f59e0b' }}>
+                          {client.status ? client.status.toUpperCase() : 'WAITING'}
                         </Text>
                       </View>
                       {client.price && (
@@ -451,54 +589,65 @@ export default function ModalScreen() {
                   )}
                 </View>
 
-                {/* Action Buttons for Driver */}
-                {isDriver && (trip.status === 'STARTED' || trip.status === 'IN_PROGRESS' || trip.status === 'PICKUP_IN_PROGRESS' || trip.status === 'active') && client.status !== 'DROPPED_OFF' && (
-                  <View style={{ flexDirection: 'row', width: '100%', marginTop: 12, gap: 8 }}>
-
-                    {(!client.status || client.status === 'ROUTE_CREATED' || client.status === 'pending' || client.status === 'WAITING_AT_PICKUP') && trip.status !== 'PICKUP_IN_PROGRESS' && (
-                      <TouchableOpacity
-                        style={[styles.actionBtnSmall, { backgroundColor: '#f59e0b' }]}
-                        onPress={() => handleDriverArrivedBtn(trip.id, client.userId._id || client.userId)}
-                        disabled={actionLoading}
-                      >
-                        <Text style={styles.actionBtnTextSmall}>Arrived at Pickup</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {(trip.status === 'PICKUP_IN_PROGRESS' || client.status === 'WAITING_AT_PICKUP') && client.status !== 'PICKED_UP' && (
-                      <TouchableOpacity
-                        style={[styles.actionBtnSmall, { backgroundColor: '#3b82f6' }]}
-                        onPress={() => handleConfirmPickup(trip.id, client.userId._id || client.userId)}
-                        disabled={actionLoading}
-                      >
-                        <Text style={styles.actionBtnTextSmall}>Confirm Pickup</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {client.status === 'PICKED_UP' && (
-                      <TouchableOpacity
-                        style={[styles.actionBtnSmall, { backgroundColor: '#10b981' }]}
-                        onPress={() => handleConfirmDropoff(trip.id, client.userId._id || client.userId)}
-                        disabled={actionLoading}
-                      >
-                        <Text style={styles.actionBtnTextSmall}>Confirm Dropoff</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
+                {/* Active driver execution actions moved to DriverTripExecutionScreen */}
 
                 {/* Action Buttons for Client */}
-                {!isDriver && (client.userId._id === user?.id || client.userId === user?.id) && client.status !== 'PICKED_UP' && client.status !== 'DROPPED_OFF' && (
-                  <View style={{ flexDirection: 'row', width: '100%', marginTop: 12, gap: 8 }}>
-                    <TouchableOpacity
-                      style={[styles.actionBtnSmall, { backgroundColor: '#3b82f6' }]}
-                      onPress={() => handleClientWaiting(trip.id)}
-                      disabled={actionLoading || client.status === 'WAITING_AT_PICKUP'}
-                    >
-                      <Text style={styles.actionBtnTextSmall}>
-                        {client.status === 'WAITING_AT_PICKUP' ? 'Waiting at Pickup...' : 'I am at Pickup'}
-                      </Text>
-                    </TouchableOpacity>
+                {!isDriver && (client.userId._id === user?.id || client.userId === user?.id) && (
+                  <View style={{ width: '100%', marginTop: 12, gap: 8 }}>
+                    {trip.status === 'STARTING_SOON' && client.status === 'WAITING' ? (
+                      <>
+                        <TouchableOpacity
+                          style={[styles.actionBtnSmall, { backgroundColor: '#8b5cf6' }]}
+                          onPress={() => handleClientReadyState(trip.id)}
+                          disabled={actionLoading}
+                        >
+                          <Text style={styles.actionBtnTextSmall}>I Am Ready!</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionBtnSmall, { backgroundColor: '#ef4444' }]}
+                          onPress={() => promptClientCancel(trip.id)}
+                          disabled={actionLoading}
+                        >
+                          <Text style={styles.actionBtnTextSmall}>Cancel My Seat</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : trip.status !== 'STARTING_SOON' && (
+                      <View style={{ flexDirection: 'column', width: '100%', gap: 8 }}>
+                        {client.status !== 'IN_CAR' && client.status !== 'DROPPED_OFF' && client.status !== 'COMPLETED' && (
+                          <TouchableOpacity
+                            style={[styles.actionBtnSmall, { backgroundColor: '#3b82f6' }]}
+                            onPress={() => handleClientWaiting(trip.id)}
+                            disabled={actionLoading || client.status === 'READY'}
+                          >
+                            <Text style={styles.actionBtnTextSmall}>
+                              {client.status === 'READY' ? 'Waiting at Pickup...' : 'I am at Pickup'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Phase 7: Client Confirm Picked Up */}
+                        {client.status === 'IN_CAR' && (
+                          <TouchableOpacity
+                            style={[styles.actionBtnSmall, { backgroundColor: '#10b981' }]}
+                            onPress={() => promptRatingOrDispute(trip.id || (trip as any)._id, 'pickup')}
+                            disabled={actionLoading}
+                          >
+                            <Text style={styles.actionBtnTextSmall}>Verify: I am in the Car</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        {/* Phase 7: Client Confirm Dropped Off */}
+                        {client.status === 'DROPPED_OFF' && (
+                          <TouchableOpacity
+                            style={[styles.actionBtnSmall, { backgroundColor: '#10b981' }]}
+                            onPress={() => promptRatingOrDispute(trip.id || (trip as any)._id, 'dropoff')}
+                            disabled={actionLoading}
+                          >
+                            <Text style={styles.actionBtnTextSmall}>Verify: I was Dropped Off</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
                   </View>
                 )}
               </View>
@@ -511,7 +660,7 @@ export default function ModalScreen() {
         {/* Actions for Driver */}
         {isDriver && (
           <View style={[styles.footer, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
-            {trip.status === 'pending' && (
+            {(trip.status === 'PENDING' || trip.status === 'CONFIRMED' || trip.status === 'FULL') && (
               <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
                 onPress={handleStartTrip}

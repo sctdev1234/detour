@@ -194,6 +194,7 @@ function AppContent() {
           <Stack.Screen name="reclamations/index" options={{ headerShown: false }} />
           <Stack.Screen name="reclamations/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="active-trip/[id]" options={{ headerShown: false, gestureEnabled: false }} />
         </Stack>
         <LocationTracker />
         <Toast />

@@ -18,6 +18,8 @@ const TripItemCard = ({ item, index, theme, router, user }: { item: Trip, index:
         targetDate = getNextTripOccurrence(item.routeId.timeStart, item.routeId.days || []);
     }
     const countdownStr = useCountdownDate(targetDate);
+    const isWithin10Mins = targetDate ? (targetDate.getTime() - Date.now()) <= 10 * 60 * 1000 : false;
+    const shouldShowGoToTrip = isInProgress || item.status === 'STARTING_SOON' || isWithin10Mins;
 
     return (
         <Animated.View
@@ -90,16 +92,28 @@ const TripItemCard = ({ item, index, theme, router, user }: { item: Trip, index:
                 </View>
 
                 {user?.role === 'driver' && item.status !== 'COMPLETED' && (
-                    <TouchableOpacity
-                        style={[styles.findBtn, { backgroundColor: theme.primary }]}
-                        onPress={() => router.push({
-                            pathname: '/(driver)/find-clients',
-                            params: { tripId: item.id, routeId: item.routeId?.id }
-                        })}
-                    >
-                        <User size={18} color="#fff" />
-                        <Text style={styles.findBtnText}>Find Clients</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                        <TouchableOpacity
+                            style={[styles.findBtn, { backgroundColor: theme.primary, flex: 1, marginTop: 0 }]}
+                            onPress={() => router.push({
+                                pathname: '/(driver)/find-clients',
+                                params: { tripId: item.id, routeId: item.routeId?.id }
+                            })}
+                        >
+                            <User size={18} color="#fff" />
+                            <Text style={styles.findBtnText}>Clients</Text>
+                        </TouchableOpacity>
+
+                        {shouldShowGoToTrip && (
+                            <TouchableOpacity
+                                style={[styles.findBtn, { backgroundColor: '#10b981', flex: 1, marginTop: 0 }]}
+                                onPress={() => router.push({ pathname: '/active-trip/[id]', params: { id: item.id } })}
+                            >
+                                <Navigation size={18} color="#fff" />
+                                <Text style={styles.findBtnText}>Go to Trip</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 )}
             </TouchableOpacity>
         </Animated.View>

@@ -17,7 +17,7 @@ const TransactionSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        enum: ['payment', 'commission', 'refund', 'deposit', 'withdrawal'],
+        enum: ['payment', 'commission', 'refund', 'deposit', 'withdrawal', 'pickup_payment'],
         required: true
     },
     relatedUserId: {
@@ -37,6 +37,10 @@ const TransactionSchema = new mongoose.Schema({
     timestamp: {
         type: Date,
         default: Date.now
+    },
+    isIrreversible: {
+        type: Boolean,
+        default: false
     }
 });
 

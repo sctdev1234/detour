@@ -337,8 +337,8 @@ export const useConfirmPickup = () => {
     const queryClient = useQueryClient();
     return useMutation({
         // @ts-ignore
-        mutationFn: async ({ tripId, clientId }: { tripId: string, clientId: string }) => {
-            await api.patch('/trip/pickup', { tripId, clientId });
+        mutationFn: async ({ tripId, clientId, driverLocation }: { tripId: string, clientId: string, driverLocation?: { lat: number, lng: number } }) => {
+            await api.patch('/trip/pickup', { tripId, clientId, driverLocation });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
@@ -351,8 +351,8 @@ export const useConfirmDropoff = () => {
     const queryClient = useQueryClient();
     return useMutation({
         // @ts-ignore
-        mutationFn: async ({ tripId, clientId }: { tripId: string, clientId: string }) => {
-            await api.patch('/trip/dropoff', { tripId, clientId });
+        mutationFn: async ({ tripId, clientId, driverLocation }: { tripId: string, clientId: string, driverLocation?: { lat: number, lng: number } }) => {
+            await api.patch('/trip/dropoff', { tripId, clientId, driverLocation });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
@@ -377,8 +377,113 @@ export const useDriverArrived = () => {
     const queryClient = useQueryClient();
     return useMutation({
         // @ts-ignore
-        mutationFn: async ({ tripId, clientId }: { tripId: string, clientId: string }) => {
-            await api.patch('/trip/arrived', { tripId, clientId });
+        mutationFn: async ({ tripId, clientId, driverLocation }: { tripId: string, clientId: string, driverLocation?: { lat: number, lng: number } }) => {
+            await api.patch('/trip/arrived', { tripId, clientId, driverLocation });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useDriverReady = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (tripId: string) => {
+            await api.post(`/trip/${tripId}/ready/driver`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useClientReady = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (tripId: string) => {
+            await api.post(`/trip/${tripId}/ready/client`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useCancelTrip = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ tripId, reason }: { tripId: string, reason: string }) => {
+            await api.post(`/trip/${tripId}/cancel`, { reason });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+// ==========================================
+// PHASE 7: PICKUP & DROPOFF DISPUTES/CANCELS
+// ==========================================
+
+export const useCancelPickup = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: { tripId: string, clientId: string, reason: string }) => {
+            const res = await api.post('/trip/cancel-pickup', data);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useCancelDropoff = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: { tripId: string, clientId: string, reason: string }) => {
+            const res = await api.post('/trip/cancel-dropoff', data);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useClientConfirmPickup = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: { tripId: string, isConfirmed: boolean, rating?: number, reason?: string }) => {
+            const res = await api.post('/trip/client-confirm-pickup', data);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useClientConfirmDropoff = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: { tripId: string, isConfirmed: boolean, rating?: number, reason?: string }) => {
+            const res = await api.post('/trip/client-confirm-dropoff', data);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useFinishTrip = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (tripId: string) => {
+            const res = await api.post(`/trip/${tripId}/finish`);
+            return res.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tripKeys.trips() });

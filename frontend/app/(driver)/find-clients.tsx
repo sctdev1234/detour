@@ -35,8 +35,7 @@ export default function DriverFindClientsScreen() {
 
     useEffect(() => {
         if (!activeRouteId && trips?.length) {
-            // Default to first pending/active trip
-            const trip = trips.find(t => t.status === 'pending' || t.status === 'active');
+            const trip = trips.find(t => t.status === 'PENDING' || t.status === 'active');
             if (trip) {
                 setActiveRouteId(trip.routeId.id);
                 setActiveTripId(trip.id);

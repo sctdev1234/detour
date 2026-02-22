@@ -1,6 +1,11 @@
 import { ClientRequest } from '../store/useClientRequestStore';
-import { LatLng, Trip } from '../store/useTripStore';
+import { LatLng } from '../store/useTripStore';
 import { calculateDistance } from '../utils/location';
+
+export interface Trip {
+    startPoint: LatLng;
+    endPoint: LatLng;
+}
 
 /**
  * Calculates the extra distance (detour) required to serve a client request.

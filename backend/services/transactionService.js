@@ -61,10 +61,11 @@ class TransactionService {
                 userId: clientId,
                 amount: amount,
                 type: 'debit',
-                category: 'payment',
+                category: 'pickup_payment',
                 relatedUserId: driverId,
                 tripId: tripId,
-                description: `Payment for trip`
+                description: `Payment for trip`,
+                isIrreversible: true
             }], { session });
 
             // Credit record for Driver
@@ -72,10 +73,11 @@ class TransactionService {
                 userId: driverId,
                 amount: driverEarnings,
                 type: 'credit',
-                category: 'payment',
+                category: 'pickup_payment',
                 relatedUserId: clientId,
                 tripId: tripId,
-                description: `Earnings from trip`
+                description: `Earnings from trip`,
+                isIrreversible: true
             }], { session });
 
             // Commission record (System/Company view - currently just stored as a transaction linked to driver/system)

@@ -1,0 +1,12 @@
+app/(auth)/role-selection.tsx(17,17): error TS2345: Argument of type 'Role' is not assignable to parameter of type '"driver" | "client"'.
+  Type 'null' is not assignable to type '"driver" | "client"'.
+app/(client)/profile.tsx(262,48): error TS2345: Argument of type 'null' is not assignable to parameter of type '"driver" | "client"'.
+app/(driver)/add-car.tsx(133,17): error TS2353: Object literal may only specify known properties, and 'ownerId' does not exist in type 'Omit<Car, "verificationStatus" | "id" | "ownerId">'.
+app/(driver)/find-clients.tsx(39,42): error TS2367: This comparison appears to be unintentional because the types '"STARTING_SOON" | "STARTED" | "IN_PROGRESS" | "ARRIVED_PICKUP" | "CLIENT_PICKED_UP" | "CLIENT_DROPPED_OFF" | "COMPLETED" | "CANCELLED" | "CREATED" | "PENDING" | "FULL" | "CONFIRMED" | "active"' and '"pending"' have no overlap.
+app/(driver)/index.tsx(43,58): error TS2339: Property 'statusDot' does not exist on type '{ container: { flex: number; }; scrollView: { flex: number; }; scrollContent: { paddingHorizontal: number; }; headerContainer: { flexDirection: "row"; justifyContent: "space-between"; alignItems: "center"; marginBottom: number; }; ... 56 more ...; fabText: { ...; }; }'.
+app/(driver)/index.tsx(232,70): error TS2339: Property 'statusDot' does not exist on type '{ container: { flex: number; }; scrollView: { flex: number; }; scrollContent: { paddingHorizontal: number; }; headerContainer: { flexDirection: "row"; justifyContent: "space-between"; alignItems: "center"; marginBottom: number; }; ... 56 more ...; fabText: { ...; }; }'.
+app/(driver)/profile.tsx(236,48): error TS2345: Argument of type 'null' is not assignable to parameter of type '"driver" | "client"'.
+app/(driver)/requests.tsx(70,44): error TS2339: Property 'length' does not exist on type 'never'.
+app/change-password.tsx(24,13): error TS2339: Property 'changePassword' does not exist on type 'AuthState'.
+app/routes.tsx(101,36): error TS2339: Property 'length' does not exist on type 'never'.
+services/optimizationService.ts(2,18): error TS2305: Module '"../store/useTripStore"' has no exported member 'Trip'.

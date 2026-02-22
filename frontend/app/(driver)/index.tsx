@@ -433,6 +433,11 @@ const styles = StyleSheet.create({
         shadowRadius: 20,
         elevation: 10,
     },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
     heroGradient: {
         flex: 1,
         borderRadius: 32,
