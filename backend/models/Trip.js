@@ -30,7 +30,7 @@ const TripSchema = new mongoose.Schema({
         },
         status: {
             type: String,
-            enum: ['WAITING', 'READY', 'PICKUP_INCOMING', 'IN_CAR', 'DROPPED_OFF', 'COMPLETED', 'CANCELLED', 'CANCELLED_AT_PICKUP', 'CANCELLED_AT_DROPOFF', 'PICKUP_DISPUTED', 'DROPOFF_DISPUTED'],
+            enum: ['ROUTE_CREATED', 'WAITING', 'READY', 'PICKUP_INCOMING', 'IN_CAR', 'DROPPED_OFF', 'COMPLETED', 'CANCELLED', 'CANCELLED_AT_PICKUP', 'CANCELLED_AT_DROPOFF', 'PICKUP_DISPUTED', 'DROPOFF_DISPUTED'],
             default: 'WAITING'
         },
         driverRating: {

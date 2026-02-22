@@ -2,8 +2,8 @@ import { useUIStore } from '@/store/useUIStore';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, Clock, Edit3, Navigation, Save, Trash2, User, X } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import DetourMap from '../components/Map';
 import ReorderableStopsList, { StopItem } from '../components/ReorderableStopsList';
 import { Colors } from '../constants/theme';
@@ -18,6 +18,7 @@ export default function ModalScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { user } = useAuthStore();
+  const { showToast, showConfirm } = useUIStore();
 
   const { data: trips } = useTrips();
   const trip = trips?.find((t: any) => t.id === id);
@@ -60,39 +61,35 @@ export default function ModalScreen() {
     setActionLoading(true);
     try {
       await clientReady(tripId);
-      Alert.alert('Success', 'You have confirmed you are ready.');
+      showToast('You have confirmed you are ready.', 'success');
     } catch (e: any) {
       console.error(e);
-      Alert.alert('Error', e.response?.data?.msg || 'Failed to confirm readiness.');
+      showToast(e.response?.data?.msg || 'Failed to confirm readiness.', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
   const promptClientCancel = (tripId: string) => {
-    Alert.prompt(
-      "Cancel Seat",
-      "Are you sure you want to cancel your seat? Please provide a reason.",
-      [
-        { text: "Nevermind", style: "cancel" },
-        {
-          text: "Cancel Seat",
-          style: "destructive",
-          onPress: async (reason?: string) => {
-            if (!reason) return Alert.alert("Required", "You must provide a cancellation reason.");
-            setActionLoading(true);
-            try {
-              await cancelTrip({ tripId, reason });
-            } catch (e: any) {
-              Alert.alert("Error", e.response?.data?.msg || "Failed to cancel.");
-            } finally {
-              setActionLoading(false);
-            }
-          }
+    setInputModal({
+      visible: true,
+      title: 'Cancel Seat',
+      subtitle: 'Are you sure you want to cancel your seat? Please provide a reason.',
+      value: '',
+      placeholder: 'Enter cancellation reason...',
+      confirmText: 'Cancel Seat',
+      onConfirm: async (reason: string) => {
+        closeInputModal();
+        setActionLoading(true);
+        try {
+          await cancelTrip({ tripId, reason });
+        } catch (e: any) {
+          showToast(e.response?.data?.msg || 'Failed to cancel.', 'error');
+        } finally {
+          setActionLoading(false);
         }
-      ],
-      "plain-text"
-    );
+      }
+    });
   };
 
   const handleClientWaiting = async (tripId: string) => {
@@ -101,7 +98,7 @@ export default function ModalScreen() {
       await clientConfirmWaiting({ tripId });
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to confirm waiting status.');
+      showToast('Failed to confirm waiting status.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -113,7 +110,7 @@ export default function ModalScreen() {
       await driverArrived({ tripId, clientId });
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to update arrival status.');
+      showToast('Failed to update arrival status.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -125,7 +122,7 @@ export default function ModalScreen() {
       await confirmPickup({ tripId, clientId });
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to confirm pickup. Please check connection or balance.');
+      showToast('Failed to confirm pickup. Check connection or balance.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -137,7 +134,7 @@ export default function ModalScreen() {
       await confirmDropoff({ tripId, clientId });
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to confirm dropoff.');
+      showToast('Failed to confirm dropoff.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -146,6 +143,23 @@ export default function ModalScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [customStopOrder, setCustomStopOrder] = useState<StopItem[] | null>(null);
+
+  // Reusable input modal state
+  const [inputModal, setInputModal] = useState<{
+    visible: boolean;
+    title: string;
+    subtitle: string;
+    value: string;
+    placeholder: string;
+    confirmText: string;
+    keyboardType?: 'default' | 'number-pad';
+    onConfirm: (value: string) => void;
+    onSkip?: () => void;
+  }>({ visible: false, title: '', subtitle: '', value: '', placeholder: '', confirmText: 'Submit', onConfirm: () => { } });
+
+  const closeInputModal = useCallback(() => {
+    setInputModal(prev => ({ ...prev, visible: false, value: '' }));
+  }, []);
 
   // Build stops list from trip data
   const buildStopsList = useMemo(() => {
@@ -252,67 +266,54 @@ export default function ModalScreen() {
         await clientConfirmDropoff({ tripId, isConfirmed, rating, reason });
       }
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.msg || `Failed to confirm ${type}.`);
+      showToast(e.response?.data?.msg || `Failed to confirm ${type}.`, 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
   const promptRatingOrDispute = (tripId: string, type: 'pickup' | 'dropoff') => {
-    Alert.alert(
-      `Confirm ${type === 'pickup' ? 'Pickup' : 'Dropoff'}`,
-      `Are you safely ${type === 'pickup' ? 'in the car' : 'at your destination'}?`,
-      [
-        {
-          text: 'Dispute / No',
-          style: 'destructive',
-          onPress: () => {
-            Alert.prompt(
-              'Dispute Reason',
-              'Please explain what went wrong:',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Submit Dispute',
-                  onPress: async (reason?: string) => {
-                    if (!reason) return Alert.alert("Required", "Reason required for dispute.");
-                    await submitClientConfirmation(tripId, type, false, undefined, reason);
-                  }
-                }
-              ]
-            );
+    showConfirm({
+      title: `Confirm ${type === 'pickup' ? 'Pickup' : 'Dropoff'}`,
+      message: `Are you safely ${type === 'pickup' ? 'in the car' : 'at your destination'}?`,
+      confirmText: 'Yes, Confirm',
+      cancelText: 'Dispute / No',
+      onCancel: () => {
+        setInputModal({
+          visible: true,
+          title: 'Dispute Reason',
+          subtitle: 'Please explain what went wrong:',
+          value: '',
+          placeholder: 'Describe the issue...',
+          confirmText: 'Submit Dispute',
+          onConfirm: async (reason: string) => {
+            closeInputModal();
+            await submitClientConfirmation(tripId, type, false, undefined, reason);
           }
-        },
-        {
-          text: 'Yes, Confirm',
-          style: 'default',
-          onPress: () => {
-            Alert.prompt(
-              `Rate Driver (1-5)`,
-              `Optionally rate your driver experience:`,
-              [
-                {
-                  text: 'Skip',
-                  style: 'cancel',
-                  onPress: async () => submitClientConfirmation(tripId, type, true)
-                },
-                {
-                  text: 'Submit Rating',
-                  onPress: async (ratingStr?: string) => {
-                    let rating = parseInt(ratingStr || '0', 10);
-                    if (isNaN(rating) || rating < 1 || rating > 5) rating = 0;
-                    await submitClientConfirmation(tripId, type, true, rating || undefined);
-                  }
-                }
-              ],
-              'plain-text',
-              '5',
-              'number-pad'
-            );
+        });
+      },
+      onConfirm: () => {
+        setInputModal({
+          visible: true,
+          title: 'Rate Driver (1-5)',
+          subtitle: 'Optionally rate your driver experience:',
+          value: '5',
+          placeholder: 'Enter rating 1-5',
+          confirmText: 'Submit Rating',
+          keyboardType: 'number-pad',
+          onSkip: async () => {
+            closeInputModal();
+            await submitClientConfirmation(tripId, type, true);
+          },
+          onConfirm: async (ratingStr: string) => {
+            closeInputModal();
+            let rating = parseInt(ratingStr || '0', 10);
+            if (isNaN(rating) || rating < 1 || rating > 5) rating = 0;
+            await submitClientConfirmation(tripId, type, true, rating || undefined);
           }
-        }
-      ]
-    );
+        });
+      }
+    });
   };
 
   const handleStartTrip = async () => {
@@ -337,8 +338,6 @@ export default function ModalScreen() {
     }
   }
 
-  const { showConfirm } = useUIStore();
-
   const handleRemoveClient = (clientId: string, clientName: string) => {
     showConfirm({
       title: "Remove Passenger",
@@ -351,7 +350,7 @@ export default function ModalScreen() {
           await removeClient({ tripId: trip.id, clientId });
         } catch (e) {
           console.error(e);
-          Alert.alert("Error", "Failed to remove passenger");
+          showToast('Failed to remove passenger.', 'error');
         } finally {
           setActionLoading(false);
         }
@@ -692,6 +691,64 @@ export default function ModalScreen() {
           </View>
         )}
       </View>
+
+      {/* Input Modal */}
+      <Modal
+        visible={inputModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeInputModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>{inputModal.title}</Text>
+              <TouchableOpacity onPress={closeInputModal}>
+                <X size={22} color={theme.icon} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: theme.icon }]}>{inputModal.subtitle}</Text>
+            <TextInput
+              style={[styles.modalInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
+              placeholder={inputModal.placeholder}
+              placeholderTextColor={theme.icon}
+              value={inputModal.value}
+              onChangeText={(text) => setInputModal(prev => ({ ...prev, value: text }))}
+              multiline={inputModal.keyboardType !== 'number-pad'}
+              numberOfLines={inputModal.keyboardType !== 'number-pad' ? 3 : 1}
+              textAlignVertical="top"
+              keyboardType={inputModal.keyboardType || 'default'}
+            />
+            <View style={styles.modalActions}>
+              {inputModal.onSkip ? (
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: theme.border }]}
+                  onPress={inputModal.onSkip}
+                >
+                  <Text style={[styles.modalBtnText, { color: theme.text }]}>Skip</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: theme.border }]}
+                  onPress={closeInputModal}
+                >
+                  <Text style={[styles.modalBtnText, { color: theme.text }]}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnPrimary, { opacity: inputModal.value.trim() ? 1 : 0.5 }]}
+                onPress={() => {
+                  if (!inputModal.value.trim()) return showToast('Please enter a value.', 'warning');
+                  inputModal.onConfirm(inputModal.value.trim());
+                }}
+                disabled={!inputModal.value.trim()}
+              >
+                <Text style={styles.modalBtnText}>{inputModal.confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -728,4 +785,15 @@ const styles = StyleSheet.create({
   cancelBtn: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
   actionBtnSmall: { flex: 1, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   actionBtnTextSmall: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalContent: { width: '100%', borderRadius: 20, padding: 24, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  modalTitle: { fontSize: 20, fontWeight: '900' },
+  modalSubtitle: { fontSize: 14, marginBottom: 16, lineHeight: 20 },
+  modalInput: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15, minHeight: 50, marginBottom: 20 },
+  modalActions: { flexDirection: 'row', gap: 10 },
+  modalBtn: { flex: 1, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  modalBtnPrimary: { backgroundColor: '#3b82f6' },
+  modalBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });

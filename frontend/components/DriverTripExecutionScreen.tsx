@@ -1,19 +1,21 @@
 import { Image } from 'expo-image';
 import * as Location from 'expo-location';
-import { AlertTriangle, Check, Navigation, User } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, BackHandler, Easing, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { AlertTriangle, Check, Navigation, User, X } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Animated, BackHandler, Easing, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { useCancelDropoff, useCancelPickup, useCancelTrip, useConfirmDropoff, useConfirmPickup, useDriverArrived, useDriverReady, useFinishTrip, useRemoveClient, useStartTrip } from '../hooks/api/useTripQueries';
 import { useLateDuration } from '../hooks/useCountdown';
 import SocketService from '../services/socket';
 import { useLocationStore } from '../store/useLocationStore';
+import { useUIStore } from '../store/useUIStore';
 import { getNextTripOccurrence } from '../utils/timeUtils';
 import DetourMap from './Map';
 
 export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const { showToast, showConfirm } = useUIStore();
 
     const { mutateAsync: startTrip } = useStartTrip();
     const { mutateAsync: finishTrip } = useFinishTrip();
@@ -30,6 +32,19 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
     const socket = SocketService.getSocket();
     const [actionLoading, setActionLoading] = useState(false);
     const [hasShownDestinationAlert, setHasShownDestinationAlert] = useState(false);
+
+    // Cancel modal state
+    const [cancelModal, setCancelModal] = useState<{
+        visible: boolean;
+        title: string;
+        subtitle: string;
+        reason: string;
+        onConfirm: (reason: string) => void;
+    }>({ visible: false, title: '', subtitle: '', reason: '', onConfirm: () => { } });
+
+    const closeCancelModal = useCallback(() => {
+        setCancelModal(prev => ({ ...prev, visible: false, reason: '' }));
+    }, []);
 
     // Compute the scheduled start date and late duration
     const scheduledDate = useMemo(() => {
@@ -93,7 +108,7 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
                         const distanceInMeters = R * c;
 
                         if (distanceInMeters <= 1000) {
-                            Alert.alert("Approaching Target", "You are within 1km of your final destination.");
+                            showToast('You are within 1km of your final destination.', 'info');
                             setHasShownDestinationAlert(true);
                         }
                     }
@@ -133,72 +148,63 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
             await startTrip(trip.id || trip._id);
         } catch (e: any) {
             console.error(e);
-            Alert.alert("Error", e.response?.data?.msg || "Failed to start trip.");
+            showToast(e.response?.data?.msg || 'Failed to start trip.', 'error');
         } finally {
             setActionLoading(false);
         }
     };
 
     const handleFinishTrip = async () => {
-        Alert.alert(
-            "Finish Trip",
-            "Are you sure you want to finish this trip? Ensure all clients have been picked up or dropped off.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Finish Trip", style: "default", onPress: async () => {
-                        setActionLoading(true);
-                        try {
-                            await finishTrip(trip.id || trip._id);
-                            Alert.alert("Success", "Trip completed successfully.");
-                        } catch (e: any) {
-                            console.error(e);
-                            Alert.alert("Validation Error", e.response?.data?.msg || "Failed to complete trip. You must process all clients first.");
-                        } finally {
-                            setActionLoading(false);
-                        }
-                    }
+        showConfirm({
+            title: 'Finish Trip',
+            message: 'Are you sure you want to finish this trip? Ensure all clients have been picked up or dropped off.',
+            confirmText: 'Finish Trip',
+            cancelText: 'Cancel',
+            onConfirm: async () => {
+                setActionLoading(true);
+                try {
+                    await finishTrip(trip.id || trip._id);
+                    showToast('Trip completed successfully!', 'success');
+                } catch (e: any) {
+                    console.error(e);
+                    showToast(e.response?.data?.msg || 'Failed to complete trip. You must process all clients first.', 'error');
+                } finally {
+                    setActionLoading(false);
                 }
-            ]
-        );
+            }
+        });
     };
 
     const handleDriverReadyState = async () => {
         setActionLoading(true);
         try {
             await driverReady(trip.id || trip._id);
-            Alert.alert("Success", "You are marked as ready. Waiting for clients or start time.");
+            showToast('You are marked as ready. Waiting for clients or start time.', 'success');
         } catch (e: any) {
-            Alert.alert("Error", e.response?.data?.msg || "Failed to confirm readiness.");
+            showToast(e.response?.data?.msg || 'Failed to confirm readiness.', 'error');
         } finally {
             setActionLoading(false);
         }
     };
 
     const promptCancelTrip = () => {
-        Alert.prompt(
-            "Cancel Trip",
-            "Are you sure you want to cancel this entire trip? This affects all clients. Please provide a reason.",
-            [
-                { text: "Nevermind", style: "cancel" },
-                {
-                    text: "Cancel Trip",
-                    style: "destructive",
-                    onPress: async (reason?: string) => {
-                        if (!reason) return Alert.alert("Required", "You must provide a cancellation reason.");
-                        setActionLoading(true);
-                        try {
-                            await cancelTrip({ tripId: trip.id || trip._id, reason });
-                        } catch (e: any) {
-                            Alert.alert("Error", e.response?.data?.msg || "Failed to cancel trip.");
-                        } finally {
-                            setActionLoading(false);
-                        }
-                    }
+        setCancelModal({
+            visible: true,
+            title: 'Cancel Trip',
+            subtitle: 'This will cancel the entire trip and affects all clients. Please provide a reason.',
+            reason: '',
+            onConfirm: async (reason: string) => {
+                closeCancelModal();
+                setActionLoading(true);
+                try {
+                    await cancelTrip({ tripId: trip.id || trip._id, reason });
+                } catch (e: any) {
+                    showToast(e.response?.data?.msg || 'Failed to cancel trip.', 'error');
+                } finally {
+                    setActionLoading(false);
                 }
-            ],
-            "plain-text"
-        );
+            }
+        });
     };
 
     const handleDriverArrivedBtn = async (clientId: string) => {
@@ -207,7 +213,7 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
             await driverArrived({ tripId: trip.id || trip._id, clientId, driverLocation: getDriverLocationPayload() });
         } catch (e: any) {
             console.error("Arrived Error:", e.response?.data?.msg || e.message);
-            Alert.alert('GPS Validation Error', e.response?.data?.msg || 'Could not verify arrival proximity.');
+            showToast(e.response?.data?.msg || 'Could not verify arrival proximity.', 'error');
         } finally {
             setActionLoading(false);
         }
@@ -219,7 +225,7 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
             await confirmPickup({ tripId: trip.id || trip._id, clientId, driverLocation: getDriverLocationPayload() });
         } catch (e: any) {
             console.error("Pickup Error:", e.response?.data?.msg || e.message);
-            Alert.alert('Pickup/Financial Error', e.response?.data?.msg || 'Failed to confirm pickup. Please check connection or Client Balance.');
+            showToast(e.response?.data?.msg || 'Failed to confirm pickup. Check connection or Client Balance.', 'error');
         } finally {
             setActionLoading(false);
         }
@@ -231,40 +237,35 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
             await confirmDropoff({ tripId: trip.id || trip._id, clientId, driverLocation: getDriverLocationPayload() });
         } catch (e: any) {
             console.error("Dropoff Error:", e.response?.data?.msg || e.message);
-            Alert.alert('GPS Validation Error', e.response?.data?.msg || 'Failed to confirm dropoff proximity.');
+            showToast(e.response?.data?.msg || 'Failed to confirm dropoff proximity.', 'error');
         } finally {
             setActionLoading(false);
         }
     };
 
     const promptCancelClientAction = (clientId: string, type: 'pickup' | 'dropoff') => {
-        Alert.prompt(
-            `Cancel ${type === 'pickup' ? 'Pickup' : 'Dropoff'}`,
-            `Please state a reason for cancelling this client's ${type}:`,
-            [
-                { text: "Nevermind", style: "cancel" },
-                {
-                    text: `Cancel ${type === 'pickup' ? 'Pickup' : 'Dropoff'}`,
-                    style: "destructive",
-                    onPress: async (reason?: string) => {
-                        if (!reason) return Alert.alert("Required", "You must provide a cancellation reason.");
-                        setActionLoading(true);
-                        try {
-                            if (type === 'pickup') {
-                                await cancelPickup({ tripId: trip.id || trip._id, clientId, reason });
-                            } else {
-                                await cancelDropoff({ tripId: trip.id || trip._id, clientId, reason });
-                            }
-                        } catch (e: any) {
-                            Alert.alert("Error", e.response?.data?.msg || "Failed to cancel.");
-                        } finally {
-                            setActionLoading(false);
-                        }
+        const label = type === 'pickup' ? 'Pickup' : 'Dropoff';
+        setCancelModal({
+            visible: true,
+            title: `Cancel ${label}`,
+            subtitle: `Please provide a reason for cancelling this client's ${type}.`,
+            reason: '',
+            onConfirm: async (reason: string) => {
+                closeCancelModal();
+                setActionLoading(true);
+                try {
+                    if (type === 'pickup') {
+                        await cancelPickup({ tripId: trip.id || trip._id, clientId, reason });
+                    } else {
+                        await cancelDropoff({ tripId: trip.id || trip._id, clientId, reason });
                     }
+                } catch (e: any) {
+                    showToast(e.response?.data?.msg || 'Failed to cancel.', 'error');
+                } finally {
+                    setActionLoading(false);
                 }
-            ],
-            "plain-text"
-        );
+            }
+        });
     };
 
     return (
@@ -419,6 +420,54 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
                     </TouchableOpacity>
                 )}
             </View>
+
+            {/* Cancel Reason Modal */}
+            <Modal
+                visible={cancelModal.visible}
+                transparent
+                animationType="fade"
+                onRequestClose={closeCancelModal}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.text }]}>{cancelModal.title}</Text>
+                            <TouchableOpacity onPress={closeCancelModal}>
+                                <X size={22} color={theme.icon} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.modalSubtitle, { color: theme.icon }]}>{cancelModal.subtitle}</Text>
+                        <TextInput
+                            style={[styles.modalInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
+                            placeholder="Enter reason..."
+                            placeholderTextColor={theme.icon}
+                            value={cancelModal.reason}
+                            onChangeText={(text) => setCancelModal(prev => ({ ...prev, reason: text }))}
+                            multiline
+                            numberOfLines={3}
+                            textAlignVertical="top"
+                        />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, { backgroundColor: theme.border }]}
+                                onPress={closeCancelModal}
+                            >
+                                <Text style={[styles.modalBtnText, { color: theme.text }]}>Nevermind</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.modalBtnDanger, { opacity: cancelModal.reason.trim() ? 1 : 0.5 }]}
+                                onPress={() => {
+                                    if (!cancelModal.reason.trim()) return showToast('You must provide a reason.', 'warning');
+                                    cancelModal.onConfirm(cancelModal.reason.trim());
+                                }}
+                                disabled={!cancelModal.reason.trim()}
+                            >
+                                <Text style={styles.modalBtnText}>Confirm</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -443,4 +492,15 @@ const styles = StyleSheet.create({
     footer: { padding: 20, position: 'absolute', bottom: 0, left: 0, right: 0 },
     actionBtn: { height: 56, borderRadius: 28, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, elevation: 4 },
     btnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    // Modal styles
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalContent: { width: '100%', borderRadius: 20, padding: 24, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    modalTitle: { fontSize: 20, fontWeight: '900' },
+    modalSubtitle: { fontSize: 14, marginBottom: 16, lineHeight: 20 },
+    modalInput: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 15, minHeight: 80, marginBottom: 20 },
+    modalActions: { flexDirection: 'row', gap: 10 },
+    modalBtn: { flex: 1, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+    modalBtnDanger: { backgroundColor: '#ef4444' },
+    modalBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });
