@@ -136,7 +136,9 @@ io.on('connection', (socket) => {
     });
 });
 
-
+// Initialize Pre-Trip Notifications Cron Job
+const scheduleTripNotifications = require('./cron/tripNotifications');
+scheduleTripNotifications(io);
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);

@@ -1,9 +1,12 @@
+import { Redirect } from 'expo-router';
 import { Bell, Bookmark, Calendar, Car, Home, MapPin, User } from 'lucide-react-native';
 import { useColorScheme } from 'react-native';
 import { Footer } from '../../components/Footer';
 import { SwipeableTabs } from '../../components/SwipeableLayout';
 import { Colors } from '../../constants/theme';
+import { useTrips } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
+import { IN_PROGRESS_STATUSES } from '../../utils/timeUtils';
 
 export default function DriverLayout() {
     const colorScheme = useColorScheme() ?? 'light';
@@ -25,6 +28,17 @@ export default function DriverLayout() {
         );
     }
     */
+
+    const { data: trips } = useTrips();
+    const activeTrip = trips?.find((t: any) =>
+        (IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active') &&
+        (t.driverId?._id === user?.id || t.driverId?.id === user?.id || t.driverId === user?.id)
+    );
+
+    // If an active trip is found, trap the driver in the live map view.
+    if (activeTrip) {
+        return <Redirect href={`/modal?type=trip_details&id=${activeTrip.id}`} />;
+    }
 
     return (
         <SwipeableTabs

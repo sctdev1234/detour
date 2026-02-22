@@ -59,7 +59,7 @@ class TripService {
             const newTrip = new Trip({
                 driverId: userId,
                 routeId: savedRoute._id,
-                status: 'pending'
+                status: 'PENDING'
             });
             await newTrip.save();
         }
@@ -281,9 +281,14 @@ class TripService {
             // If they have other matches? Usually one trip per route.
             await Route.findByIdAndUpdate(joinRequest.clientRouteId, { status: 'inactive' });
 
-            // Ensure trip status is active if it was pending
-            if (trip.status === 'pending') {
-                await Trip.findByIdAndUpdate(trip._id, { status: 'active' });
+            // Ensure trip status is updated
+            const clientsCount = trip.clients.length + 1; // including the new one
+            let newTripStatus = 'PARTIAL';
+            if (clientsCount >= 4) {
+                newTripStatus = 'CONFIRMED';
+            }
+            if (trip.status !== 'STARTED' && trip.status !== 'IN_PROGRESS' && trip.status !== 'COMPLETED') {
+                await Trip.findByIdAndUpdate(trip._id, { status: newTripStatus });
             }
         }
 
@@ -341,7 +346,7 @@ class TripService {
 
         if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
 
-        trip.status = 'active';
+        trip.status = 'STARTED';
         await trip.save();
 
         return trip;
@@ -353,7 +358,7 @@ class TripService {
 
         if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
 
-        trip.status = 'completed';
+        trip.status = 'COMPLETED';
         await trip.save();
 
         return trip;
@@ -405,10 +410,11 @@ class TripService {
 
         const clientEntry = trip.clients[clientIndex];
 
-        if (clientEntry.status === 'picked_up') throw new Error('Client already picked up');
+        if (clientEntry.status === 'PICKED_UP') throw new Error('Client already picked up');
 
         // Update status
-        clientEntry.status = 'picked_up';
+        clientEntry.status = 'PICKED_UP';
+        trip.status = 'IN_PROGRESS';
 
         // Use the agreed price stored in the trip
         const price = clientEntry.price;
@@ -448,9 +454,38 @@ class TripService {
         const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
         if (clientIndex === -1) throw new Error('Client not found in trip');
 
-        trip.clients[clientIndex].status = 'dropped_off';
+        trip.clients[clientIndex].status = 'DROPPED_OFF';
+        trip.status = 'IN_PROGRESS';
         await trip.save();
 
+        return trip;
+    }
+
+    async clientConfirmWaiting(clientId, tripId) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
+        if (clientIndex === -1) throw new Error('Client not found in trip');
+
+        trip.clients[clientIndex].status = 'WAITING_AT_PICKUP';
+        // Spec: "Client1 state updated -> WAITING_AT_PICKUP"
+        await trip.save();
+        return trip;
+    }
+
+    async driverArrivedAtPickup(driverId, { tripId, clientId }) {
+        const trip = await Trip.findById(tripId);
+        if (!trip) throw new Error('Trip not found');
+
+        if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
+
+        const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
+        if (clientIndex === -1) throw new Error('Client not found in trip');
+
+        // Spec: "Trip state -> PICKUP_IN_PROGRESS"
+        trip.status = 'PICKUP_IN_PROGRESS';
+        await trip.save();
         return trip;
     }
 }

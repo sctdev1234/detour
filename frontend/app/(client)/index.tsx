@@ -11,6 +11,7 @@ import {
     MapPin,
     Navigation,
     Search,
+    Timer,
     TrendingUp,
     Zap
 } from 'lucide-react-native';
@@ -31,7 +32,9 @@ import DetourMap from '../../components/Map';
 import CardStatItem from '../../components/ui/CardStatItem';
 import { Colors } from '../../constants/theme';
 import { useClientRequests, useRoutes } from '../../hooks/api/useTripQueries';
+import { useCountdownDate } from '../../hooks/useCountdown';
 import { useAuthStore } from '../../store/useAuthStore';
+import { getNextTripOccurrence, IN_PROGRESS_REQUEST_STATUSES } from '../../utils/timeUtils';
 
 export default function ClientDashboard() {
     const router = useRouter();
@@ -53,6 +56,27 @@ export default function ClientDashboard() {
 
     const pendingOffers = React.useMemo(() => requests?.filter((r: any) => r.status === 'pending' && r.initiatedBy === 'driver') || [], [requests]);
     const pendingOffersCount = pendingOffers.length;
+
+    // Calculate next trip countdown
+    let nextTripDate: Date | null = null;
+    let isAnyTripInProgress = false;
+
+    if (activeRequest && IN_PROGRESS_REQUEST_STATUSES.includes(activeRequest.status)) {
+        isAnyTripInProgress = true;
+    }
+
+    if (!isAnyTripInProgress) {
+        (routes || []).filter(r => r.role === 'client').forEach(r => {
+            const occurrence = getNextTripOccurrence(r.timeStart, r.days);
+            if (occurrence) {
+                if (!nextTripDate || occurrence.getTime() < nextTripDate.getTime()) {
+                    nextTripDate = occurrence;
+                }
+            }
+        });
+    }
+
+    const nextTripCountdown = useCountdownDate(nextTripDate);
 
     const handleQuickAction = (action: string) => {
         router.push('/(client)/add-route');
@@ -170,7 +194,20 @@ export default function ClientDashboard() {
                         </Animated.View>
                     ) : (
                         <Animated.View entering={FadeInDown.springify()}>
-                            <Text style={[styles.sectionTitle, { color: theme.text }]}>Where to?</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Where to?</Text>
+                                {isAnyTripInProgress ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ef4444' + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444' }} />
+                                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#ef4444' }}>IN TRIP</Text>
+                                    </View>
+                                ) : nextTripCountdown ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.primary + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                                        <Timer size={14} color={theme.primary} />
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: theme.primary }}>Next {nextTripCountdown}</Text>
+                                    </View>
+                                ) : null}
+                            </View>
 
                             <TouchableOpacity
                                 onPress={() => router.push('/(client)/add-route')}
@@ -391,11 +428,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         marginBottom: 8,
     },
-    sectionAction: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
-
     sectionAction: {
         fontSize: 14,
         fontWeight: '700',

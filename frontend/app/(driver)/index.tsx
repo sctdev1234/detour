@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowUpRight, Bell, Calendar, Car, Clock, DollarSign, Plus, Star, TrendingUp, User, Wallet } from 'lucide-react-native';
+import { ArrowUpRight, Bell, Calendar, Car, Clock, DollarSign, Plus, Star, Timer, TrendingUp, User, Wallet } from 'lucide-react-native';
 import { Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,10 +8,92 @@ import { GlassCard } from '../../components/GlassCard';
 import CardStatItem from '../../components/ui/CardStatItem';
 import { Colors } from '../../constants/theme';
 import { useDriverRequests, useTrips } from '../../hooks/api/useTripQueries';
+import { useCountdownDate } from '../../hooks/useCountdown';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useRatingStore } from '../../store/useRatingStore';
+import { getNextTripOccurrence, IN_PROGRESS_STATUSES } from '../../utils/timeUtils';
 
 const { width } = Dimensions.get('window');
+
+const ScheduleTripCard = ({ trip, index, theme, router }: { trip: any, index: number, theme: any, router: any }) => {
+    let targetDate: Date | null = null;
+    const isInProgress = IN_PROGRESS_STATUSES.includes(trip.status) || trip.status === 'active';
+
+    if (!isInProgress && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && trip.routeId) {
+        targetDate = getNextTripOccurrence(trip.routeId.timeStart, trip.routeId.days || []);
+    }
+    const countdownStr = useCountdownDate(targetDate);
+
+    return (
+        <Animated.View
+            entering={FadeInUp.delay(400 + (index * 100))}
+        >
+            <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
+                <GlassCard style={styles.tripCard} intensity={30}>
+                    <View style={styles.tripHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={[styles.timeBadge, { backgroundColor: theme.surface }]}>
+                                <Clock size={14} color={theme.text} />
+                                <Text style={[styles.timeBadgeText, { color: theme.text }]}>
+                                    {trip.routeId?.timeStart}
+                                </Text>
+                            </View>
+                            {isInProgress ? (
+                                <View style={[styles.timeBadge, { backgroundColor: '#ef4444' + '15' }]}>
+                                    <View style={[styles.statusDot, { backgroundColor: '#ef4444', marginRight: 4 }]} />
+                                    <Text style={[styles.timeBadgeText, { color: '#ef4444' }]}>IN TRIP</Text>
+                                </View>
+                            ) : countdownStr ? (
+                                <View style={[styles.timeBadge, { backgroundColor: theme.primary + '15' }]}>
+                                    <Timer size={14} color={theme.primary} />
+                                    <Text style={[styles.timeBadgeText, { color: theme.primary }]}>{countdownStr}</Text>
+                                </View>
+                            ) : null}
+                        </View>
+                        <View style={[styles.priceBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                            <Text style={[styles.priceBadgeText, { color: '#10B981' }]}>
+                                {trip.routeId?.price} MAD/seat
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.tripBody}>
+                        <View style={styles.timelineContainer}>
+                            <View style={[styles.timelineDot, { borderColor: theme.text }]} />
+                            <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                            <View style={[styles.timelineDot, { borderColor: theme.primary, backgroundColor: theme.primary }]} />
+                        </View>
+
+                        <View style={styles.tripDetails}>
+                            <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
+                                {trip.routeId?.startPoint?.address || 'Start Location'}
+                            </Text>
+                            <View style={{ height: 20 }} />
+                            <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
+                                {trip.routeId?.endPoint?.address || 'End Location'}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={[styles.tripFooter, { borderTopColor: theme.border }]}>
+                        <View style={styles.paxInfo}>
+                            <User size={16} color={theme.icon} />
+                            <Text style={[styles.paxText, { color: theme.icon }]}>
+                                {trip.clients?.length || 0} / {(trip.routeId as any)?.maxPassengers || 4} Passengers
+                            </Text>
+                        </View>
+                        {trip.status === 'active' && (
+                            <View style={styles.liveIndicator}>
+                                <View style={styles.liveDot} />
+                                <Text style={styles.liveText}>LIVE</Text>
+                            </View>
+                        )}
+                    </View>
+                </GlassCard>
+            </TouchableOpacity>
+        </Animated.View>
+    );
+};
 
 // Reusable Components for Consistency
 const SectionHeader = ({ title, action, onAction, theme }: any) => (
@@ -45,18 +127,39 @@ export default function DriverDashboard() {
     const trips = allTrips?.filter((t: any) => t.driverId?._id === user?.id || (t.driverId as any) === 'me' || t.driverId?.id === user?.id || t.driverId === user?.id) || [];
 
     const activeRoutes = trips.length;
-    // const totalDistance = trips.reduce((acc: number, t: any) => acc + (t.routeId?.distanceKm || 0), 0);
     const weeklyPotential = trips.reduce((acc: number, t: any) => acc + ((t.routeId?.price || 0) * (t.routeId?.days?.length || 0)), 0);
 
     const daysMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const monthsMap = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const today = new Date();
     const todayName = daysMap[today.getDay()];
-    const dateNum = today.getDate();
-    const monthName = monthsMap[today.getMonth()];
 
     const todaysTrips = trips.filter((t: any) => t.routeId?.days?.includes(todayName.substring(0, 3))); // Matching short day name
     todaysTrips.sort((a: any, b: any) => (a.routeId?.timeStart || '').localeCompare(b.routeId?.timeStart || ''));
+
+    // Find next trip
+    let nextTripDate: Date | null = null;
+    let nextTripRef: any = null;
+    let isAnyTripInProgress = false;
+
+    trips.forEach((t: any) => {
+        if (IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active') {
+            isAnyTripInProgress = true;
+        }
+
+        if (t.status === 'completed' || t.status === 'cancelled' || t.status === 'COMPLETED' || t.status === 'CANCELLED') return;
+        if (IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active') return;
+
+        const occurrence = getNextTripOccurrence(t.routeId?.timeStart, t.routeId?.days);
+        if (occurrence) {
+            if (!nextTripDate || occurrence.getTime() < nextTripDate.getTime()) {
+                nextTripDate = occurrence;
+                nextTripRef = t;
+            }
+        }
+    });
+
+    const nextTripCountdown = useCountdownDate(nextTripDate);
 
     // Custom gradient for weekly potential card
     const cardGradient = colorScheme === 'dark'
@@ -124,9 +227,21 @@ export default function DriverDashboard() {
                                         <View style={[styles.heroIconBox, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
                                             <TrendingUp size={20} color="#fff" />
                                         </View>
-                                        <View style={[styles.trendBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                            <Text style={styles.trendText}>+12% vs last week</Text>
-                                        </View>
+                                        {isAnyTripInProgress ? (
+                                            <View style={[styles.trendBadge, { backgroundColor: 'rgba(255,255,255,0.2)', flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+                                                <View style={[styles.statusDot, { backgroundColor: '#fff', marginRight: 0 }]} />
+                                                <Text style={styles.trendText}>Trip in progress</Text>
+                                            </View>
+                                        ) : nextTripCountdown ? (
+                                            <View style={[styles.trendBadge, { backgroundColor: 'rgba(255,255,255,0.2)', flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+                                                <Timer size={14} color="#fff" />
+                                                <Text style={styles.trendText}>Next trip {nextTripCountdown}</Text>
+                                            </View>
+                                        ) : (
+                                            <View style={[styles.trendBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                                <Text style={styles.trendText}>+12% vs last week</Text>
+                                            </View>
+                                        )}
                                     </View>
 
                                     <View>
@@ -192,7 +307,7 @@ export default function DriverDashboard() {
                 {/* Today's Schedule */}
                 <View style={styles.section}>
                     <SectionHeader
-                        title="Today's Schedule"
+                        title={`Today's Schedule (${todaysTrips.length})`}
                         theme={theme}
                         action={todaysTrips.length > 0 ? "View All" : null}
                         onAction={() => router.push('/(driver)/routes')}
@@ -200,61 +315,7 @@ export default function DriverDashboard() {
 
                     {todaysTrips.length > 0 ? (
                         todaysTrips.map((trip: any, index: number) => (
-                            <Animated.View
-                                key={trip.id}
-                                entering={FadeInUp.delay(400 + (index * 100))}
-                            >
-                                <TouchableOpacity onPress={() => router.push('/(driver)/routes')} activeOpacity={0.9}>
-                                    <GlassCard style={styles.tripCard} intensity={30}>
-                                        <View style={styles.tripHeader}>
-                                            <View style={[styles.timeBadge, { backgroundColor: theme.surface }]}>
-                                                <Clock size={14} color={theme.text} />
-                                                <Text style={[styles.timeBadgeText, { color: theme.text }]}>
-                                                    {trip.routeId?.timeStart}
-                                                </Text>
-                                            </View>
-                                            <View style={[styles.priceBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                                                <Text style={[styles.priceBadgeText, { color: '#10B981' }]}>
-                                                    {trip.routeId?.price} MAD/seat
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        <View style={styles.tripBody}>
-                                            <View style={styles.timelineContainer}>
-                                                <View style={[styles.timelineDot, { borderColor: theme.text }]} />
-                                                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
-                                                <View style={[styles.timelineDot, { borderColor: theme.primary, backgroundColor: theme.primary }]} />
-                                            </View>
-
-                                            <View style={styles.tripDetails}>
-                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
-                                                    {trip.routeId?.startPoint?.address || 'Start Location'}
-                                                </Text>
-                                                <View style={{ height: 20 }} />
-                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>
-                                                    {trip.routeId?.endPoint?.address || 'End Location'}
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        <View style={[styles.tripFooter, { borderTopColor: theme.border }]}>
-                                            <View style={styles.paxInfo}>
-                                                <User size={16} color={theme.icon} />
-                                                <Text style={[styles.paxText, { color: theme.icon }]}>
-                                                    {trip.clients?.length || 0} / {(trip.routeId as any)?.maxPassengers || 4} Passengers
-                                                </Text>
-                                            </View>
-                                            {trip.status === 'active' && (
-                                                <View style={styles.liveIndicator}>
-                                                    <View style={styles.liveDot} />
-                                                    <Text style={styles.liveText}>LIVE</Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                    </GlassCard>
-                                </TouchableOpacity>
-                            </Animated.View>
+                            <ScheduleTripCard key={trip.id} trip={trip} index={index} theme={theme} router={router} />
                         ))
                     ) : (
                         <Animated.View entering={FadeInUp.delay(400)}>

@@ -104,8 +104,24 @@ function AppContent() {
       const socket = SocketService.getSocket();
       socket?.on('notification', handleNotification);
 
+      socket?.on('trip_updated', (data: any) => {
+        console.log('Received trip_updated socket event:', data);
+        queryClient.invalidateQueries({ queryKey: ['trips'] });
+        queryClient.invalidateQueries({ queryKey: ['requests'] }); // Refresh join requests status too
+      });
+
+      socket?.on('trip_notification', (data: any) => {
+        console.log('Received trip_notification socket event:', data);
+        const { useUIStore } = require('../store/useUIStore');
+        const uiStore = useUIStore.getState();
+        uiStore.showToast(data.message || 'Trip updating!', 'info');
+        queryClient.invalidateQueries({ queryKey: ['trips'] });
+      });
+
       return () => {
         socket?.off('notification', handleNotification);
+        socket?.off('trip_updated');
+        socket?.off('trip_notification');
       };
     }
   }, [user]);

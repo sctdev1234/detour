@@ -1,5 +1,5 @@
-import { LatLng, Trip } from '../store/useTripStore';
-import { calculateDistance } from './location.ts';
+import { LatLng, Trip } from '../types';
+import { calculateDistance } from './location';
 
 export interface RoutePoint {
     lat: number;

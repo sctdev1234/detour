@@ -1,12 +1,110 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Calendar, Navigation, User } from 'lucide-react-native';
+import { Calendar, Navigation, Timer, User } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
 import { useTrips } from '../hooks/api/useTripQueries';
+import { useCountdownDate } from '../hooks/useCountdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { Trip } from '../types';
+import { getNextTripOccurrence, IN_PROGRESS_STATUSES } from '../utils/timeUtils';
+
+const TripItemCard = ({ item, index, theme, router, user }: { item: Trip, index: number, theme: any, router: any, user: any }) => {
+    let targetDate: Date | null = null;
+    const isInProgress = IN_PROGRESS_STATUSES.includes(item.status) || item.status === 'active';
+
+    if (!isInProgress && item.status !== 'COMPLETED' && item.status !== 'CANCELLED' && item.routeId) {
+        targetDate = getNextTripOccurrence(item.routeId.timeStart, item.routeId.days || []);
+    }
+    const countdownStr = useCountdownDate(targetDate);
+
+    return (
+        <Animated.View
+            entering={FadeInDown.delay(index * 100).springify()}
+        >
+            <TouchableOpacity
+                style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                onPress={() => router.push({ pathname: '/modal', params: { type: 'trip_details', id: item.id } })}
+            >
+                <View style={styles.tripHeader}>
+                    <View style={styles.statusBadge}>
+                        <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#10b981' : item.status === 'COMPLETED' ? '#3b82f6' : '#f59e0b' }]} />
+                        <Text style={[styles.statusText, { color: theme.text }]}>{item.status.toUpperCase()}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={[styles.dateText, { color: theme.icon }]}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                        {isInProgress ? (
+                            <View style={[styles.countdownBadge, { backgroundColor: '#ef4444' + '15' }]}>
+                                <View style={[styles.statusDot, { backgroundColor: '#ef4444', marginRight: 4 }]} />
+                                <Text style={[styles.countdownText, { color: '#ef4444' }]}>IN TRIP</Text>
+                            </View>
+                        ) : countdownStr ? (
+                            <View style={[styles.countdownBadge, { backgroundColor: theme.primary + '15' }]}>
+                                <Timer size={12} color={theme.primary} />
+                                <Text style={[styles.countdownText, { color: theme.primary }]}>{countdownStr}</Text>
+                            </View>
+                        ) : null}
+                    </View>
+                </View>
+
+                <View style={styles.trajectory}>
+                    <View style={styles.routeIcon}>
+                        <Navigation size={20} color={theme.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.addr, { color: theme.text }]} numberOfLines={1}>{item.routeId?.startPoint?.address}</Text>
+                        <Text style={[styles.addr, { color: theme.text, marginTop: 4 }]} numberOfLines={1}>{item.routeId?.endPoint?.address}</Text>
+                    </View>
+                </View>
+
+                <View style={[styles.participants, { borderTopColor: theme.border }]}>
+                    <View style={styles.avatars}>
+                        <View style={[styles.avatarBox, { zIndex: 10 }]}>
+                            {item.driverId?.photoURL ? (
+                                <Image source={{ uri: item.driverId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
+                            ) : (
+                                <View style={[styles.avatar, { backgroundColor: theme.border }]}>
+                                    <User size={14} color={theme.icon} />
+                                </View>
+                            )}
+                            <View style={styles.driverLabel}>
+                                <Text style={styles.labelTxt}>D</Text>
+                            </View>
+                        </View>
+                        {item.clients.map((c: any, i: number) => (
+                            <View key={i} style={[styles.avatarBox, { marginLeft: -12, zIndex: 5 - i }]}>
+                                {c.userId?.photoURL ? (
+                                    <Image source={{ uri: c.userId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
+                                ) : (
+                                    <View style={[styles.avatar, { backgroundColor: theme.border }]}>
+                                        <User size={14} color={theme.icon} />
+                                    </View>
+                                )}
+                            </View>
+                        ))}
+                    </View>
+                    <Text style={[styles.participantsCount, { color: theme.icon }]}>
+                        {1 + item.clients.length} Participants
+                    </Text>
+                </View>
+
+                {user?.role === 'driver' && item.status !== 'COMPLETED' && (
+                    <TouchableOpacity
+                        style={[styles.findBtn, { backgroundColor: theme.primary }]}
+                        onPress={() => router.push({
+                            pathname: '/(driver)/find-clients',
+                            params: { tripId: item.id, routeId: item.routeId?.id }
+                        })}
+                    >
+                        <User size={18} color="#fff" />
+                        <Text style={styles.findBtnText}>Find Clients</Text>
+                    </TouchableOpacity>
+                )}
+            </TouchableOpacity>
+        </Animated.View>
+    );
+};
 
 export default function TripsScreen() {
     const router = useRouter();
@@ -15,84 +113,9 @@ export default function TripsScreen() {
     const { data: trips, isLoading } = useTrips();
     const user = useAuthStore((state: any) => state.user);
 
-    const renderTripItem = ({ item, index }: { item: Trip, index: number }) => {
-        return (
-            <Animated.View
-                entering={FadeInDown.delay(index * 100).springify()}
-            >
-                <TouchableOpacity
-                    style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                    onPress={() => router.push({ pathname: '/modal', params: { type: 'trip_details', id: item.id } })}
-                >
-                    <View style={styles.tripHeader}>
-                        <View style={styles.statusBadge}>
-                            <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#10b981' : item.status === 'completed' ? '#3b82f6' : '#f59e0b' }]} />
-                            <Text style={[styles.statusText, { color: theme.text }]}>{item.status.toUpperCase()}</Text>
-                        </View>
-                        <Text style={[styles.dateText, { color: theme.icon }]}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-                    </View>
-
-                    <View style={styles.trajectory}>
-                        <View style={styles.routeIcon}>
-                            <Navigation size={20} color={theme.primary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.addr, { color: theme.text }]} numberOfLines={1}>{item.routeId?.startPoint?.address}</Text>
-                            <Text style={[styles.addr, { color: theme.text, marginTop: 4 }]} numberOfLines={1}>{item.routeId?.endPoint?.address}</Text>
-                        </View>
-                    </View>
-
-                    <View style={[styles.participants, { borderTopColor: theme.border }]}>
-                        <View style={styles.avatars}>
-                            <View style={[styles.avatarBox, { zIndex: 10 }]}>
-                                {item.driverId?.photoURL ? (
-                                    <Image source={{ uri: item.driverId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
-                                ) : (
-                                    <View style={[styles.avatar, { backgroundColor: theme.border }]}>
-                                        <User size={14} color={theme.icon} />
-                                    </View>
-                                )}
-                                <View style={styles.driverLabel}>
-                                    <Text style={styles.labelTxt}>D</Text>
-                                </View>
-                            </View>
-                            {item.clients.map((c: any, i: number) => (
-                                <View key={i} style={[styles.avatarBox, { marginLeft: -12, zIndex: 5 - i }]}>
-                                    {c.userId?.photoURL ? (
-                                        <Image source={{ uri: c.userId.photoURL }} style={styles.avatar} contentFit="cover" transition={500} />
-                                    ) : (
-                                        <View style={[styles.avatar, { backgroundColor: theme.border }]}>
-                                            <User size={14} color={theme.icon} />
-                                        </View>
-                                    )}
-                                </View>
-                            ))}
-                        </View>
-                        <Text style={[styles.participantsCount, { color: theme.icon }]}>
-                            {1 + item.clients.length} Participants
-                        </Text>
-                    </View>
-
-                    {user?.role === 'driver' && item.status !== 'completed' && (
-                        <TouchableOpacity
-                            style={[styles.findBtn, { backgroundColor: theme.primary }]}
-                            onPress={() => router.push({
-                                pathname: '/(driver)/find-clients',
-                                params: { tripId: item.id, routeId: item.routeId?.id }
-                            })}
-                        >
-                            <User size={18} color="#fff" />
-                            <Text style={styles.findBtnText}>Find Clients</Text>
-                        </TouchableOpacity>
-                    )}
-                </TouchableOpacity>
-            </Animated.View>
-        );
-    };
-
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            {isLoading && !trips?.length ? (
+            {isLoading && (!trips || (trips as Trip[]).length === 0) ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
@@ -100,7 +123,7 @@ export default function TripsScreen() {
                 <FlatList
                     data={trips || []}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item, index }) => renderTripItem({ item, index })}
+                    renderItem={({ item, index }) => <TripItemCard item={item} index={index} theme={theme} router={router} user={user} />}
                     contentContainerStyle={[styles.list, { paddingTop: 84 }]}
                     ListEmptyComponent={
                         <View style={styles.empty}>
@@ -123,6 +146,8 @@ const styles = StyleSheet.create({
     statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.03)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusDot: { width: 6, height: 6, borderRadius: 3 },
     statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+    countdownBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginTop: 4 },
+    countdownText: { fontSize: 10, fontWeight: '700' },
     dateText: { fontSize: 12, fontWeight: '600' },
     trajectory: { flexDirection: 'row', gap: 16, alignItems: 'center' },
     routeIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.03)', justifyContent: 'center', alignItems: 'center' },

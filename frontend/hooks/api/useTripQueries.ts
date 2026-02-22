@@ -359,3 +359,29 @@ export const useConfirmDropoff = () => {
         }
     });
 };
+
+export const useClientConfirmWaiting = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        // @ts-ignore
+        mutationFn: async ({ tripId }: { tripId: string }) => {
+            await api.patch('/trip/waiting', { tripId });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+export const useDriverArrived = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        // @ts-ignore
+        mutationFn: async ({ tripId, clientId }: { tripId: string, clientId: string }) => {
+            await api.patch('/trip/arrived', { tripId, clientId });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};

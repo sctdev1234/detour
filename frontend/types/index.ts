@@ -98,10 +98,10 @@ export type Trip = {
         routeId: Route;
         price?: number;
         seats?: number;
-        status?: 'pending' | 'picked_up' | 'dropped_off' | 'cancelled';
+        status?: 'ROUTE_CREATED' | 'WAITING_AT_PICKUP' | 'PICKED_UP' | 'DROPPED_OFF' | 'CANCELLED' | 'pending';
         paymentStatus?: 'pending' | 'paid' | 'failed';
     }>;
-    status: 'pending' | 'active' | 'completed' | 'cancelled';
+    status: 'CREATED' | 'PENDING' | 'MATCHING' | 'PARTIAL' | 'FULL' | 'CONFIRMED' | 'STARTING' | 'STARTED' | 'PICKUP_IN_PROGRESS' | 'IN_PROGRESS' | 'DROPOFF_IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'active' | 'pending';
     createdAt: string;
 };
 

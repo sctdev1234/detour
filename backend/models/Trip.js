@@ -30,8 +30,8 @@ const TripSchema = new mongoose.Schema({
         },
         status: {
             type: String,
-            enum: ['pending', 'picked_up', 'dropped_off', 'cancelled'],
-            default: 'pending'
+            enum: ['ROUTE_CREATED', 'WAITING_AT_PICKUP', 'PICKED_UP', 'DROPPED_OFF', 'CANCELLED'],
+            default: 'ROUTE_CREATED'
         },
         paymentStatus: {
             type: String,
@@ -41,8 +41,8 @@ const TripSchema = new mongoose.Schema({
     }],
     status: {
         type: String,
-        enum: ['pending', 'active', 'completed', 'cancelled'],
-        default: 'pending'
+        enum: ['CREATED', 'PENDING', 'MATCHING', 'PARTIAL', 'FULL', 'CONFIRMED', 'STARTING', 'STARTED', 'PICKUP_IN_PROGRESS', 'IN_PROGRESS', 'DROPOFF_IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+        default: 'CREATED'
     },
     createdAt: {
         type: Date,

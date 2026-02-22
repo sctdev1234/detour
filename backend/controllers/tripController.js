@@ -118,6 +118,16 @@ exports.getClientRequests = async (req, res) => {
 exports.startTrip = async (req, res) => {
     try {
         const trip = await tripService.startTrip(req.user.id, req.params.id);
+
+        // Notify participants
+        const io = req.app.get('socketio');
+        if (io && trip) {
+            io.to(`user:${trip.driverId}`).emit('trip_updated', { tripId: trip._id });
+            trip.clients.forEach(c => {
+                io.to(`user:${c.userId}`).emit('trip_updated', { tripId: trip._id });
+            });
+        }
+
         res.json(trip);
     } catch (err) {
         console.error("Error in startTrip:", err.message);
@@ -130,6 +140,16 @@ exports.startTrip = async (req, res) => {
 exports.completeTrip = async (req, res) => {
     try {
         const trip = await tripService.completeTrip(req.user.id, req.params.id);
+
+        // Notify participants
+        const io = req.app.get('socketio');
+        if (io && trip) {
+            io.to(`user:${trip.driverId}`).emit('trip_updated', { tripId: trip._id });
+            trip.clients.forEach(c => {
+                io.to(`user:${c.userId}`).emit('trip_updated', { tripId: trip._id });
+            });
+        }
+
         res.json(trip);
     } catch (err) {
         console.error("Error in completeTrip:", err.message);
@@ -156,6 +176,14 @@ exports.confirmPickup = async (req, res) => {
     try {
         const { tripId, clientId } = req.body;
         const trip = await tripService.confirmPickup(req.user.id, { tripId, clientId });
+
+        // Notify participants
+        const io = req.app.get('socketio');
+        if (io && trip) {
+            io.to(`user:${trip.driverId}`).emit('trip_updated', { tripId: trip._id });
+            io.to(`user:${clientId}`).emit('trip_updated', { tripId: trip._id });
+        }
+
         res.json(trip);
     } catch (err) {
         console.error("Error in confirmPickup:", err.message);
@@ -170,11 +198,62 @@ exports.confirmDropoff = async (req, res) => {
     try {
         const { tripId, clientId } = req.body;
         const trip = await tripService.confirmDropoff(req.user.id, { tripId, clientId });
+
+        // Notify participants
+        const io = req.app.get('socketio');
+        if (io && trip) {
+            io.to(`user:${trip.driverId}`).emit('trip_updated', { tripId: trip._id });
+            io.to(`user:${clientId}`).emit('trip_updated', { tripId: trip._id });
+        }
+
         res.json(trip);
     } catch (err) {
         console.error("Error in confirmDropoff:", err.message);
         if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
         if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.clientConfirmWaiting = async (req, res) => {
+    try {
+        const { tripId } = req.body;
+        const trip = await tripService.clientConfirmWaiting(req.user.id, tripId);
+
+        // Notify participants
+        const io = req.app.get('socketio');
+        if (io && trip) {
+            io.to(`user:${trip.driverId}`).emit('trip_updated', { tripId: trip._id });
+            io.to(`user:${req.user.id}`).emit('trip_updated', { tripId: trip._id });
+        }
+
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in clientConfirmWaiting:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.driverArrivedAtPickup = async (req, res) => {
+    try {
+        const { tripId, clientId } = req.body;
+        const trip = await tripService.driverArrivedAtPickup(req.user.id, { tripId, clientId });
+
+        // Notify participants
+        const io = req.app.get('socketio');
+        if (io && trip) {
+            io.to(`user:${trip.driverId}`).emit('trip_updated', { tripId: trip._id });
+            io.to(`user:${clientId}`).emit('trip_updated', { tripId: trip._id });
+        }
+
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in driverArrivedAtPickup:", err.message);
+        if (err.message === 'Trip not found') return res.status(404).json({ msg: err.message });
+        if (err.message === 'Not authorized') return res.status(401).json({ msg: err.message });
+        if (err.message === 'Client not found in trip') return res.status(404).json({ msg: err.message });
         res.status(500).send('Server Error');
     }
 };
