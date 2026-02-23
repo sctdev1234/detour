@@ -186,7 +186,8 @@ const MapLeaflet = React.memo(({
     clientColors,
     onMapPress,
     edgePadding,
-    boundsPoints
+    boundsPoints,
+    fullScreen = false
 }: MapProps) => {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
@@ -328,9 +329,16 @@ const MapLeaflet = React.memo(({
     const defaultCenter: [number, number] = [33.5731, -7.5898];
 
     return (
-        <View style={[styles.container, style]}>
+        <View style={[styles.container, style, fullScreen && { borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' }]}>
             <LeafletStyles />
-            <div style={{ height: (typeof height === 'number' ? `${height}px` : (height as string || '300px')), width: '100%', borderRadius: 20, overflow: 'hidden', zIndex: 1, position: 'relative' }}>
+            <div style={{
+                height: fullScreen ? '100%' : (typeof height === 'number' ? `${height}px` : (height as string || '300px')),
+                width: '100%',
+                borderRadius: fullScreen ? 0 : 20,
+                overflow: 'hidden',
+                zIndex: 1,
+                position: 'relative'
+            }}>
                 <MapContainer
                     center={defaultCenter}
                     zoom={13}
@@ -340,6 +348,14 @@ const MapLeaflet = React.memo(({
                     <TileLayer
                         attribution='&copy; Detour.ma'
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        eventHandlers={{
+                            add: (e) => {
+                                // Force a resize on load to fix "gray background" issues in absolute containers
+                                setTimeout(() => {
+                                    e.target._map.invalidateSize();
+                                }, 100);
+                            }
+                        }}
                     />
 
                     <MapBoundsUpdater points={allPointsToFit} edgePadding={edgePadding} />

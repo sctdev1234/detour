@@ -1,8 +1,14 @@
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import { AlertTriangle, Check, Navigation, User, X } from 'lucide-react-native';
+import { AlertTriangle, Check, Lock, MessageSquare, Navigation, Phone, User, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Animated, BackHandler, Easing, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Animated, BackHandler, Easing, Modal, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import AnimatedRN, { Extrapolate, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import { useCancelDropoff, useCancelPickup, useCancelTrip, useConfirmDropoff, useConfirmPickup, useDriverArrived, useDriverReady, useFinishTrip, useRemoveClient, useStartTrip } from '../hooks/api/useTripQueries';
 import { useLateDuration } from '../hooks/useCountdown';
@@ -15,7 +21,9 @@ import DetourMap from './Map';
 export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { showToast, showConfirm } = useUIStore();
+    const { showToast, showConfirm, hideGlobalHeader, setHideGlobalHeader } = useUIStore();
+    const insets = useSafeAreaInsets();
+    const { height: SCREEN_HEIGHT } = useWindowDimensions();
 
     const { mutateAsync: startTrip } = useStartTrip();
     const { mutateAsync: finishTrip } = useFinishTrip();
@@ -142,6 +150,29 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
         };
     };
 
+    const getDistanceAndEta = (target: { latitude: number, longitude: number }) => {
+        if (!location?.coords || !target?.latitude) return null;
+        const R = 6371e3;
+        const lat1 = location.coords.latitude * Math.PI / 180;
+        const lat2 = target.latitude * Math.PI / 180;
+        const deltaLat = (target.latitude - location.coords.latitude) * Math.PI / 180;
+        const deltaLng = (target.longitude - location.coords.longitude) * Math.PI / 180;
+
+        const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+            Math.cos(lat1) * Math.cos(lat2) *
+            Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c; // meters
+
+        const km = distance / 1000;
+        const mins = Math.ceil((km / 30) * 60); // Assuming 30km/h avg speed
+
+        return {
+            distanceStr: km < 1 ? `${Math.round(distance)}m` : `${km.toFixed(1)}km`,
+            etaStr: `${mins} min`
+        };
+    };
+
     const handleStartTrip = async () => {
         setActionLoading(true);
         try {
@@ -174,6 +205,12 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
             }
         });
     };
+
+    // Handle global header visibility
+    useEffect(() => {
+        setHideGlobalHeader(true);
+        return () => setHideGlobalHeader(false);
+    }, []);
 
     const handleDriverReadyState = async () => {
         setActionLoading(true);
@@ -221,6 +258,7 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
 
     const handleConfirmPickup = async (clientId: string) => {
         setActionLoading(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         try {
             await confirmPickup({ tripId: trip.id || trip._id, clientId, driverLocation: getDriverLocationPayload() });
         } catch (e: any) {
@@ -268,233 +306,571 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
         });
     };
 
-    return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>ACTIVE TRIP EXECUTION</Text>
-            </View>
+    const isTripActiveOnMap = trip.status === 'STARTED' || trip.status === 'IN_PROGRESS' || trip.status === 'PICKUP_IN_PROGRESS';
 
-            <View style={[styles.statusBanner, {
-                backgroundColor: trip.status === 'STARTED' || trip.status === 'IN_PROGRESS' || trip.status === 'PICKUP_IN_PROGRESS' ? '#10b981' : trip.status === 'STARTING_SOON' ? '#8b5cf6' : '#f59e0b'
-            }]}>
-                <Text style={styles.statusText}>{trip.status ? trip.status.toUpperCase() : 'PENDING'} • HARD LOCKED UI</Text>
-            </View>
+    // -- BOTTOM SHEET LOGIC --
+    const translateY = useSharedValue(SCREEN_HEIGHT * 0.6);
+    const context = useSharedValue({ y: 0 });
 
-            {isLate && (
-                <Animated.View style={[styles.lateBanner, { opacity: pulseAnim }]}>
-                    <AlertTriangle size={20} color="#fff" />
-                    <Text style={styles.lateText}>{lateDuration}</Text>
-                    <Text style={styles.lateSubText}>You should have started already!</Text>
-                </Animated.View>
-            )}
+    const SHEET_MAX_HEIGHT = SCREEN_HEIGHT * 0.8;
+    const SHEET_MIN_HEIGHT = SCREEN_HEIGHT * 0.35;
 
-            <View style={{ flex: 1 }}>
-                <DetourMap mode="trip" trip={trip} theme={theme} />
-            </View>
+    const gesture = Gesture.Pan()
+        .onStart(() => {
+            context.value = { y: translateY.value };
+        })
+        .onUpdate((event) => {
+            translateY.value = event.translationY + context.value.y;
+            translateY.value = Math.max(translateY.value, SCREEN_HEIGHT - SHEET_MAX_HEIGHT);
+        })
+        .onEnd(() => {
+            if (translateY.value > SCREEN_HEIGHT - SHEET_MIN_HEIGHT + 50) {
+                translateY.value = withSpring(SCREEN_HEIGHT - SHEET_MIN_HEIGHT, { damping: 15 });
+            } else if (translateY.value < SCREEN_HEIGHT - SHEET_MIN_HEIGHT - 50) {
+                translateY.value = withSpring(SCREEN_HEIGHT - SHEET_MAX_HEIGHT, { damping: 15 });
+            } else {
+                translateY.value = withSpring(SCREEN_HEIGHT - SHEET_MIN_HEIGHT, { damping: 15 });
+            }
+        });
 
-            <ScrollView contentContainerStyle={styles.content} style={{ flex: 1, borderTopWidth: 2, borderColor: theme.border }}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Passengers ({trip.clients?.length || 0})</Text>
-                {trip.clients?.map((client: any, i: number) => (
-                    <View key={i} style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', gap: 12 }}>
-                            {client.userId?.photoURL ? (
-                                <Image source={{ uri: client.userId.photoURL }} style={styles.avatar} />
-                            ) : (
-                                <View style={[styles.avatar, { backgroundColor: theme.border }]}>
-                                    <User size={20} color={theme.icon} />
-                                </View>
-                            )}
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.userName, { color: theme.text }]}>{client.userId?.fullName || 'Client'}</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    <Text style={[styles.userRole, { color: theme.icon }]}>Passenger</Text>
-                                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: client.status === 'PICKED_UP' ? '#3b82f620' : client.status === 'DROPPED_OFF' ? '#10b98120' : '#f59e0b20' }}>
-                                        <Text style={{ fontSize: 10, fontWeight: '700', color: client.status === 'PICKED_UP' ? '#3b82f6' : client.status === 'DROPPED_OFF' ? '#10b981' : '#f59e0b' }}>
-                                            {client.status ? client.status.toUpperCase() : 'WAITING'}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
+    const rSheetStyle = useAnimatedStyle(() => {
+        const borderRadius = interpolate(
+            translateY.value,
+            [SCREEN_HEIGHT - SHEET_MAX_HEIGHT, SCREEN_HEIGHT - SHEET_MIN_HEIGHT],
+            [32, 24],
+            Extrapolate.CLAMP
+        );
+        return {
+            transform: [{ translateY: translateY.value }],
+            borderRadius,
+        };
+    });
 
-                        {client.status !== 'DROPPED_OFF' && (
-                            <View style={{ flexDirection: 'row', width: '100%', marginTop: 12, gap: 8 }}>
-                                {(!client.status || client.status === 'WAITING' || client.status === 'READY') && trip.status !== 'PICKUP_IN_PROGRESS' && (
-                                    <TouchableOpacity
-                                        style={[styles.actionBtnSmall, { backgroundColor: '#f59e0b' }]}
-                                        onPress={() => handleDriverArrivedBtn(client.userId._id || client.userId)}
-                                        disabled={actionLoading}
-                                    >
-                                        <Text style={styles.actionBtnTextSmall}>Arrive at Pickup</Text>
-                                    </TouchableOpacity>
-                                )}
+    const rHandleStyle = useAnimatedStyle(() => {
+        const opacity = interpolate(
+            translateY.value,
+            [SCREEN_HEIGHT - SHEET_MAX_HEIGHT, SCREEN_HEIGHT - SHEET_MIN_HEIGHT + 50],
+            [1, 0.5],
+            Extrapolate.CLAMP
+        );
+        return { opacity };
+    });
 
-                                {(trip.status === 'PICKUP_IN_PROGRESS' || client.status === 'PICKUP_INCOMING') && client.status !== 'IN_CAR' && (
-                                    <>
-                                        <TouchableOpacity
-                                            style={[styles.actionBtnSmall, { backgroundColor: '#3b82f6', flex: 1 }]}
-                                            onPress={() => handleConfirmPickup(client.userId._id || client.userId)}
-                                            disabled={actionLoading}
-                                        >
-                                            <Text style={styles.actionBtnTextSmall}>Confirm Pickup</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.actionBtnSmall, { backgroundColor: '#ef4444', marginLeft: 8, paddingHorizontal: 16 }]}
-                                            onPress={() => promptCancelClientAction(client.userId._id || client.userId, 'pickup')}
-                                            disabled={actionLoading}
-                                        >
-                                            <Text style={styles.actionBtnTextSmall}>Cancel</Text>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
+    useEffect(() => {
+        translateY.value = withSpring(SCREEN_HEIGHT - SHEET_MIN_HEIGHT, { damping: 15 });
+    }, [SCREEN_HEIGHT]);
 
-                                {client.status === 'IN_CAR' && (
-                                    <>
-                                        <TouchableOpacity
-                                            style={[styles.actionBtnSmall, { backgroundColor: '#10b981', flex: 1 }]}
-                                            onPress={() => handleConfirmDropoff(client.userId._id || client.userId)}
-                                            disabled={actionLoading}
-                                        >
-                                            <Text style={styles.actionBtnTextSmall}>Confirm Dropoff</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={[styles.actionBtnSmall, { backgroundColor: '#ef4444', marginLeft: 8, paddingHorizontal: 16 }]}
-                                            onPress={() => promptCancelClientAction(client.userId._id || client.userId, 'dropoff')}
-                                            disabled={actionLoading}
-                                        >
-                                            <Text style={styles.actionBtnTextSmall}>Cancel</Text>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
-                            </View>
-                        )}
-                    </View>
-                ))}
-            </ScrollView>
+    // -- RENDERING HELPERS --
+    const getTripCTA = () => {
+        const clients = trip.clients || [];
+        const nextClient = clients.find((c: any) => c.status !== 'DROPPED_OFF');
 
-            <View style={[styles.footer, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
-                {trip.status === 'STARTING_SOON' && !trip.driverReady ? (
-                    <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: '#8b5cf6' }]}
-                        onPress={handleDriverReadyState}
-                        disabled={actionLoading}
-                    >
-                        {actionLoading ? <ActivityIndicator color="#fff" /> : (
-                            <>
-                                <Check size={20} color="#fff" />
-                                <Text style={styles.btnText}>I Am Ready</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                ) : trip.status !== 'COMPLETED' && trip.status !== 'IN_PROGRESS' && trip.status !== 'STARTED' && trip.status !== 'PICKUP_IN_PROGRESS' ? (
-                    <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
-                        onPress={handleStartTrip}
-                        disabled={actionLoading}
-                    >
-                        {actionLoading ? <ActivityIndicator color="#fff" /> : (
-                            <>
-                                <Navigation size={20} color="#fff" />
-                                <Text style={styles.btnText}>Start Trip</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: '#3b82f6' }]}
-                        onPress={handleFinishTrip}
-                        disabled={actionLoading}
-                    >
-                        {actionLoading ? <ActivityIndicator color="#fff" /> : (
-                            <>
-                                <Check size={20} color="#fff" />
-                                <Text style={styles.btnText}>Complete Trip</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                )}
+        if (trip.status === 'STARTING_SOON' && !trip.driverReady) {
+            return { label: 'I AM READY', color: ['#8b5cf6', '#7c3aed'], action: handleDriverReadyState, icon: Check };
+        }
 
-                {(trip.status === 'STARTING_SOON' || trip.status === 'STARTED') && (
-                    <TouchableOpacity style={{ marginTop: 12, alignItems: 'center' }} onPress={promptCancelTrip}>
-                        <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>Cancel Trip (Emergency)</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
+        if (trip.status !== 'COMPLETED' && trip.status !== 'IN_PROGRESS' && trip.status !== 'STARTED' && trip.status !== 'PICKUP_IN_PROGRESS') {
+            return { label: 'START TRIP', color: ['#10b981', '#059669'], action: handleStartTrip, icon: Navigation };
+        }
 
-            {/* Cancel Reason Modal */}
-            <Modal
-                visible={cancelModal.visible}
-                transparent
-                animationType="fade"
-                onRequestClose={closeCancelModal}
+        if (!nextClient) {
+            return { label: 'COMPLETE TRIP', color: ['#3b82f6', '#2563eb'], action: handleFinishTrip, icon: Check };
+        }
+
+        // Logic based on the next client's status
+        if (!nextClient.status || nextClient.status === 'WAITING' || nextClient.status === 'READY') {
+            return { label: 'ARRIVE AT PICKUP', color: ['#f59e0b', '#d97706'], action: () => handleDriverArrivedBtn(nextClient.userId._id || nextClient.userId), icon: Navigation };
+        }
+
+        if (nextClient.status === 'PICKUP_INCOMING' || trip.status === 'PICKUP_IN_PROGRESS') {
+            return { label: 'CONFIRM PICKUP', color: ['#10b981', '#059669'], action: () => handleConfirmPickup(nextClient.userId._id || nextClient.userId), icon: User };
+        }
+
+        if (nextClient.status === 'IN_CAR') {
+            return { label: 'CONFIRM DROPOFF', color: ['#3b82f6', '#2563eb'], action: () => handleConfirmDropoff(nextClient.userId._id || nextClient.userId), icon: Navigation };
+        }
+
+        return { label: 'COMPLETE TRIP', color: ['#3b82f6', '#2563eb'], action: handleFinishTrip, icon: Check };
+    };
+
+    const cta = getTripCTA();
+
+    const ScaleButton = ({ children, onPress, disabled, style }: any) => {
+        const scale = useSharedValue(1);
+        const animatedStyle = useAnimatedStyle(() => ({
+            transform: [{ scale: scale.value }]
+        }));
+
+        return (
+            <GestureDetector
+                gesture={Gesture.Tap()
+                    .onBegin(() => {
+                        scale.value = withTiming(0.95, { duration: 100 });
+                    })
+                    .onFinalize(() => {
+                        scale.value = withTiming(1, { duration: 100 });
+                        if (onPress) runOnJS(onPress)();
+                    })
+                }
             >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: theme.text }]}>{cancelModal.title}</Text>
-                            <TouchableOpacity onPress={closeCancelModal}>
-                                <X size={22} color={theme.icon} />
-                            </TouchableOpacity>
+                <AnimatedRN.View style={[style, animatedStyle]}>
+                    <TouchableOpacity activeOpacity={1} disabled={disabled} onPress={undefined}>
+                        {children}
+                    </TouchableOpacity>
+                </AnimatedRN.View>
+            </GestureDetector>
+        );
+    };
+
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+            {/* FULLSCREEN MAP BACKGROUND */}
+            <DetourMap
+                mode="trip"
+                trip={trip}
+                theme={theme}
+                fullScreen
+                style={StyleSheet.absoluteFillObject}
+                edgePadding={{
+                    top: insets.top + (hideGlobalHeader ? 140 : 200),
+                    bottom: SHEET_MIN_HEIGHT + 40,
+                    left: 40,
+                    right: 40
+                }}
+            />
+
+            <View style={styles.container}>
+
+                {/* STATUS HEADER (Floating Glass Header) */}
+                <View style={[styles.floatingHeaderContainer, { top: insets.top + 10 }]}>
+                    <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="dark" style={styles.glassHeader}>
+                        <View style={styles.headerRow}>
+                            <View style={styles.statusInfo}>
+                                <Text style={styles.headerLabel}>TRIP STATUS</Text>
+                                <Text style={styles.headerStatus}>
+                                    {trip.status === 'STARTING_SOON' ? 'STARTING SOON' : trip.status?.replace('_', ' ') || 'ACTIVE'}
+                                </Text>
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <View style={styles.lockInfo}>
+                                <View style={styles.lockBadge}>
+                                    <Lock size={12} color="#fff" fill="#fff" />
+                                    <Text style={styles.lockLabel}>Locked</Text>
+                                </View>
+                                {trip.status === 'STARTING_SOON' && scheduledDate && (
+                                    <Text style={styles.timerText}>Starts in {lateDuration || '...'}</Text>
+                                )}
+                            </View>
                         </View>
-                        <Text style={[styles.modalSubtitle, { color: theme.icon }]}>{cancelModal.subtitle}</Text>
-                        <TextInput
-                            style={[styles.modalInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
-                            placeholder="Enter reason..."
-                            placeholderTextColor={theme.icon}
-                            value={cancelModal.reason}
-                            onChangeText={(text) => setCancelModal(prev => ({ ...prev, reason: text }))}
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                        />
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity
-                                style={[styles.modalBtn, { backgroundColor: theme.border }]}
-                                onPress={closeCancelModal}
-                            >
-                                <Text style={[styles.modalBtnText, { color: theme.text }]}>Nevermind</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.modalBtn, styles.modalBtnDanger, { opacity: cancelModal.reason.trim() ? 1 : 0.5 }]}
-                                onPress={() => {
-                                    if (!cancelModal.reason.trim()) return showToast('You must provide a reason.', 'warning');
-                                    cancelModal.onConfirm(cancelModal.reason.trim());
-                                }}
-                                disabled={!cancelModal.reason.trim()}
-                            >
-                                <Text style={styles.modalBtnText}>Confirm</Text>
-                            </TouchableOpacity>
+                    </BlurView>
+                </View>
+
+                {isLate && (
+                    <View style={[styles.floatingLateBanner, { top: insets.top + 100 }]}>
+                        <Animated.View style={[styles.lateBannerContent, { opacity: pulseAnim }]}>
+                            <AlertTriangle size={16} color="#fff" />
+                            <Text style={styles.lateBannerText}>LATE: {lateDuration}</Text>
+                        </Animated.View>
+                    </View>
+                )}
+
+                {/* FLOATING BOTTOM SHEET */}
+                <GestureDetector gesture={gesture}>
+                    <AnimatedRN.View style={[styles.bottomSheet, rSheetStyle, { height: SHEET_MAX_HEIGHT }]}>
+                        <AnimatedRN.View style={[styles.sheetHandle, rHandleStyle]}>
+                            <View style={styles.handleBar} />
+                        </AnimatedRN.View>
+
+                        <ScrollView
+                            contentContainerStyle={styles.sheetContent}
+                            showsVerticalScrollIndicator={false}
+                            bounces={false}
+                        >
+                            <Text style={styles.sectionTitle}>Passengers ({trip.clients?.length || 0})</Text>
+
+                            {trip.clients?.map((client: any, i: number) => {
+                                const isPickedUp = client.status === 'IN_CAR';
+                                const isDroppedOff = client.status === 'DROPPED_OFF';
+
+                                return (
+                                    <View key={i} style={styles.passengerCard}>
+                                        <View style={styles.cardHeader}>
+                                            <View style={styles.avatarContainer}>
+                                                {client.userId?.photoURL ? (
+                                                    <Image source={{ uri: client.userId.photoURL }} style={styles.avatar} />
+                                                ) : (
+                                                    <View style={[styles.avatarPlaceholder, { backgroundColor: '#F0F0F5' }]}>
+                                                        <User size={20} color="#A0A0B0" />
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            <View style={styles.passengerInfo}>
+                                                <Text style={styles.passengerName}>{client.userId?.fullName || 'Passenger'}</Text>
+                                                <View style={styles.statusBadgeRow}>
+                                                    <View style={[styles.statusBadge, {
+                                                        backgroundColor: isDroppedOff ? '#10b98120' : isPickedUp ? '#3b82f620' : '#f59e0b20'
+                                                    }]}>
+                                                        <Text style={[styles.statusBadgeText, {
+                                                            color: isDroppedOff ? '#10b981' : isPickedUp ? '#3b82f6' : '#f59e0b'
+                                                        }]}>
+                                                            {client.status ? client.status.replace('_', ' ').toUpperCase() : 'WAITING'}
+                                                        </Text>
+                                                    </View>
+                                                    {(() => {
+                                                        const target = isPickedUp ? client.routeId?.endPoint : client.routeId?.startPoint;
+                                                        const metrics = getDistanceAndEta(target as any);
+                                                        return metrics ? (
+                                                            <Text style={styles.metadataText}>{metrics.distanceStr} • {metrics.etaStr}</Text>
+                                                        ) : (
+                                                            <Text style={styles.metadataText}>Wait...</Text>
+                                                        );
+                                                    })()}
+                                                </View>
+                                            </View>
+                                            <View style={styles.contactActions}>
+                                                <ScaleButton onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)} style={styles.circleActionBtn}>
+                                                    <Phone size={18} color="#4F46E5" />
+                                                </ScaleButton>
+                                                <ScaleButton onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)} style={styles.circleActionBtn}>
+                                                    <MessageSquare size={18} color="#4F46E5" />
+                                                </ScaleButton>
+                                            </View>
+                                        </View>
+                                    </View>
+                                );
+                            })}
+
+                            <View style={{ height: 140 }} /> {/* Spacer for CTA */}
+                        </ScrollView>
+
+                        {/* PRIMARY ACTION CTA */}
+                        <View style={[styles.ctaContainer, { bottom: insets.bottom + 20 }]}>
+                            <ScaleButton onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                                cta.action();
+                            }} disabled={actionLoading}>
+                                <LinearGradient
+                                    colors={cta.color as [string, string]}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.mainCtaButton}
+                                >
+                                    {actionLoading ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <>
+                                            {cta.icon && <cta.icon size={22} color="#fff" style={{ marginRight: 8 }} />}
+                                            <Text style={styles.ctaText}>{cta.label}</Text>
+                                        </>
+                                    )}
+                                </LinearGradient>
+                            </ScaleButton>
+
+                            {(trip.status === 'STARTING_SOON' || trip.status === 'STARTED' || isTripActiveOnMap) && (
+                                <TouchableOpacity style={styles.emergencyBtn} onPress={promptCancelTrip}>
+                                    <Text style={styles.emergencyText}>Emergency / Cancel Trip</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </AnimatedRN.View>
+                </GestureDetector>
+
+                {/* Cancel Reason Modal */}
+                <Modal
+                    visible={cancelModal.visible}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={closeCancelModal}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+                            <View style={styles.modalHeader}>
+                                <Text style={[styles.modalTitle, { color: theme.text }]}>{cancelModal.title}</Text>
+                                <TouchableOpacity onPress={closeCancelModal}>
+                                    <X size={22} color={theme.icon} />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={[styles.modalSubtitle, { color: theme.icon }]}>{cancelModal.subtitle}</Text>
+                            <TextInput
+                                style={[styles.modalInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
+                                placeholder="Enter reason..."
+                                placeholderTextColor={theme.icon}
+                                value={cancelModal.reason}
+                                onChangeText={(text) => setCancelModal(prev => ({ ...prev, reason: text }))}
+                                multiline
+                                numberOfLines={3}
+                                textAlignVertical="top"
+                            />
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={[styles.modalBtn, { backgroundColor: theme.border }]}
+                                    onPress={closeCancelModal}
+                                >
+                                    <Text style={[styles.modalBtnText, { color: theme.text }]}>Nevermind</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalBtn, styles.modalBtnDanger, { opacity: cancelModal.reason.trim() ? 1 : 0.5 }]}
+                                    onPress={() => {
+                                        if (!cancelModal.reason.trim()) return showToast('You must provide a reason.', 'warning');
+                                        cancelModal.onConfirm(cancelModal.reason.trim());
+                                    }}
+                                    disabled={!cancelModal.reason.trim()}
+                                >
+                                    <Text style={styles.modalBtnText}>Confirm</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </Modal>
-        </View>
+                </Modal>
+            </View>
+        </GestureHandlerRootView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    header: { padding: 20, paddingTop: 40, alignItems: 'center', backgroundColor: '#ef4444' },
-    title: { fontSize: 18, fontWeight: '900', color: '#fff' },
-    lateBanner: { backgroundColor: '#dc2626', paddingVertical: 12, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' },
-    lateText: { color: '#fff', fontSize: 18, fontWeight: '900', letterSpacing: 0.5 },
-    lateSubText: { color: '#fecaca', fontSize: 12, fontWeight: '600', width: '100%', textAlign: 'center' },
-    statusBanner: { padding: 10, alignItems: 'center', justifyContent: 'center' },
-    statusText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-    content: { padding: 20, paddingBottom: 100 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
-    userCard: { padding: 15, borderRadius: 16, borderWidth: 1, marginBottom: 10, flexDirection: 'column', gap: 10 },
-    avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-    userName: { fontSize: 16, fontWeight: '800' },
-    userRole: { fontSize: 13 },
-    actionBtnSmall: { flex: 1, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    actionBtnTextSmall: { color: '#fff', fontSize: 14, fontWeight: '800' },
-    footer: { padding: 20, position: 'absolute', bottom: 0, left: 0, right: 0 },
-    actionBtn: { height: 56, borderRadius: 28, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, elevation: 4 },
-    btnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    container: { flex: 1, backgroundColor: 'transparent' },
+    floatingHeaderContainer: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        zIndex: 100,
+    },
+    glassHeader: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    statusInfo: {
+        flex: 1,
+    },
+    headerLabel: {
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 1,
+        marginBottom: 2,
+    },
+    headerStatus: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    divider: {
+        width: 1,
+        height: 30,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        marginHorizontal: 16,
+    },
+    lockInfo: {
+        alignItems: 'flex-end',
+    },
+    lockBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 4,
+    },
+    lockLabel: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    timerText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 4,
+    },
+    floatingLateBanner: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        zIndex: 90,
+        height: 36,
+    },
+    lateBannerContent: {
+        backgroundColor: '#ef4444',
+        borderRadius: 18,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+        height: '100%',
+        gap: 8,
+        elevation: 4,
+    },
+    lateBannerText: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    // Bottom Sheet
+    bottomSheet: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        zIndex: 200,
+        elevation: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 15,
+    },
+    sheetHandle: {
+        height: 30,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    handleBar: {
+        width: 40,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: '#E5E7EB',
+    },
+    sheetContent: {
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#111827',
+        marginBottom: 20,
+        marginTop: 10,
+    },
+    passengerCard: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    avatarContainer: {
+        marginRight: 12,
+    },
+    avatar: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+    },
+    avatarPlaceholder: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    passengerInfo: {
+        flex: 1,
+    },
+    passengerName: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    statusBadgeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    statusBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    metadataText: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    contactActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    circleActionBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#EEF2FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cardFooter: {
+        marginTop: 12,
+    },
+    ctaContainer: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+    },
+    mainCtaButton: {
+        height: 64,
+        borderRadius: 20,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+    },
+    ctaText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    emergencyBtn: {
+        alignItems: 'center',
+        marginTop: 16,
+        padding: 8,
+    },
+    emergencyText: {
+        color: '#EF4444',
+        fontSize: 14,
+        fontWeight: '700',
+    },
     // Modal styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-    modalContent: { width: '100%', borderRadius: 20, padding: 24, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+    modalContent: { width: '100%', borderRadius: 24, padding: 24, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     modalTitle: { fontSize: 20, fontWeight: '900' },
     modalSubtitle: { fontSize: 14, marginBottom: 16, lineHeight: 20 },

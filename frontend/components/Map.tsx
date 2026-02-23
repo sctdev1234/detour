@@ -1,12 +1,15 @@
 import * as Location from 'expo-location';
 import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Trash2, User } from 'lucide-react-native';
-import React, { useCallback, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Easing, Image, Animated as RNAnimated, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import MapView, { Callout, Marker, Polyline } from 'react-native-maps';
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuthStore } from '../store/useAuthStore';
 import { LatLng, Trip } from '../types';
 import { decodePolyline } from '../utils/location';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
+
+const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
 
 interface StopItem {
@@ -47,6 +50,7 @@ export interface MapProps {
     onMapPress?: () => void;
     edgePadding?: { top: number; right: number; bottom: number; left: number };
     boundsPoints?: LatLng[];
+    fullScreen?: boolean;
 }
 
 // --- Helper: get icon for saved place ---
@@ -120,11 +124,11 @@ const PickerMarkers = React.memo(({ points, theme, readOnly, onPointRemove, onDr
     );
 });
 
-const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, clientColors, intermediatePoints }: {
-    trip: Trip, theme: any, selectedRouteId?: string | null, onRouteSelect?: (id: string) => void, clientColors?: Record<string, string>, intermediatePoints: RoutePoint[]
+const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, clientColors, intermediatePoints, routeCoordinates }: {
+    trip: Trip, theme: any, selectedRouteId?: string | null, onRouteSelect?: (id: string) => void, clientColors?: Record<string, string>, intermediatePoints: RoutePoint[], routeCoordinates: LatLng[]
 }) => {
-    if (!trip || !trip.routeId) return null;
-    const driverRoute = trip.routeId;
+    if (!trip) return null;
+    const driverRoute = trip.routeId || {};
 
     // Get first client's routeId for click-to-select on driver route elements
     const firstClient = trip.clients?.[0];
@@ -132,6 +136,40 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
     const handleDriverRoutePress = () => {
         if (firstClientRouteId && onRouteSelect) onRouteSelect(firstClientRouteId);
     };
+
+    // Pulse animation for next stop
+    const pulseAnim = useRef(new RNAnimated.Value(0)).current;
+    useEffect(() => {
+        const pulse = RNAnimated.loop(
+            RNAnimated.sequence([
+                RNAnimated.timing(pulseAnim, { toValue: 1, duration: 1000, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+                RNAnimated.timing(pulseAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+            ])
+        );
+        pulse.start();
+        return () => pulse.stop();
+    }, []);
+
+    const opacityAnim = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] });
+    const scaleAnim = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.5] });
+
+    // Determine the "Next" marker to pulse
+    // We'll pulse the first point in intermediatePoints that isn't 'acheived'
+    // Statuses: WAITING -> PICKUP_INCOMING -> IN_CAR -> DROPPED_OFF
+    const getNextMarkerIndex = () => {
+        return intermediatePoints.findIndex(p => {
+            const client = trip.clients?.[p.clientIndex || 0];
+            if (p.type === 'pickup') {
+                return !client?.status || client.status === 'WAITING' || client.status === 'READY';
+            }
+            if (p.type === 'dropoff') {
+                return client?.status === 'IN_CAR';
+            }
+            return false;
+        });
+    };
+
+    const nextMarkerIndex = getNextMarkerIndex();
 
     return (
         <>
@@ -175,6 +213,7 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
                 const baseColor = isPickup ? '#10b981' : '#ef4444';
                 const color = clientColors?.[routeId] || baseColor;
                 const showFullMarker = isSelected;
+                const isNext = i === nextMarkerIndex;
 
                 return (
                     <React.Fragment key={`${p.type}-${p.clientIndex}`}>
@@ -182,8 +221,14 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
                             coordinate={{ latitude: p.lat, longitude: p.lon }}
                             onPress={() => onRouteSelect?.(routeId)}
                             anchor={{ x: 0.5, y: 0.5 }}
-                            zIndex={isSelected ? 10 : 1}
+                            zIndex={(isSelected || isNext) ? 10 : 1}
                         >
+                            {isNext && (
+                                <RNAnimated.View style={[
+                                    styles.pulseCircle,
+                                    { backgroundColor: baseColor, opacity: opacityAnim, transform: [{ scale: scaleAnim }] }
+                                ]} />
+                            )}
                             {showFullMarker ? (
                                 <React.Fragment>
                                     {client?.userId?.photoURL ? (
@@ -270,7 +315,8 @@ const Map = React.memo(({
     clientColors,
     onMapPress,
     edgePadding,
-    boundsPoints
+    boundsPoints,
+    fullScreen = false
 }: MapProps) => {
     // Fallback: use saved places from auth store if not passed as prop
     const storeUser = useAuthStore(s => s.user);
@@ -280,6 +326,20 @@ const Map = React.memo(({
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [routeCoordinates, setRouteCoordinates] = useState<LatLng[]>([]);
     const [intermediatePoints, setIntermediatePoints] = useState<RoutePoint[]>([]);
+
+    // Route fade-in
+    const routeOpacity = useSharedValue(0);
+    useEffect(() => {
+        if (routeCoordinates.length > 1) {
+            routeOpacity.value = withTiming(1, { duration: 1500 });
+        } else {
+            routeOpacity.value = 0;
+        }
+    }, [routeCoordinates.length]);
+
+    const animatedPolylineProps = useAnimatedProps(() => ({
+        strokeColor: `rgba(79, 70, 229, ${routeOpacity.value})`
+    }));
 
     // Initial Location Request
     React.useEffect(() => {
@@ -449,7 +509,17 @@ const Map = React.memo(({
     }, [location]);
 
     return (
-        <View style={[styles.container, style, { height, backgroundColor: '#e5e3df', borderRadius: 20, overflow: 'hidden' }]}>
+        <View style={[
+            styles.container,
+            style,
+            {
+                height,
+                backgroundColor: '#e5e3df',
+                borderRadius: fullScreen ? 0 : 20,
+                overflow: 'hidden',
+                borderWidth: fullScreen ? 0 : 1
+            }
+        ]}>
             <MapView
                 ref={mapRef}
                 style={StyleSheet.absoluteFillObject}
@@ -467,13 +537,15 @@ const Map = React.memo(({
                 rotateEnabled={interactive}
                 pitchEnabled={interactive}
             >
-                {/* Saved Places — always visible in all modes */}
-                <SavedPlaceMarkers
-                    savedPlaces={savedPlaces}
-                    theme={theme}
-                    interactive={mode === 'picker' && !readOnly}
-                    onPlacePress={handlePointAdd}
-                />
+                {/* Saved Places — visible in all modes EXCEPT trip */}
+                {mode !== 'trip' && (
+                    <SavedPlaceMarkers
+                        savedPlaces={savedPlaces}
+                        theme={theme}
+                        interactive={mode === 'picker' && !readOnly}
+                        onPlacePress={handlePointAdd}
+                    />
+                )}
 
                 {mode === 'picker' && (
                     <PickerMarkers
@@ -492,11 +564,12 @@ const Map = React.memo(({
                         onRouteSelect={onRouteSelect}
                         clientColors={clientColors}
                         intermediatePoints={intermediatePoints}
+                        routeCoordinates={routeCoordinates}
                     />
                 )}
                 {mode === 'route' && <RouteMarkers startPoint={startPoint} endPoint={endPoint} waypoints={waypoints} />}
 
-                {/* Driver Location - Rendered separately to allow smooth movement without re-rendering everything else if mostly static */}
+                {/* Driver Location */}
                 {driverLocation && (
                     <Marker
                         coordinate={{ latitude: driverLocation.latitude, longitude: driverLocation.longitude }}
@@ -517,17 +590,18 @@ const Map = React.memo(({
                         strokeWidth={3}
                     />
                 )}
+
                 {/* Driver Route Polyline */}
                 {((mode === 'trip' || mode === 'route') && routeCoordinates.length > 1) && (
-                    <Polyline
+                    <AnimatedPolyline
                         coordinates={routeCoordinates}
-                        strokeColor={theme.primary}
-                        strokeWidth={4}
+                        animatedProps={animatedPolylineProps}
+                        strokeWidth={6}
                         tappable={true}
                         onPress={() => {
                             if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
                                 const firstClient = trip.clients[0];
-                                const routeId = (firstClient?.routeId as any)?._id;
+                                const routeId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
                                 if (routeId) onRouteSelect(routeId);
                             }
                         }}
@@ -563,6 +637,13 @@ const Map = React.memo(({
                 })}
 
             </MapView>
+
+            <TouchableOpacity
+                style={[styles.recenterBtn, { bottom: mode === 'picker' ? 80 : 40 }]}
+                onPress={centerToMyLocation}
+            >
+                <Navigation size={22} color="#4F46E5" />
+            </TouchableOpacity>
 
             {/* Controls for Picker Mode */}
             {mode === 'picker' && !readOnly && (
@@ -749,5 +830,28 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#fff',
         elevation: 2,
+    },
+    pulseCircle: {
+        position: 'absolute',
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        zIndex: -1,
+    },
+    recenterBtn: {
+        position: 'absolute',
+        right: 20,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        zIndex: 10,
     }
 });

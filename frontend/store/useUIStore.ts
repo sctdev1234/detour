@@ -36,6 +36,10 @@ interface ConfirmSlice {
     // Unread Notification State
     unreadReclamation: { reclamationId: string } | null;
     setUnreadReclamation: (data: { reclamationId: string } | null) => void;
+
+    // Header Global Visibility
+    hideGlobalHeader: boolean;
+    setHideGlobalHeader: (hide: boolean) => void;
 }
 
 export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
@@ -81,4 +85,8 @@ export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
     // Unread Reclamation State
     unreadReclamation: null,
     setUnreadReclamation: (data) => set({ unreadReclamation: data }),
+
+    // Header Visibility Initial State
+    hideGlobalHeader: false,
+    setHideGlobalHeader: (hide) => set({ hideGlobalHeader: hide }),
 }));

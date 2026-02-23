@@ -15,6 +15,7 @@ import { Colors } from '../constants/theme';
 import { useUser } from '../hooks/api/useAuthQueries';
 import { useRouteGuard } from '../hooks/useRouteGuard';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUIStore } from '../store/useUIStore';
 
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
@@ -55,6 +56,7 @@ function AppContent() {
   // Use useUser to fetch/validate user session on app start
   const { data: qUser, isLoading: isUserLoading } = useUser();
   const { user, setLoading } = useAuthStore();
+  const { hideGlobalHeader } = useUIStore();
 
   useEffect(() => {
     // When useUser settles, we can stop the global loading state
@@ -178,8 +180,8 @@ function AppContent() {
 
   return (
     <ThemeProvider value={theme}>
-      <SafeAreaProvider style={{ paddingTop: user ? 60 : 0 }}>
-        {user && <Header />}
+      <SafeAreaProvider style={{ paddingTop: (user && !hideGlobalHeader) ? 60 : 0 }}>
+        {(user && !hideGlobalHeader) && <Header />}
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(driver)" options={{ headerShown: false }} />

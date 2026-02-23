@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
 import { useClientRequests, useDriverRequests } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUIStore } from '../store/useUIStore';
 
 type Role = 'driver' | 'client' | null;
 
@@ -106,7 +107,9 @@ export default function Header() {
         pathname.includes('/tasks');
 
 
-    if (isMainTab() && !isDashboard) {
+    const { hideGlobalHeader } = useUIStore();
+
+    if ((isMainTab() && !isDashboard) || hideGlobalHeader) {
         return null;
     }
 
