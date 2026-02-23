@@ -130,7 +130,7 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
             isActive = false;
             if (locationSubscription) locationSubscription.remove();
         };
-    }, [trip.status, socket]);
+    }, [trip.status, socket, hasShownDestinationAlert, location]);
 
     // Hard UI Lock Android Back Button Override
     useEffect(() => {
@@ -433,12 +433,12 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
                 theme={theme}
                 fullScreen
                 style={StyleSheet.absoluteFillObject}
-                edgePadding={{
+                edgePadding={useMemo(() => ({
                     top: insets.top + (hideGlobalHeader ? 140 : 200),
                     bottom: SHEET_MIN_HEIGHT + 40,
                     left: 40,
                     right: 40
-                }}
+                }), [insets.top, hideGlobalHeader, SHEET_MIN_HEIGHT])}
             />
 
             <View style={styles.container}>
@@ -518,12 +518,11 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
                                                         <Text style={[styles.statusBadgeText, {
                                                             color: isDroppedOff ? '#10b981' : isPickedUp ? '#3b82f6' : '#f59e0b'
                                                         }]}>
-                                                            {client.status ? client.status.replace('_', ' ').toUpperCase() : 'WAITING'}
-                                                        </Text>
+                                                            {client.status ? client.status.replace('_', ' ').toUpperCase() : 'WAITING'}</Text>
                                                     </View>
                                                     {(() => {
                                                         const target = isPickedUp ? client.routeId?.endPoint : client.routeId?.startPoint;
-                                                        const metrics = getDistanceAndEta(target as any);
+                                                        const metrics = target ? getDistanceAndEta(target as any) : null;
                                                         return metrics ? (
                                                             <Text style={styles.metadataText}>{metrics.distanceStr} • {metrics.etaStr}</Text>
                                                         ) : (
@@ -544,8 +543,7 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
                                     </View>
                                 );
                             })}
-
-                            <View style={{ height: 140 }} /> {/* Spacer for CTA */}
+                            <View style={{ height: 140 }} />
                         </ScrollView>
 
                         {/* PRIMARY ACTION CTA */}
