@@ -20,7 +20,7 @@ The app also provides a platform for clients to search for drivers for their rep
   - Admin-Panel: leaflet
 - **Project Prompt**: 
   - [.ai/PROMPT.md](.ai/PROMPT.md)
-  - [.ai/[SIBARI]-ENHANCE-PROMPT.md](.ai/[SIBARI]-ENHANCE-PROMPT.md)
+
 - **Project Features**: 
   - direct negotiation of price between [Client] and [Driver]
   - 10% of profit driver profits goes to [Detour.ma] (minimum 2MAD for every place in every trip).
