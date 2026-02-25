@@ -8,9 +8,7 @@ Project Stack :
 - Backend : Node.js
 - Database : MongoDB
 - Map : expo maps
-- Authentication : Firebase
-- Push Notifications : Firebase Cloud Messaging
-- Storage : 
+- Storage : Google Cloud Storage
 
 [ Project instructions ] =======================================
 the users of the app is (driver and client):
