@@ -1,3 +1,0 @@
-[] in the support for user (client or driver) the reclamation that contains new message should apper in the top 
-[ ] if the reclamation is status changed to resolved (that means the admin change the reclamation status to resolved) the user can't send message anymore in it 
-[] if the admin receive a message in a reclamation it should show a notification message and show the reclamation that has new message with different style

@@ -21,8 +21,6 @@
 
 [ ] - currency logic
 
-[ ] - Allow the to use the application as Gaust-Client but require the payment
-
 ==============================================================
 
 
@@ -40,15 +38,12 @@
 
 [ ] - allow direct negotiation of price between [Client] and [Driver]
 
-[ ] - trips management
+[X] - trips management
 [ ] - coupon logic
 [ ] - rating system for client and driver, (client rate driver, driver rate client)
-[ ] - credits and withdraw money logic
+[O] - credits and withdraw money logic
 [ ] - allow the user to create (aller et retour) trips (the return trip should be created automatically)
-[ ] - the client can't send request to the same trip more then one time
+[ ] - the driver can't send request to the same trip more then one time
 
 ==============================================================
 
-- the [Client] can't create a "Trip", he can only create a "Route"
-- the [Driver] can't create a "Trip", he can only create a "Route"
-- the system will create an empty "Trip" when the [Driver] create a "Route"
