@@ -1,17 +1,17 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import 'react-native-reanimated';
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Header from '../components/Header';
 import LocationTracker from '../components/LocationTracker';
 import Toast from '../components/Toast';
 import { Colors } from '../constants/theme';
+import '../global.css';
 import { useUser } from '../hooks/api/useAuthQueries';
 import { useRouteGuard } from '../hooks/useRouteGuard';
 import { useAuthStore } from '../store/useAuthStore';
