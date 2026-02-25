@@ -129,7 +129,6 @@ export default function TripsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <Text className="text-xl font-bold text-red-500">Test Tailwind CSS</Text>
             {isLoading && (!trips || (trips as Trip[]).length === 0) ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
