@@ -21,6 +21,10 @@ export default function CarModal({ car, users, onClose, onSave }) {
     const [previewUrls, setPreviewUrls] = useState([]); // URLs for File objects
     const [isUploading, setIsUploading] = useState(false);
 
+    // Searchable Dropdown State
+    const [ownerSearch, setOwnerSearch] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
     useEffect(() => {
         if (car) {
             setFormData({
@@ -34,6 +38,14 @@ export default function CarModal({ car, users, onClose, onSave }) {
             });
             setIsEditing(true);
             setExistingImages(car.images || []);
+
+            // Set initial search value to the owner's name/email if assigned
+            const assignedOwner = users?.find(u => u._id === (car.ownerId?._id || car.ownerId));
+            if (assignedOwner) {
+                setOwnerSearch(`${assignedOwner.fullName} (${assignedOwner.email})`);
+            } else {
+                setOwnerSearch('');
+            }
         } else {
             setFormData({
                 marque: '',
@@ -46,10 +58,11 @@ export default function CarModal({ car, users, onClose, onSave }) {
             });
             setIsEditing(false);
             setExistingImages([]);
+            setOwnerSearch('');
         }
         setNewImageFiles([]);
         setPreviewUrls([]);
-    }, [car]);
+    }, [car, users]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -291,23 +304,71 @@ export default function CarModal({ car, users, onClose, onSave }) {
                         </div>
 
                         {/* Owner Selection */}
-                        <div>
+                        <div className="relative">
                             <label className="block text-sm font-medium text-slate-400 mb-1">Assign Owner</label>
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                <select
-                                    name="ownerId"
-                                    value={formData.ownerId}
-                                    onChange={handleChange}
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 appearance-none"
-                                >
-                                    <option value="" disabled>Select an owner...</option>
-                                    {users?.map(u => (
-                                        <option key={u._id} value={u._id}>
-                                            {u.fullName} ({u.email})
-                                        </option>
-                                    ))}
-                                </select>
+                                <input
+                                    type="text"
+                                    value={ownerSearch}
+                                    onChange={(e) => {
+                                        setOwnerSearch(e.target.value);
+                                        setIsDropdownOpen(true);
+                                        // If user clears the input, clear the assigned owner
+                                        if (e.target.value === '') {
+                                            setFormData(prev => ({ ...prev, ownerId: '' }));
+                                        }
+                                    }}
+                                    onFocus={() => setIsDropdownOpen(true)}
+                                    onBlur={() => {
+                                        // Delay closing so we can register clicks on dropdown items
+                                        setTimeout(() => setIsDropdownOpen(false), 200);
+                                    }}
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-slate-600"
+                                    placeholder="Search by name or email..."
+                                />
+
+                                {/* Custom Dropdown */}
+                                <AnimatePresence>
+                                    {isDropdownOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar"
+                                        >
+                                            {users?.filter(u =>
+                                                u.fullName.toLowerCase().includes(ownerSearch.toLowerCase()) ||
+                                                u.email.toLowerCase().includes(ownerSearch.toLowerCase())
+                                            ).length === 0 ? (
+                                                <div className="p-3 text-sm text-slate-400 text-center">
+                                                    No users found.
+                                                </div>
+                                            ) : (
+                                                users?.filter(u =>
+                                                    u.fullName.toLowerCase().includes(ownerSearch.toLowerCase()) ||
+                                                    u.email.toLowerCase().includes(ownerSearch.toLowerCase())
+                                                ).map(u => (
+                                                    <div
+                                                        key={u._id}
+                                                        onClick={() => {
+                                                            setFormData(prev => ({ ...prev, ownerId: u._id }));
+                                                            setOwnerSearch(`${u.fullName} (${u.email})`);
+                                                            setIsDropdownOpen(false);
+                                                        }}
+                                                        className={`p-3 text-sm cursor-pointer transition-colors ${formData.ownerId === u._id
+                                                                ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-500'
+                                                                : 'text-slate-200 hover:bg-slate-700/50 hover:pl-4 focus:bg-slate-700/50'
+                                                            }`}
+                                                    >
+                                                        <div className="font-medium">{u.fullName}</div>
+                                                        <div className="text-xs text-slate-500">{u.email}</div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                             <p className="text-xs text-slate-500 mt-1">If no owner is selected, it will be assigned to you (the admin).</p>
                         </div>
