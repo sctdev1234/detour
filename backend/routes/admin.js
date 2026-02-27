@@ -5,6 +5,7 @@ const Place = require('../models/Place');
 const Subscription = require('../models/Subscription');
 const Coupon = require('../models/Coupon');
 const Withdrawal = require('../models/Withdrawal');
+const Car = require('../models/Car');
 const bcrypt = require('bcryptjs');
 const { auth } = require('../middleware/auth');
 
@@ -521,6 +522,158 @@ router.get('/trips', auth, adminCheck, async (req, res) => {
             currentPage: pageNum,
             totalTrips
         });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+
+// @route   GET api/admin/cars
+// @desc    Get all cars (with pagination and filtering)
+// @access  Admin
+router.get('/cars', auth, adminCheck, async (req, res) => {
+    try {
+        const { page = 1, limit = 10, verificationStatus, search } = req.query;
+        let query = {};
+
+        if (verificationStatus && verificationStatus !== 'all') {
+            query.verificationStatus = verificationStatus;
+        }
+
+        if (search) {
+            query.$or = [
+                { marque: { $regex: search, $options: 'i' } },
+                { model: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        const totalCars = await Car.countDocuments(query);
+        const cars = await Car.find(query)
+            .populate('ownerId', 'fullName email phone photoURL')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum);
+
+        res.json({
+            cars,
+            totalPages: Math.ceil(totalCars / limitNum),
+            currentPage: pageNum,
+            totalCars
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   POST api/admin/cars/:id/verify
+// @desc    Approve/verify a car
+// @access  Admin
+router.post('/cars/:id/verify', auth, adminCheck, async (req, res) => {
+    try {
+        let car = await Car.findById(req.params.id);
+        if (!car) return res.status(404).json({ msg: 'Car not found' });
+
+        car.verificationStatus = 'verified';
+        await car.save();
+        res.json({ msg: 'Car verified successfully', car });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   POST api/admin/cars/:id/reject
+// @desc    Reject a car verification
+// @access  Admin
+router.post('/cars/:id/reject', auth, adminCheck, async (req, res) => {
+    try {
+        let car = await Car.findById(req.params.id);
+        if (!car) return res.status(404).json({ msg: 'Car not found' });
+
+        car.verificationStatus = 'rejected';
+        await car.save();
+        res.json({ msg: 'Car rejected', car });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   DELETE api/admin/cars/:id
+// @desc    Delete a car
+// @access  Admin
+router.delete('/cars/:id', auth, adminCheck, async (req, res) => {
+    try {
+        const car = await Car.findById(req.params.id);
+        if (!car) return res.status(404).json({ msg: 'Car not found' });
+
+        await car.deleteOne();
+        res.json({ msg: 'Car removed successfully' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   POST api/admin/cars
+// @desc    Create a new car by admin
+// @access  Admin
+router.post('/cars', auth, adminCheck, async (req, res) => {
+    try {
+        const { marque, model, year, color, places, ownerId, images } = req.body;
+
+        let targetOwnerId = ownerId;
+        if (!targetOwnerId) {
+            targetOwnerId = req.user.id;
+        }
+
+        const newCar = new Car({
+            marque,
+            model,
+            year,
+            color,
+            places,
+            images,
+            ownerId: targetOwnerId,
+            verificationStatus: 'verified' // Admins creating it so it can bypass verification
+        });
+
+        const car = await newCar.save();
+        res.json(car);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   PUT api/admin/cars/:id
+// @desc    Update a car by admin
+// @access  Admin
+router.put('/cars/:id', auth, adminCheck, async (req, res) => {
+    try {
+        const { marque, model, year, color, places, ownerId, images } = req.body;
+
+        let car = await Car.findById(req.params.id);
+        if (!car) return res.status(404).json({ msg: 'Car not found' });
+
+        if (marque) car.marque = marque;
+        if (model) car.model = model;
+        if (year) car.year = year;
+        if (color) car.color = color;
+        if (places) car.places = places;
+        if (ownerId) car.ownerId = ownerId;
+        if (images) car.images = images;
+
+        await car.save();
+
+        const updatedCar = await Car.findById(req.params.id).populate('ownerId', 'fullName email phone');
+        res.json(updatedCar);
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ msg: 'Server Error' });

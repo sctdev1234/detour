@@ -1,6 +1,7 @@
 import {
     Bell,
     Car,
+    CarFront,
     CreditCard,
     DollarSign,
     FileText,
@@ -107,6 +108,7 @@ export default function Layout() {
         { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
         { path: '/requests', label: 'Requests History', icon: FileText },
         { path: '/drivers', label: 'Verifications', icon: Car },
+        { path: '/cars', label: 'Cars', icon: CarFront },
         { path: '/places', label: 'Places', icon: Map },
         { path: '/subscriptions', label: 'Abonnements', icon: CreditCard },
         { path: '/coupons', label: 'Coupons', icon: Tag },

@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
+import Cars from './pages/Cars';
 import Coupons from './pages/Coupons';
 import Credits from './pages/Credits';
 import DashboardHome from './pages/DashboardHome';
@@ -27,6 +28,7 @@ function App() {
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardHome />} />
           <Route path="/drivers" element={<Drivers />} />
+          <Route path="/cars" element={<Cars />} />
           <Route path="/places" element={<Places />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/coupons" element={<Coupons />} />
