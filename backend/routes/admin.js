@@ -6,6 +6,7 @@ const Subscription = require('../models/Subscription');
 const Coupon = require('../models/Coupon');
 const Withdrawal = require('../models/Withdrawal');
 const Car = require('../models/Car');
+const Review = require('../models/Review');
 const bcrypt = require('bcryptjs');
 const { auth } = require('../middleware/auth');
 
@@ -676,6 +677,157 @@ router.put('/cars/:id', auth, adminCheck, async (req, res) => {
         res.json(updatedCar);
     } catch (err) {
         console.error(err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// ==========================================
+// REVIEWS MANAGEMENT
+// ==========================================
+
+// @route   GET /api/admin/reviews/users
+// @desc    Get all users who have given or received reviews, with counts
+// @access  Admin
+router.get('/reviews/users', auth, adminCheck, async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search = '', role = 'all' } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        // Perform an aggregation to get users who are either reviewers or reviewees
+        // and count their related reviews.
+        // We'll use a facet to get total counts and paginated results in one query.
+        const pipeline = [
+            // 1. Group by reviewerId to get reviews given
+            {
+                $group: {
+                    _id: "$reviewerId",
+                    givenCount: { $sum: 1 }
+                }
+            },
+            // Combine with reviewees (this is tricky in one go, so we'll do an alternative approach)
+        ];
+
+        // Alternative approach: Find unique users involved in reviews, then aggregate their stats
+        // This is easier to implement robustly without complex full-collection facets if the DB isn't huge.
+        const uniqueUserIds = await Review.distinct('reviewerId');
+        const uniqueReviewees = await Review.distinct('revieweeId');
+
+        // Combine and deduplicate
+        const allInvolvedUserIds = [...new Set([...uniqueUserIds.map(id => id.toString()), ...uniqueReviewees.map(id => id.toString())])];
+
+        // Fetch user data for these IDs
+        let query = { _id: { $in: allInvolvedUserIds } };
+
+        if (role !== 'all') {
+            query.role = role;
+        }
+
+        if (search) {
+            query.$or = [
+                { fullName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const totalUsers = await User.countDocuments(query);
+        const users = await User.find(query)
+            .select('fullName email role photoURL')
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+
+        // Now, for the paginated users, attach their review counts
+        const enrichedUsers = await Promise.all(users.map(async (user) => {
+            const givenCount = await Review.countDocuments({ reviewerId: user._id });
+            const receivedCount = await Review.countDocuments({ revieweeId: user._id });
+
+            // Calculate average rating received
+            const receivedReviews = await Review.find({ revieweeId: user._id }).select('rating');
+            let avgRatingReceived = 0;
+            if (receivedReviews.length > 0) {
+                const sum = receivedReviews.reduce((acc, rev) => acc + rev.rating, 0);
+                avgRatingReceived = sum / receivedReviews.length;
+            }
+
+            return {
+                ...user,
+                stats: {
+                    givenCount,
+                    receivedCount,
+                    avgRatingReceived: Number(avgRatingReceived.toFixed(1))
+                }
+            };
+        }));
+
+        res.json({
+            users: enrichedUsers,
+            totalPages: Math.ceil(totalUsers / limitNum),
+            currentPage: pageNum,
+            totalUsers
+        });
+
+    } catch (err) {
+        console.error("Error fetching grouped reviewers:", err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   GET /api/admin/reviews/user/:userId
+// @desc    Get detailed reviews given and received by a specific user
+// @access  Admin
+router.get('/reviews/user/:userId', auth, adminCheck, async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const targetUser = await User.findById(userId).select('fullName email role photoURL');
+        if (!targetUser) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+
+        // Fetch reviews where this user is the reviewer (Given)
+        const reviewsGiven = await Review.find({ reviewerId: userId })
+            .populate('revieweeId', 'fullName email')
+            .populate('tripId')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Fetch reviews where this user is the reviewee (Received)
+        const reviewsReceived = await Review.find({ revieweeId: userId })
+            .populate('reviewerId', 'fullName email')
+            .populate('tripId')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.json({
+            user: targetUser,
+            reviewsGiven,
+            reviewsReceived
+        });
+    } catch (err) {
+        console.error("Error fetching user detailed reviews:", err.message);
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// @route   DELETE /api/admin/reviews/:id
+// @desc    Delete a review
+// @access  Admin
+router.delete('/reviews/:id', auth, adminCheck, async (req, res) => {
+    try {
+        const review = await Review.findById(req.params.id);
+        if (!review) {
+            return res.status(404).json({ msg: 'Review not found' });
+        }
+
+        await review.deleteOne();
+        res.json({ msg: 'Review removed successfully' });
+    } catch (err) {
+        console.error("Error deleting review:", err.message);
+        if (err.kind === 'ObjectId') {
+            return res.status(404).json({ msg: 'Review not found' });
+        }
         res.status(500).json({ msg: 'Server Error' });
     }
 });

@@ -9,6 +9,7 @@ import {
     LogOut,
     Map,
     MessageSquare,
+    Star,
     Tag,
     Users
 } from 'lucide-react';
@@ -114,14 +115,15 @@ export default function Layout() {
         { path: '/coupons', label: 'Coupons', icon: Tag },
         { path: '/credits', label: 'Finance', icon: DollarSign },
         { path: '/users', label: 'Users', icon: Users },
+        { path: '/reviews', label: 'Reviews', icon: Star },
         { path: '/support', label: 'Support', icon: MessageSquare },
     ];
 
     return (
         <div className="flex min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/30">
             {/* Sidebar */}
-            <aside className="fixed left-0 top-0 h-full w-64 bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 z-50 transition-all">
-                <div className="flex items-center gap-3 px-6 py-8 border-b border-slate-800/50">
+            <aside className="fixed left-0 top-0 h-full w-64 bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 z-50 transition-all flex flex-col">
+                <div className="flex items-center gap-3 px-6 py-8 border-b border-slate-800/50 shrink-0">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
                         D
                     </div>
@@ -130,7 +132,7 @@ export default function Layout() {
                     </span>
                 </div>
 
-                <nav className="p-4 space-y-2 mt-4">
+                <nav className="p-4 space-y-2 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-700/50 [&::-webkit-scrollbar-thumb]:rounded-full">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.path}
@@ -148,7 +150,7 @@ export default function Layout() {
                     ))}
                 </nav>
 
-                <div className="absolute bottom-8 left-0 w-full px-4">
+                <div className="p-4 border-t border-slate-800/50 shrink-0">
                     <button
                         onClick={handleLogout}
                         className="flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 group border border-transparent hover:border-red-500/10"

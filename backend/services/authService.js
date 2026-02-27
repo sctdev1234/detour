@@ -250,7 +250,7 @@ class AuthService {
             status.completed = hasRoute;
         } else if (role === 'driver') {
             // 1. Upload Documents (Required)
-            const docs = user.documents && user.documents.length > 0 ? user.documents[user.documents.length - 1] : null;
+            const docs = Array.isArray(user.documents) && user.documents.length > 0 ? user.documents[user.documents.length - 1] : null;
             const hasDocs = !!docs;
 
             // 2. Add Car (Required)

@@ -63,7 +63,7 @@ The app also provides a platform for clients to search for drivers for their rep
   - `DashboardHome`: Overview and statistics.
   - `Users`: User management.
   - `Roles`: Role management.
-  - `Permissions`: Permission management.
+  - `Permissions`: Permission management. 
   - `Pages`: Page management.
   - `Cars`: Car management.
   - `Chats`: Chat management.
