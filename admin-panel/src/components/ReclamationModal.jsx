@@ -173,6 +173,27 @@ export default function ReclamationModal({ reclamation, onClose, onUpdate }) {
                         </div>
                     </div>
 
+                    {/* Reported Chat Context */}
+                    {(reclamation.chatId || reclamation.reportedMessageId) && (
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <MessageSquare className="w-4 h-4" /> Reported Chat Context
+                            </h3>
+                            <div className="p-4 bg-slate-900/50 rounded-xl border border-rose-500/30 flex items-center justify-between">
+                                <div className="text-sm text-slate-300">
+                                    This ticket reported a specific message in a chat conversation.
+                                </div>
+                                <a
+                                    href={`/chats?chatId=${reclamation.chatId?._id || reclamation.chatId}&msgId=${reclamation.reportedMessageId}`}
+                                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                    onClick={onClose}
+                                >
+                                    View Offending Message
+                                </a>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Trip Info (if available) */}
                     {reclamation.tripId && (
                         <div>

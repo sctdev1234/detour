@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import Cars from './pages/Cars';
+import Chats from './pages/Chats';
 import Coupons from './pages/Coupons';
 import Credits from './pages/Credits';
 import DashboardHome from './pages/DashboardHome';
@@ -39,6 +40,7 @@ function App() {
           <Route path="/trips" element={<Trips />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/chats" element={<Chats />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -60,35 +60,28 @@ The app also provides a platform for clients to search for drivers for their rep
 
 ## ADMIN-PANEL
 - **Pages**:
-  - `DashboardHome`: Overview and statistics.
-  - `Users`: User management.
-  - `Roles`: Role management.
-  - `Permissions`: Permission management. 
-  - `Pages`: Page management.
-  - `Cars`: Car management.
-  - `Chats`: Chat management.
-  - `Coupons`: Coupon management.
-  - `Requests`: Request management.
-  - `Notifications`: Notification management.
-  - `Places`: Place management.
-  - `Reclamations`: Reclamation management.
-  - `Routes`: Route management.
-  - `Subscriptions`: Subscription management.
-  - `Transactions`: Transaction management.
-  - `Trips`: Trip monitoring and map visualization.
-  - `Ratings`: Rating management.
-  - `Reviews`: Review management.
-  - `Settings`: Settings screen.
-  - `Terms-And-Conditions`: Terms and Conditions screen.
-  - `Privacy-Policy`: Privacy Policy screen.
-  - `Contact-Us`: Contact Us screen.
-  - `About-Us`: About Us screen.
-  - `Help`: Help screen.
-  - `FAQ`: FAQ screen.
-  - `Edit-Profile`: Edit Profile screen.
-  - `Change-Password`: Change Password screen.
-  - `Delete-Account`: Delete Account screen.
-  - `Profile`: Profile screen.
+  - [ ] `Chats`: Chat management. between client and driver
+  - [ ] `Permissions`: Permission management. 
+  - [ ] `Pages`: Page management. (terms and conditions, privacy policy, contact us, about us, help, faq, ...)
+  - [ ] `Routes`: Route management. created by the any one (driver or client)
+  - [ ] `Subscriptions`: Subscription management. premuim version , get the priority in the route. 
+  - [ ] `Transactions`: Transaction management. each user the transactions history.
+  - [ ] `Trips`: Trip monitoring and map visualization , mergin multi routes that means a trips
+  - [ ] `Settings`: Settings screen. the admin can config the app settings. (logo , contact info , address ,      project name , project description , project currency , project languages , project payment methods)
+  - [ ] `Edit-Profile`: Edit Profile screen. (image , name , phone , email , address , change password (crud))
+  - [ ] `Delete-Account`: Delete Account screen. 
+
+  - [o] `DashboardHome`: Overview and statistics.
+  - [x] `Users`: User management.
+  - [x] `Roles`: Role management.
+  - [x] `Cars`: Car management.
+  - [x] `Coupons`: Coupon management.
+  - [x] `Requests`: Request management.
+  - [x] `Notifications`: Notification management.
+  - [x] `Places`: Place management.
+  - [x] `Reclamations`: Reclamation management.
+  - [x] `Reviews`: Review management.
+  
 
 ## FRONTEND
 - **App Structure**:

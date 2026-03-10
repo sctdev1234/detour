@@ -7,6 +7,7 @@ const Coupon = require('../models/Coupon');
 const Withdrawal = require('../models/Withdrawal');
 const Car = require('../models/Car');
 const Review = require('../models/Review');
+const Chat = require('../models/Chat');
 const bcrypt = require('bcryptjs');
 const { auth } = require('../middleware/auth');
 
@@ -828,6 +829,59 @@ router.delete('/reviews/:id', auth, adminCheck, async (req, res) => {
         if (err.kind === 'ObjectId') {
             return res.status(404).json({ msg: 'Review not found' });
         }
+        res.status(500).json({ msg: 'Server Error' });
+    }
+});
+
+// ==========================================
+// CHATS MANAGEMENT
+// ==========================================
+
+// @route   GET /api/admin/chats
+// @desc    Get all chats
+// @access  Admin
+router.get('/chats', auth, adminCheck, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, search = '' } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        // Base query - we'll fetch all chats initially
+        let query = {};
+
+        // Populate participants to get their names
+        const chats = await Chat.find(query)
+            .populate('participants', 'fullName email role photoURL')
+            .populate('requestId', 'status createdAt')
+            .populate('messages.senderId', 'fullName email role photoURL')
+            .sort({ updatedAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .lean();
+
+        // If search is provided, filter chats where a participant matches the search
+        let filteredChats = chats;
+        if (search) {
+            const searchLower = search.toLowerCase();
+            filteredChats = chats.filter(chat => {
+                return chat.participants.some(p =>
+                    (p.fullName && p.fullName.toLowerCase().includes(searchLower)) ||
+                    (p.email && p.email.toLowerCase().includes(searchLower))
+                );
+            });
+        }
+
+        const totalChats = await Chat.countDocuments(query); // Approximation since we filter after
+
+        res.json({
+            chats: filteredChats,
+            currentPage: pageNum,
+            totalPages: Math.ceil(totalChats / limitNum),
+            totalChats
+        });
+    } catch (err) {
+        console.error('Error fetching admin chats:', err.message);
         res.status(500).json({ msg: 'Server Error' });
     }
 });

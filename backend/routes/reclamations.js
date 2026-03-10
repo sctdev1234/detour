@@ -8,7 +8,7 @@ const { auth } = require('../middleware/auth');
 // @desc    Create a new reclamation
 router.post('/', auth, async (req, res) => {
     try {
-        const { type, subject, description, evidenceUrls, tripId } = req.body;
+        const { type, subject, description, evidenceUrls, tripId, chatId, reportedMessageId } = req.body;
 
         if (!type || !subject || !description) {
             return res.status(400).json({ msg: 'Type, subject, and description are required' });
@@ -17,6 +17,8 @@ router.post('/', auth, async (req, res) => {
         const reclamation = new Reclamation({
             reporterId: req.user.id,
             tripId: tripId || undefined,
+            chatId: chatId || undefined,
+            reportedMessageId: reportedMessageId || undefined,
             type,
             subject,
             description,
@@ -259,6 +261,7 @@ router.get('/admin/all', auth, async (req, res) => {
         const reclamations = await Reclamation.find()
             .populate('reporterId', 'fullName email phone photoURL') // Populate reporter details
             .populate('tripId', 'startPoint endPoint price')         // Populate trip details if needed
+            .populate('chatId') // Populate chat details for context linking
             .populate('messages.senderId', 'fullName role photoURL') // Populate message senders
             .sort({ updatedAt: -1 });
 

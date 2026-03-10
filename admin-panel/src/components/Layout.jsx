@@ -116,6 +116,7 @@ export default function Layout() {
         { path: '/credits', label: 'Finance', icon: DollarSign },
         { path: '/users', label: 'Users', icon: Users },
         { path: '/reviews', label: 'Reviews', icon: Star },
+        { path: '/chats', label: 'Chats', icon: MessageSquare },
         { path: '/support', label: 'Support', icon: MessageSquare },
     ];
 

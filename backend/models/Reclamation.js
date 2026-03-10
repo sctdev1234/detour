@@ -10,6 +10,13 @@ const ReclamationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Trip'
     },
+    chatId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Chat'
+    },
+    reportedMessageId: {
+        type: mongoose.Schema.Types.ObjectId
+    },
     type: {
         type: String,
         enum: ['accident', 'behaving', 'lost_item', 'technical', 'other'],

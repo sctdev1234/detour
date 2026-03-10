@@ -67,6 +67,16 @@ router.post('/:requestId/message', auth, async (req, res) => {
 
         // Return the newly added message
         const newMessage = chat.messages[chat.messages.length - 1];
+
+        // Emit socket event for real-time updates
+        const io = req.app.get('socketio');
+        if (io) {
+            io.emit('new_message', {
+                chatId: chat._id,
+                message: newMessage
+            });
+        }
+
         res.json(newMessage);
     } catch (err) {
         console.error('Error sending message:', err.message);
