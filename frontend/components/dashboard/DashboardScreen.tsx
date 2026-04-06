@@ -57,7 +57,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
 
     const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
 
-    // Driver trips
+    // Filter trips for current driver
     const trips = allTrips?.filter((t: any) =>
         t.driverId?._id === user?.id ||
         t.driverId?.id === user?.id ||
@@ -68,6 +68,16 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     const activeTrip = trips.find((t: any) =>
         IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active'
     );
+
+    // Find the primary trip to show on map (active or next scheduled)
+    const tripToDisplay = React.useMemo(() => {
+        if (activeTrip) return activeTrip;
+        // Fallback to first non-completed trip
+        return trips.find(t => 
+            t.status?.toLowerCase() !== 'completed' && 
+            t.status?.toLowerCase() !== 'cancelled'
+        );
+    }, [activeTrip, trips]);
 
     // --- Pulsing animation for user location dot ---
     const pulseScale = useSharedValue(1);
@@ -133,44 +143,49 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     }, [currentLocation]);
 
     // --- Get user coords ---
-    const userCoords = trackedLocation
+    const userCoords = (trackedLocation && trackedLocation.coords.latitude !== 0 && trackedLocation.coords.longitude !== 0)
         ? { latitude: trackedLocation.coords.latitude, longitude: trackedLocation.coords.longitude }
-        : currentLocation
+        : (currentLocation && currentLocation.coords.latitude !== 0 && currentLocation.coords.longitude !== 0)
             ? { latitude: currentLocation.coords.latitude, longitude: currentLocation.coords.longitude }
             : null;
 
-    // --- Route polylines for saved routes ---
     const routePolylines = React.useMemo(() => {
-        if (!showSavedRoutes) return [];
-
         return trips
-            .filter((t: any) => t.routeId?.routeGeometry || (t.routeId?.startPoint && t.routeId?.endPoint))
+            .filter((t: any) => {
+                const isActive = IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active';
+                const hasRoute = t.routeId?.routeGeometry || (t.routeId?.startPoint && t.routeId?.endPoint);
+                return (isActive || showSavedRoutes) && hasRoute;
+            })
             .map((t: any) => {
                 const isActive = IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active';
-                let coords: any[] = [];
+                const r = t.routeId || {};
 
-                if (t.routeId?.routeGeometry) {
-                    coords = decodePolyline(t.routeId.routeGeometry);
-                } else if (t.routeId?.startPoint && t.routeId?.endPoint) {
+                const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0) ? r.startPoint : null;
+                const endP = (r.endPoint?.latitude !== undefined && r.endPoint.latitude !== 0 && r.endPoint.longitude !== 0) ? r.endPoint : null;
+
+                let coords: any[] = [];
+                if (r.routeGeometry) {
+                    coords = decodePolyline(r.routeGeometry);
+                } else if (startP && endP) {
                     coords = [
-                        t.routeId.startPoint,
-                        ...(t.routeId.waypoints || []),
-                        t.routeId.endPoint,
-                    ].filter((p: any) => p && p.latitude);
+                        startP,
+                        ...(r.waypoints || []).filter((wp: any) => wp?.latitude !== undefined),
+                        endP,
+                    ];
                 }
 
                 return {
                     id: t._id || t.id,
-                    coords,
+                    coords: coords.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0),
                     isActive,
                     color: isActive
                         ? '#EF4444'
                         : colorScheme === 'dark'
-                            ? 'rgba(79, 70, 229, 0.4)'
-                            : 'rgba(79, 70, 229, 0.3)',
-                    width: isActive ? 6 : 3,
-                    startPoint: t.routeId?.startPoint,
-                    endPoint: t.routeId?.endPoint,
+                            ? 'rgba(79, 70, 229, 0.6)' // Increased opacity
+                            : 'rgba(79, 70, 229, 0.5)', // Increased opacity
+                    width: isActive ? 6 : 4, // Slightly thicker
+                    startPoint: startP,
+                    endPoint: endP,
                 };
             });
     }, [trips, showSavedRoutes, colorScheme]);
@@ -198,7 +213,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                 places={places}
                 getSavedPlaceColor={getSavedPlaceColor}
                 routePolylines={routePolylines}
-                activeTrip={activeTrip}
+                activeTrip={tripToDisplay}
                 styles={styles}
                 theme={theme}
             />

@@ -48,7 +48,7 @@ const MapBoundsUpdater = ({ points, edgePadding, fullScreen }: { points: LatLng[
                 typeof p.latitude === 'number' && !isNaN(p.latitude) &&
                 typeof p.longitude === 'number' && !isNaN(p.longitude)
             );
-            if (validPoints.length > 0) {
+            if (validPoints.length >= 2) {
                 const bounds = L.latLngBounds(validPoints.map(p => [p.latitude, p.longitude]));
                 if (bounds.isValid()) {
                     const options: L.FitBoundsOptions = {};
@@ -56,10 +56,14 @@ const MapBoundsUpdater = ({ points, edgePadding, fullScreen }: { points: LatLng[
                         options.paddingTopLeft = [edgePadding.left, edgePadding.top];
                         options.paddingBottomRight = [edgePadding.right, edgePadding.bottom];
                     } else {
-                        options.padding = [60, 60];
+                        options.padding = [100, 100]; // More generous padding
                     }
+                    options.animate = true;
                     map.fitBounds(bounds, options);
                 }
+            } else if (validPoints.length === 1) {
+                // Just center on the single point with reasonable zoom
+                map.setView([validPoints[0].latitude, validPoints[0].longitude], 14, { animate: true });
             }
         }
     }, [points, map, edgePadding]);
@@ -163,6 +167,7 @@ const MapLeaflet = React.memo(({
     driverLocation,
     maxPoints,
     savedPlaces: propSavedPlaces,
+    routePolylines: propRoutePolylines,
     style,
     selectedRouteId,
     onRouteSelect,
@@ -238,10 +243,19 @@ const MapLeaflet = React.memo(({
                 if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
             }
         }
+        if (!trip && propRoutePolylines?.length) {
+            propRoutePolylines.forEach((r: any) => {
+                if (r.coords?.length) markersToFit.push(...r.coords);
+            });
+        }
         // @ts-ignore
-        markersToFit = markersToFit.filter(p => p && typeof p.latitude === 'number' && !isNaN(p.latitude) && typeof p.longitude === 'number' && !isNaN(p.longitude));
+        markersToFit = markersToFit.filter(p => 
+            p && 
+            typeof p.latitude === 'number' && !isNaN(p.latitude) && p.latitude !== 0 &&
+            typeof p.longitude === 'number' && !isNaN(p.longitude) && p.longitude !== 0
+        );
         if (markersToFit.length > 0) setAllPointsToFit(markersToFit);
-    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, savedPlaces, routeCoordinates, boundsPoints]);
+    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, savedPlaces, routeCoordinates, boundsPoints, propRoutePolylines]);
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         onMapPress?.();
@@ -289,7 +303,7 @@ const MapLeaflet = React.memo(({
                     <MapEvents onMapClick={handleMapClick} />
                     <MapCenterUpdater center={mapCenter} />
 
-                    {savedPlaces?.filter(p => p && typeof p.latitude === 'number' && !isNaN(p.latitude) && typeof p.longitude === 'number' && !isNaN(p.longitude)).map((place: any, index: number) => (
+                    {savedPlaces?.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && typeof p.longitude === 'number' && p.longitude !== 0).map((place: any, index: number) => (
                         <Marker key={`saved-${index}`} position={[place.latitude, place.longitude]} icon={createSavedPlaceIcon(place.icon, theme)}>
                             <Popup>
                                 <div style={{ minWidth: '140px' }}>
@@ -390,10 +404,16 @@ const MapLeaflet = React.memo(({
                     )}
 
                     {(mode === 'picker' && points.length > 1) && (
-                        <Polyline positions={points.map(p => [p.latitude, p.longitude])} pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }} />
+                        <Polyline 
+                            positions={points.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).map(p => [p.latitude, p.longitude])} 
+                            pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }} 
+                        />
                     )}
                     {((mode === 'trip' || mode === 'route') && routeCoordinates.length > 1) && (
-                        <Polyline positions={routeCoordinates.map(p => [p.latitude, p.longitude])} pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }} eventHandlers={{
+                        <Polyline 
+                            positions={routeCoordinates.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).map(p => [p.latitude, p.longitude])} 
+                            pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }} 
+                            eventHandlers={{
                             click: () => {
                                 if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
                                     const firstClient = trip.clients[0];
@@ -412,10 +432,52 @@ const MapLeaflet = React.memo(({
                         const routeId = (client.routeId as any)?._id || client.routeId?.id;
                         const isSelected = selectedRouteId === routeId;
                         const color = clientColors?.[routeId] || theme.secondary || '#6366f1';
-                        // @ts-ignore
                         const clientCoords = decodePolyline(clientGeom);
+                        const safeCoords = clientCoords.filter((p: any) => p && typeof p.latitude === 'number');
+                        if (!safeCoords.length) return null;
+
                         return (
-                            <Polyline key={`client-route-${index}`} positions={clientCoords.map((p: any) => [p.latitude, p.longitude])} pathOptions={{ color, weight: isSelected ? 5 : 4, opacity: 0.8, dashArray: isSelected ? undefined : '10, 5' }} eventHandlers={{ click: () => onRouteSelect?.(routeId) }} />
+                            <Polyline 
+                                key={`client-route-${index}`} 
+                                positions={safeCoords.map((p: any) => [p.latitude, p.longitude])} 
+                                pathOptions={{ color, weight: isSelected ? 5 : 4, opacity: 0.8, dashArray: isSelected ? undefined : '10, 5' }} 
+                                eventHandlers={{ click: () => onRouteSelect?.(routeId) }} 
+                            />
+                        );
+                    })}
+                    {propRoutePolylines?.map((route: any) => {
+                        const validCoords = route.coords?.filter((p: any) => p && typeof p.latitude === 'number' && typeof p.longitude === 'number');
+                        const startPoint = route.startPoint && typeof route.startPoint.latitude === 'number' ? route.startPoint : null;
+                        const endPoint = route.endPoint && typeof route.endPoint.latitude === 'number' ? route.endPoint : null;
+
+                        return (
+                            <React.Fragment key={`route-polyline-${route.id}`}>
+                                {validCoords && validCoords.length > 1 && (
+                                    <Polyline
+                                        positions={validCoords.map((p: any) => [p.latitude, p.longitude])}
+                                        pathOptions={{
+                                            color: route.color,
+                                            weight: route.width || 4,
+                                            opacity: route.isActive ? 0.9 : 0.6,
+                                            dashArray: route.isActive ? undefined : '10, 10'
+                                        }}
+                                    />
+                                )}
+                                {/* Start Marker */}
+                                {startPoint && (
+                                    <Marker
+                                        position={[startPoint.latitude, startPoint.longitude]}
+                                        icon={createDotIcon(route.isActive ? '#10b981' : '#ccc')}
+                                    />
+                                )}
+                                {/* End Marker */}
+                                {endPoint && (
+                                    <Marker
+                                        position={[endPoint.latitude, endPoint.longitude]}
+                                        icon={createDotIcon(route.isActive ? '#ef4444' : '#ccc')}
+                                    />
+                                )}
+                            </React.Fragment>
                         );
                     })}
                 </MapContainer>

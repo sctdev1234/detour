@@ -51,6 +51,7 @@ export interface MapProps {
     edgePadding?: { top: number; right: number; bottom: number; left: number };
     boundsPoints?: LatLng[];
     fullScreen?: boolean;
+    routePolylines?: any[];
 }
 
 // --- Helper: get icon for saved place ---
