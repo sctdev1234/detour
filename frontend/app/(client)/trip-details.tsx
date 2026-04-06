@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
-import { useClientRequests, useTrips } from '../../hooks/api/useTripQueries';
+import { useClientRequests } from '../../hooks/api/useTripQueries';
 import { useTrackingStore } from '../../store/useTrackingStore';
 import { useUIStore } from '../../store/useUIStore';
-import { calculateDistance, estimateDuration, formatDuration } from '../../utils/location';
+import { calculateDistance, estimateDuration, formatDuration, normalizeRoute } from '../../utils/location';
 
 export default function TripDetailsScreen() {
     const { requestId } = useLocalSearchParams<{ requestId: string }>();
@@ -18,10 +18,10 @@ export default function TripDetailsScreen() {
     const { showToast } = useUIStore();
 
     const { data: clientRequests } = useClientRequests();
-    const { data: trips } = useTrips();
 
     const request = clientRequests?.find((r: any) => r.id === requestId);
-    const driverTrip = trips?.find((t: any) => t.id === request?.driverTripId);
+    const driverTrip = request?.tripId;
+    const normalizedClientRoute = normalizeRoute(request?.clientRouteId);
 
     const { subscribeToDriver, unsubscribe, driverLocation } = useTrackingStore();
     const [alerted, setAlerted] = useState(false);
@@ -37,10 +37,10 @@ export default function TripDetailsScreen() {
     }, [driverTrip?.driverId]);
 
     useEffect(() => {
-        if (driverLocation && request?.startPoint) { // Ensure request has startPoint
+        if (driverLocation && normalizedClientRoute?.startPoint) { // Ensure request has startPoint
             const dist = calculateDistance(
                 { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-                request.startPoint
+                normalizedClientRoute.startPoint
             );
             const eta = estimateDuration(dist, 40);
 
@@ -66,7 +66,7 @@ export default function TripDetailsScreen() {
     const handleShareTrip = async () => {
         try {
             await Share.share({
-                message: `Track my trip on Detour! I'm on my way from ${request?.startPoint ? 'Pickup' : 'Start'} to ${request?.endPoint ? 'Dropoff' : 'End'}. \n\nDriver: Driver Name`,
+                message: `Track my trip on Detour! I'm on my way from ${normalizedClientRoute?.startPoint?.address || 'Pickup'} to ${normalizedClientRoute?.endPoint?.address || 'Dropoff'}. \n\nDriver: ${driverTrip?.driverId?.fullName || 'Driver Name'}`,
             });
         } catch (error: any) {
             showToast(error.message, 'error');
@@ -86,10 +86,10 @@ export default function TripDetailsScreen() {
 
     // Safely calculate distance
     let distToPickup = 0;
-    if (driverLocation && request?.startPoint) {
+    if (driverLocation && normalizedClientRoute?.startPoint) {
         distToPickup = calculateDistance(
             { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-            request.startPoint
+            normalizedClientRoute.startPoint
         );
     }
 
@@ -116,7 +116,7 @@ export default function TripDetailsScreen() {
                 <DetourMap
                     mode="picker"
                     theme={theme}
-                    initialPoints={request.startPoint && request.endPoint ? [request.startPoint, request.endPoint] : undefined}
+                    initialPoints={normalizedClientRoute?.startPoint && normalizedClientRoute?.endPoint ? [normalizedClientRoute.startPoint, normalizedClientRoute.endPoint] : undefined}
                     driverLocation={driverLocation || undefined}
                     readOnly={true}
                 />
@@ -193,7 +193,7 @@ export default function TripDetailsScreen() {
                                 </View>
                                 <View style={styles.timelineContent}>
                                     <Text style={[styles.timelineTitle, { color: theme.text }]}>Pickup</Text>
-                                    <Text style={[styles.timelineTime, { color: theme.icon }]}>{request.preferredTime || '00:00'}</Text>
+                                    <Text style={[styles.timelineTime, { color: theme.icon }]}>{normalizedClientRoute?.schedule?.time || driverTrip?.routeId?.schedule?.time || '00:00'}</Text>
                                 </View>
                             </View>
                             <View style={styles.timelineItem}>

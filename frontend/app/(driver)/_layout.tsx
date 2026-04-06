@@ -1,8 +1,7 @@
-import { Bell, Bookmark, Calendar, Car, Home, MapPin, User } from 'lucide-react-native';
 import { useColorScheme } from 'react-native';
+import DrawerContent from '../../components/DrawerContent';
 import DriverTripExecutionScreen from '../../components/DriverTripExecutionScreen';
-import { Footer } from '../../components/Footer';
-import { SwipeableTabs } from '../../components/SwipeableLayout';
+import { Drawer } from '../../components/DrawerLayout';
 import { Colors } from '../../constants/theme';
 import { useTrips } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -11,23 +10,7 @@ import { getNextTripOccurrence } from '../../utils/timeUtils';
 export default function DriverLayout() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-
     const { user } = useAuthStore();
-
-    // If driver is not verified, restrict access
-    // If driver is not verified, restrict access
-    // Verification check temporarily disabled for debugging
-    /* 
-    if (user?.role === 'driver' && user?.verificationStatus !== 'verified') {
-        return (
-            <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="verification" />
-                <Stack.Screen name="profile" />
-                <Stack.Screen name="index" redirect={true} />
-            </Stack>
-        );
-    }
-    */
 
     const { data: trips } = useTrips();
     const activeTrip = trips?.find((t: any) => {
@@ -47,73 +30,40 @@ export default function DriverLayout() {
         return false;
     });
 
-    // Hard Lock Implementation: If an active trip is found, replace the tabs entire with the strict execution screen.
+    // Hard Lock: Active trip takes over
     if (activeTrip) {
         return <DriverTripExecutionScreen trip={activeTrip} />;
     }
 
     return (
-        <SwipeableTabs
-            tabBarPosition="bottom"
-            tabBar={(props) => <Footer {...props} />}
+        <Drawer
+            drawerContent={(props) => <DrawerContent {...props} />}
+            screenOptions={{
+                headerShown: false,
+                drawerType: 'front',
+                drawerStyle: {
+                    width: 300,
+                    backgroundColor: theme.background,
+                },
+                overlayColor: 'rgba(0,0,0,0.5)',
+                swipeEnabled: true,
+                swipeEdgeWidth: 50,
+            }}
         >
-            <SwipeableTabs.Screen
-                name="index"
-                options={{
-                    title: 'Dashboard',
-                    tabBarIcon: ({ color }) => <Home size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="cars"
-                options={{
-                    title: 'My Cars',
-                    tabBarIcon: ({ color }) => <Car size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="requests"
-                options={{
-                    title: 'Requests',
-                    tabBarIcon: ({ color }) => <Bell size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="places"
-                options={{
-                    title: 'Places',
-                    tabBarIcon: ({ color }) => <Bookmark size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="routes"
-                options={{
-                    title: 'Routes',
-                    tabBarIcon: ({ color }) => <MapPin size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="trips"
-                options={{
-                    title: 'My Trips',
-                    tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="profile"
-                options={{
-                    title: 'Profile',
-                    tabBarIcon: ({ color }) => <User size={24} color={color} />,
-                }}
-            />
-
-            {/* Hidden Screens */}
-            <SwipeableTabs.Screen name="add-car" options={{ swipeEnabled: false }} />
-            <SwipeableTabs.Screen name="add-route" options={{ swipeEnabled: false }} />
-            <SwipeableTabs.Screen name="assign-car" options={{ swipeEnabled: false }} />
-            <SwipeableTabs.Screen name="verification" options={{ swipeEnabled: false }} />
-            <SwipeableTabs.Screen name="find-clients" options={{ swipeEnabled: false }} />
-
-        </SwipeableTabs>
+            <Drawer.Screen name="index" options={{ title: 'Dashboard' }} />
+            <Drawer.Screen name="cars" options={{ title: 'Cars', swipeEnabled: false }} />
+            <Drawer.Screen name="requests" options={{ title: 'Requests', swipeEnabled: false }} />
+            <Drawer.Screen name="routes" options={{ title: 'Routes', swipeEnabled: false }} />
+            <Drawer.Screen name="trips" options={{ title: 'My Trips', swipeEnabled: false }} />
+            <Drawer.Screen name="places" options={{ title: 'Places', swipeEnabled: false }} />
+            <Drawer.Screen name="profile" options={{ title: 'Profile', swipeEnabled: false }} />
+            
+            {/* Form/Hidden Screens */}
+            <Drawer.Screen name="add-car" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
+            <Drawer.Screen name="add-route" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
+            <Drawer.Screen name="assign-car" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
+            <Drawer.Screen name="verification" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
+            <Drawer.Screen name="find-clients" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
+        </Drawer>
     );
 }
