@@ -4,6 +4,7 @@ import {
     CarFront,
     CreditCard,
     DollarSign,
+    FileImage,
     FileText,
     LayoutDashboard,
     LogOut,
@@ -118,6 +119,7 @@ export default function Layout() {
         { path: '/reviews', label: 'Reviews', icon: Star },
         { path: '/chats', label: 'Chats', icon: MessageSquare },
         { path: '/support', label: 'Support', icon: MessageSquare },
+        { path: '/pages', label: 'Pages', icon: FileImage },
     ];
 
     return (

@@ -60,8 +60,8 @@ The app also provides a platform for clients to search for drivers for their rep
 
 ## ADMIN-PANEL
 - **Pages**:
-  - [ ] `Chats`: Chat management. between client and driver
-  - [ ] `Permissions`: Permission management. 
+  - [x] `Chats`: Chat management. between client and driver
+  - [ ] `Permissions`: Permission management. the pages autorization in each role 
   - [ ] `Pages`: Page management. (terms and conditions, privacy policy, contact us, about us, help, faq, ...)
   - [ ] `Routes`: Route management. created by the any one (driver or client)
   - [ ] `Subscriptions`: Subscription management. premuim version , get the priority in the route. 

@@ -7,6 +7,7 @@ import Credits from './pages/Credits';
 import DashboardHome from './pages/DashboardHome';
 import Drivers from './pages/Drivers';
 import Login from './pages/Login';
+import PagesManagement from './pages/PagesManagement';
 import Places from './pages/Places';
 import Requests from './pages/Requests';
 import Reviews from './pages/Reviews';
@@ -41,6 +42,7 @@ function App() {
           <Route path="/requests" element={<Requests />} />
           <Route path="/support" element={<Support />} />
           <Route path="/chats" element={<Chats />} />
+          <Route path="/pages" element={<PagesManagement />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
