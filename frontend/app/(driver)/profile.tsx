@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import {
     AlertCircle,
     Car,
+    ChevronLeft,
     ChevronRight,
     CreditCard,
     Lock,
@@ -26,12 +27,14 @@ import {
     useColorScheme,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
 import { useDeleteAccount, useLogout } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function DriverProfileScreen() {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -39,6 +42,14 @@ export default function DriverProfileScreen() {
     const { mutate: logout } = useLogout();
     const { mutateAsync: deleteAccount } = useDeleteAccount();
     const { showConfirm, showToast } = useUIStore();
+
+    const handleBack = () => {
+        if (router.canGoBack()) {
+            router.back();
+        } else {
+            router.push('/(driver)');
+        }
+    };
 
     const handleSignOut = async () => {
         showConfirm({
@@ -120,143 +131,163 @@ export default function DriverProfileScreen() {
     );
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
-            {/* Header / User Info */}
-            <LinearGradient
-                colors={[theme.primary + '20', theme.background]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.headerGradient}
-            >
-                <View style={styles.headerContent}>
-                    <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.avatarContainer, { shadowColor: theme.primary }]}>
-                        <LinearGradient
-                            colors={[theme.primary, theme.secondary || theme.primary]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.avatarBorder}
-                        >
-                            <View style={[styles.avatar, { backgroundColor: theme.surface }]}>
-                                {user?.photoURL ? (
-                                    <Image source={{ uri: user.photoURL }} style={styles.avatarImage} contentFit="cover" transition={500} />
-                                ) : (
-                                    <Text style={[styles.avatarInitials, { color: theme.primary }]}>
-                                        {user?.fullName
-                                            ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-                                            : 'D'}
-                                    </Text>
-                                )}
-                            </View>
-                        </LinearGradient>
-                        <TouchableOpacity
-                            style={[styles.editBadge, { backgroundColor: theme.primary, borderColor: theme.surface }]}
-                            onPress={() => router.push('/edit-profile')}
-                        >
-                            <UserCog size={14} color="#fff" />
-                        </TouchableOpacity>
-                    </Animated.View>
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+            <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
+                {/* Header / User Info */}
+                <LinearGradient
+                    colors={[theme.primary + '20', theme.background]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.headerGradient}
+                >
+                    <View style={styles.headerContent}>
+                        <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.avatarContainer, { shadowColor: theme.primary }]}>
+                            <LinearGradient
+                                colors={[theme.primary, theme.secondary || theme.primary]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.avatarBorder}
+                            >
+                                <View style={[styles.avatar, { backgroundColor: theme.surface }]}>
+                                    {user?.photoURL ? (
+                                        <Image source={{ uri: user.photoURL }} style={styles.avatarImage} contentFit="cover" transition={500} />
+                                    ) : (
+                                        <Text style={[styles.avatarInitials, { color: theme.primary }]}>
+                                            {user?.fullName
+                                                ? user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                                                : 'D'}
+                                        </Text>
+                                    )}
+                                </View>
+                            </LinearGradient>
+                            <TouchableOpacity
+                                style={[styles.editBadge, { backgroundColor: theme.primary, borderColor: theme.surface }]}
+                                onPress={() => router.push('/edit-profile')}
+                            >
+                                <UserCog size={14} color="#fff" />
+                            </TouchableOpacity>
+                        </Animated.View>
 
-                    <Animated.Text entering={FadeInDown.delay(150).springify()} style={[styles.userName, { color: theme.text }]}>
-                        {user?.fullName || 'Driver'}
-                    </Animated.Text>
-                    <Animated.Text entering={FadeInDown.delay(180).springify()} style={[styles.userEmail, { color: theme.icon }]}>
-                        {user?.email || 'driver@detour.com'}
-                    </Animated.Text>
+                        <Animated.Text entering={FadeInDown.delay(150).springify()} style={[styles.userName, { color: theme.text }]}>
+                            {user?.fullName || 'Driver'}
+                        </Animated.Text>
+                        <Animated.Text entering={FadeInDown.delay(180).springify()} style={[styles.userEmail, { color: theme.icon }]}>
+                            {user?.email || 'driver@detour.com'}
+                        </Animated.Text>
 
-                    <View style={{ marginTop: 8 }}>
-                        <StatusBadge />
+                        <View style={{ marginTop: 8 }}>
+                            <StatusBadge />
+                        </View>
                     </View>
+                </LinearGradient>
+
+                {/* Stats Row */}
+                <View style={styles.statsRow}>
+                    <CardStatItem label="Trips" value="124" icon={Car} index={0} />
+                    <CardStatItem label="Rating" value="4.8" icon={Star} index={1} />
+                    <CardStatItem label="Rate" value="98%" icon={Zap} index={2} />
                 </View>
-            </LinearGradient>
 
-            {/* Stats Row */}
-            <View style={styles.statsRow}>
-                <CardStatItem label="Trips" value="124" icon={Car} index={0} />
-                <CardStatItem label="Rating" value="4.8" icon={Star} index={1} />
-                <CardStatItem label="Rate" value="98%" icon={Zap} index={2} />
-            </View>
+                {/* Menu Groups */}
+                <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.icon }]}>Management</Text>
+                    <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
+                        <MenuItem
+                            icon={Car}
+                            title="My Garage"
+                            subtitle="Manage vehicles"
+                            onPress={() => router.push('/(driver)/cars')}
+                            index={0}
+                        />
+                        <MenuItem
+                            icon={User}
+                            title="Edit Profile"
+                            subtitle="Update details & Photo"
+                            onPress={() => router.push('/edit-profile')}
+                            index={1}
+                        />
+                        <MenuItem
+                            icon={Lock}
+                            title="Change Password"
+                            subtitle="Update security"
+                            onPress={() => router.push('/change-password')}
+                            index={2}
+                        />
+                        <MenuItem
+                            icon={CreditCard}
+                            title="Earnings & Wallet"
+                            subtitle="Payouts and history"
+                            onPress={() => router.push('/finance/wallet')}
+                            showChevron={true}
+                            index={3}
+                        />
+                    </View>
+                </Animated.View>
 
-            {/* Menu Groups */}
-            <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.icon }]}>Management</Text>
-                <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
-                    <MenuItem
-                        icon={Car}
-                        title="My Garage"
-                        subtitle="Manage vehicles"
-                        onPress={() => router.push('/(driver)/cars')}
-                        index={0}
-                    />
-                    <MenuItem
-                        icon={User}
-                        title="Edit Profile"
-                        subtitle="Update details & Photo"
-                        onPress={() => router.push('/edit-profile')}
-                        index={1}
-                    />
-                    <MenuItem
-                        icon={Lock}
-                        title="Change Password"
-                        subtitle="Update security"
-                        onPress={() => router.push('/change-password')}
-                        index={2}
-                    />
-                    <MenuItem
-                        icon={CreditCard}
-                        title="Earnings & Wallet"
-                        subtitle="Payouts and history"
-                        onPress={() => router.push('/finance/wallet')}
-                        showChevron={true}
-                        index={3}
-                    />
-                </View>
-            </Animated.View>
+                <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.icon }]}>Support</Text>
+                    <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
+                        <MenuItem
+                            icon={AlertCircle}
+                            title="Driver Support"
+                            subtitle="Help with trips"
+                            onPress={() => { /* Navigate to Support */ }}
+                            showChevron={true}
+                            index={0}
+                        />
+                    </View>
+                </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.icon }]}>Support</Text>
-                <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
-                    <MenuItem
-                        icon={AlertCircle}
-                        title="Driver Support"
-                        subtitle="Help with trips"
-                        onPress={() => { /* Navigate to Support */ }}
-                        showChevron={true}
-                        index={0}
-                    />
-                </View>
-            </Animated.View>
+                <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.icon }]}>System</Text>
+                    <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
+                        <MenuItem
+                            icon={User}
+                            title="Switch to Passenger"
+                            subtitle="Book a ride"
+                            onPress={() => setRole(null)}
+                            index={0}
+                        />
+                        <MenuItem
+                            icon={LogOut}
+                            title="Sign Out"
+                            destructive
+                            onPress={handleSignOut}
+                            showChevron={false}
+                            index={1}
+                        />
+                        <MenuItem
+                            icon={Trash2}
+                            title="Delete Account"
+                            destructive
+                            onPress={handleDeleteAccount}
+                            showChevron={false}
+                            index={2}
+                        />
+                    </View>
+                </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.icon }]}>System</Text>
-                <View style={[styles.menuGroup, { backgroundColor: theme.surface + '80', borderColor: theme.border }]}>
-                    <MenuItem
-                        icon={User}
-                        title="Switch to Passenger"
-                        subtitle="Book a ride"
-                        onPress={() => setRole(null)}
-                        index={0}
-                    />
-                    <MenuItem
-                        icon={LogOut}
-                        title="Sign Out"
-                        destructive
-                        onPress={handleSignOut}
-                        showChevron={false}
-                        index={1}
-                    />
-                    <MenuItem
-                        icon={Trash2}
-                        title="Delete Account"
-                        destructive
-                        onPress={handleDeleteAccount}
-                        showChevron={false}
-                        index={2}
-                    />
-                </View>
-            </Animated.View>
+                <View style={{ height: 100 }} />
+            </ScrollView>
 
-            <View style={{ height: 100 }} />
-        </ScrollView>
+            {/* Floating Back Button */}
+            <TouchableOpacity
+                style={[
+                    styles.backBtn,
+                    {
+                        position: 'absolute',
+                        top: Math.max(insets.top, 20) + 10,
+                        left: 20,
+                        backgroundColor: theme.surface,
+                        borderColor: theme.border,
+                    }
+                ]}
+                onPress={handleBack}
+                activeOpacity={0.7}
+            >
+                <ChevronLeft size={22} color={theme.text} strokeWidth={2.5} />
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -437,5 +468,19 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '500',
         opacity: 0.6,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        zIndex: 99,
     },
 });

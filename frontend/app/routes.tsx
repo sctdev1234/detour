@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Clock, MapPin, Plus, Trash2 } from 'lucide-react-native';
+import { Clock, ChevronLeft, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
@@ -88,11 +88,27 @@ export default function RoutesScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 80, paddingBottom: 10 }]}>
-                <Text style={[styles.title, { color: theme.text }]}>My Routes</Text>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 60, paddingBottom: 10 }]}>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity
+                        style={[styles.backBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => {
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.push(user?.role === 'driver' ? '/(driver)' : '/(client)');
+                            }
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <ChevronLeft size={22} color={theme.text} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: theme.text }]}>My Routes</Text>
+                </View>
                 <TouchableOpacity
-                    style={styles.addButton}
+                    style={[styles.addButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
                     onPress={() => router.push(user?.role === 'driver' ? '/(driver)/add-route' : '/(client)/add-route')}
+                    activeOpacity={0.7}
                 >
                     <Plus size={24} color={theme.primary} />
                 </TouchableOpacity>
@@ -135,20 +151,35 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
     },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
+    },
     title: {
-        fontSize: 32,
+        fontSize: 24,
         fontWeight: '800',
         letterSpacing: -0.5,
     },
     addButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#fff',
         elevation: 4,
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
+        borderWidth: 1,
     },
     listContent: {
         padding: 24,

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Calendar, Navigation, Timer, User } from 'lucide-react-native';
+import { Calendar, ChevronLeft, Navigation, Timer, User } from 'lucide-react-native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
@@ -129,6 +129,26 @@ export default function TripsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 60, paddingBottom: 10 }]}>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity
+                        style={[styles.backBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => {
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.push(user?.role === 'driver' ? '/(driver)' : '/(client)');
+                            }
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <ChevronLeft size={22} color={theme.text} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: theme.text }]}>My Trips</Text>
+                </View>
+                <View style={{ width: 44 }} />
+            </View>
+
             {isLoading && (!trips || (trips as Trip[]).length === 0) ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
@@ -138,7 +158,7 @@ export default function TripsScreen() {
                     data={trips || []}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item, index }) => <TripItemCard item={item} index={index} theme={theme} router={router} user={user} />}
-                    contentContainerStyle={[styles.list, { paddingTop: 84 }]}
+                    contentContainerStyle={styles.list}
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <Calendar size={48} color={theme.icon} />
@@ -153,6 +173,36 @@ export default function TripsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingTop: 20,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     list: { padding: 24, gap: 20 },
     tripCard: { borderRadius: 28, borderWidth: 1, padding: 20, gap: 16 },

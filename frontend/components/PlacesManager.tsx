@@ -1,4 +1,5 @@
-import { Briefcase, Check, Dumbbell, GraduationCap, Home, MapPin, Plus, Trash2, X } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Briefcase, Check, ChevronLeft, Dumbbell, GraduationCap, Home, MapPin, Plus, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../constants/theme';
@@ -10,6 +11,7 @@ import { useUIStore } from '../store/useUIStore';
 import DetourMap from './Map';
 
 export default function PlacesManager() {
+    const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
@@ -131,13 +133,29 @@ export default function PlacesManager() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>Saved Places</Text>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 60, paddingBottom: 10 }]}>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity
+                        style={[styles.backBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => {
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.push(user?.role === 'driver' ? '/(driver)' : '/(client)');
+                            }
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <ChevronLeft size={22} color={theme.text} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: theme.text }]}>Saved Places</Text>
+                </View>
                 <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.primary }]}
+                    style={[styles.addButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
                     onPress={handleAddPlace}
+                    activeOpacity={0.7}
                 >
-                    <Plus size={24} color="#fff" />
+                    <Plus size={24} color={theme.primary} />
                 </TouchableOpacity>
             </View>
 
@@ -307,10 +325,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 24,
         paddingTop: 20,
-        marginBottom: 10,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
     },
     title: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: '800',
     },
     addButton: {
@@ -320,6 +355,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
+        borderWidth: 1,
     },
     listContent: {
         paddingHorizontal: 24,

@@ -3,8 +3,8 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Camera, Check, ChevronRight, Lock, Mail, User } from 'lucide-react-native';
-import { useState } from 'react';
+import { Camera, Check, ChevronLeft, ChevronRight, Lock, Mail, User } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -87,8 +87,24 @@ export default function EditProfileScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { justifyContent: 'center', paddingTop: 20, paddingBottom: 10 }]}>
-                <Text style={[styles.title, { color: theme.text, textAlign: 'center' }]}>Edit Profile</Text>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 60, paddingBottom: 10 }]}>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity
+                        style={[styles.backBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => {
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.push(user?.role === 'driver' ? '/(driver)' : '/(client)');
+                            }
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <ChevronLeft size={22} color={theme.text} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: theme.text }]}>Edit Profile</Text>
+                </View>
+                <View style={{ width: 44 }} />
             </View>
 
             <KeyboardAvoidingView
@@ -182,25 +198,33 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 20,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
     },
-    backButton: {
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
         width: 44,
         height: 44,
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 1,
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
     },
     title: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
+        letterSpacing: -0.5,
     },
     content: {
         padding: 24,

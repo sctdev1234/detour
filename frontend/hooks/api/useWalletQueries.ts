@@ -25,7 +25,7 @@ export const useSubscribe = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: walletKeys.all });
-            queryClient.invalidateQueries({ queryKey: ['user'] });
+            queryClient.invalidateQueries({ queryKey: ['auth'] });
         }
     });
 };
@@ -39,7 +39,7 @@ export const useCashout = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: walletKeys.all });
-            queryClient.invalidateQueries({ queryKey: ['user'] });
+            queryClient.invalidateQueries({ queryKey: ['auth'] });
         }
     });
 };
@@ -53,7 +53,7 @@ export const useDeposit = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: walletKeys.all });
-            queryClient.invalidateQueries({ queryKey: ['user'] });
+            queryClient.invalidateQueries({ queryKey: ['auth'] });
         }
     });
 };

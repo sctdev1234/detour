@@ -573,9 +573,11 @@ const Map = React.memo(({
                 {/* Driver Location */}
                 {driverLocation && (
                     <Marker
+                        key="driver-location-marker"
                         coordinate={{ latitude: driverLocation.latitude, longitude: driverLocation.longitude }}
                         anchor={{ x: 0.5, y: 0.5 }}
                         rotation={driverLocation.heading}
+                        tracksViewChanges={false}
                     >
                         <View style={[styles.carMarker, { backgroundColor: theme.primary }]}>
                             <Car size={20} color="#fff" />

@@ -43,7 +43,7 @@ import { useRatingStore } from '../../store/useRatingStore';
 import { getNextTripOccurrence, IN_PROGRESS_STATUSES } from '../../utils/timeUtils';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const COLLAPSED_HEIGHT = 140;
+const COLLAPSED_HEIGHT = 160;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.55;
 
 export default function DashboardBottomSheet() {
@@ -114,12 +114,18 @@ export default function DashboardBottomSheet() {
         ? { intensity: 90, tint: colorScheme }
         : {};
 
+    const wrapperBottom = isExpanded ? 0 : (insets.bottom > 0 ? insets.bottom : 12);
+    const wrapperHorizontal = isExpanded ? 0 : 16;
+
     return (
         <View style={[
             styles.wrapper,
             {
                 height: isExpanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT,
-                paddingBottom: insets.bottom,
+                bottom: wrapperBottom,
+                left: wrapperHorizontal,
+                right: wrapperHorizontal,
+                paddingBottom: isExpanded ? insets.bottom : 0,
             }
         ]}>
             <Container
@@ -127,6 +133,10 @@ export default function DashboardBottomSheet() {
                 style={[
                     styles.container,
                     Platform.OS !== 'ios' && { backgroundColor: bgColor },
+                    !isExpanded && {
+                        borderBottomLeftRadius: 28,
+                        borderBottomRightRadius: 28,
+                    }
                 ]}
             >
                 {/* Handle Bar + Toggle */}
@@ -152,7 +162,7 @@ export default function DashboardBottomSheet() {
                         {activeTrip ? (
                             // Active Trip Summary
                             <View style={styles.collapsedRow}>
-                                <View style={[styles.statusIndicator, { backgroundColor: '#ef4444' }]}>
+                                <View style={[styles.statusIndicator, { backgroundColor: '#ef444420' }]}>
                                     <View style={styles.pulsingDot} />
                                 </View>
                                 <View style={styles.collapsedTextBlock}>
@@ -163,26 +173,26 @@ export default function DashboardBottomSheet() {
                                         {activeTrip.routeId?.startPoint?.address?.split(',')[0]} → {activeTrip.routeId?.endPoint?.address?.split(',')[0]}
                                     </Text>
                                 </View>
-                                <View style={styles.collapsedAction}>
-                                    <ArrowUpRight size={18} color={theme.primary} />
+                                <View style={[styles.collapsedAction, { backgroundColor: theme.surfaceHighlight + '50', borderColor: theme.border + '30', borderWidth: 1 }]}>
+                                    <ArrowUpRight size={16} color={theme.text} strokeWidth={2.5} />
                                 </View>
                             </View>
                         ) : nextTripRef ? (
                             // Next Trip Summary
                             <View style={styles.collapsedRow}>
-                                <View style={[styles.statusIndicator, { backgroundColor: theme.primary + '15' }]}>
+                                <View style={[styles.statusIndicator, { backgroundColor: theme.primary + '20' }]}>
                                     <Timer size={18} color={theme.primary} />
                                 </View>
                                 <View style={styles.collapsedTextBlock}>
                                     <Text style={[styles.collapsedTitle, { color: theme.text }]}>
-                                        Next Trip {nextTripCountdown ? `in ${nextTripCountdown}` : ''}
+                                        Next Trip {nextTripCountdown || ''}
                                     </Text>
                                     <Text style={[styles.collapsedSub, { color: theme.textSecondary }]} numberOfLines={1}>
                                         {nextTripRef.routeId?.startPoint?.address?.split(',')[0]} → {nextTripRef.routeId?.endPoint?.address?.split(',')[0]}
                                     </Text>
                                 </View>
-                                <View style={styles.collapsedAction}>
-                                    <ChevronUp size={18} color={theme.icon} />
+                                <View style={[styles.collapsedAction, { backgroundColor: theme.surfaceHighlight + '50', borderColor: theme.border + '30', borderWidth: 1 }]}>
+                                    <ChevronUp size={16} color={theme.text} strokeWidth={2.5} />
                                 </View>
                             </View>
                         ) : (
@@ -202,27 +212,25 @@ export default function DashboardBottomSheet() {
                                         }
                                     </Text>
                                 </View>
-                                <View style={styles.collapsedAction}>
-                                    <ChevronUp size={18} color={theme.icon} />
+                                <View style={[styles.collapsedAction, { backgroundColor: theme.surfaceHighlight + '50', borderColor: theme.border + '30', borderWidth: 1 }]}>
+                                    <ChevronUp size={16} color={theme.text} strokeWidth={2.5} />
                                 </View>
                             </View>
                         )}
 
                         {/* Quick Stats Row */}
                         <View style={styles.quickStats}>
-                            <View style={styles.quickStatItem}>
-                                <Car size={14} color={theme.icon} />
+                            <View style={[styles.quickStatItem, { backgroundColor: theme.surfaceHighlight + '40', borderColor: theme.border + '30' }]}>
+                                <Car size={14} color={theme.primary} />
                                 <Text style={[styles.quickStatValue, { color: theme.text }]}>{totalRoutes}</Text>
                                 <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Routes</Text>
                             </View>
-                            <View style={[styles.quickStatDivider, { backgroundColor: theme.border }]} />
-                            <View style={styles.quickStatItem}>
-                                <DollarSign size={14} color={theme.icon} />
+                            <View style={[styles.quickStatItem, { backgroundColor: theme.surfaceHighlight + '40', borderColor: theme.border + '30' }]}>
+                                <DollarSign size={14} color={theme.success} />
                                 <Text style={[styles.quickStatValue, { color: theme.text }]}>{weeklyPotential}</Text>
                                 <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>MAD/wk</Text>
                             </View>
-                            <View style={[styles.quickStatDivider, { backgroundColor: theme.border }]} />
-                            <View style={styles.quickStatItem}>
+                            <View style={[styles.quickStatItem, { backgroundColor: theme.surfaceHighlight + '40', borderColor: theme.border + '30' }]}>
                                 <Star size={14} color="#EAB308" />
                                 <Text style={[styles.quickStatValue, { color: theme.text }]}>
                                     {(user?.stats?.rating || avgRating).toFixed(1)}
@@ -230,17 +238,15 @@ export default function DashboardBottomSheet() {
                                 <Text style={[styles.quickStatLabel, { color: theme.textSecondary }]}>Rating</Text>
                             </View>
                             {pendingRequestsCount > 0 && (
-                                <>
-                                    <View style={[styles.quickStatDivider, { backgroundColor: theme.border }]} />
-                                    <TouchableOpacity
-                                        style={styles.quickStatItem}
-                                        onPress={() => router.push('/(driver)/requests')}
-                                    >
-                                        <Users size={14} color={theme.primary} />
-                                        <Text style={[styles.quickStatValue, { color: theme.primary }]}>{pendingRequestsCount}</Text>
-                                        <Text style={[styles.quickStatLabel, { color: theme.primary }]}>Requests</Text>
-                                    </TouchableOpacity>
-                                </>
+                                <TouchableOpacity
+                                    style={[styles.quickStatItem, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}
+                                    onPress={() => router.push('/(driver)/requests')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Users size={14} color={theme.primary} />
+                                    <Text style={[styles.quickStatValue, { color: theme.primary }]}>{pendingRequestsCount}</Text>
+                                    <Text style={[styles.quickStatLabel, { color: theme.primary }]}>Requests</Text>
+                                </TouchableOpacity>
                             )}
                         </View>
                     </TouchableOpacity>
@@ -338,7 +344,7 @@ export default function DashboardBottomSheet() {
                                 {/* View Trip Action */}
                                 <TouchableOpacity
                                     style={[styles.actionButton, { backgroundColor: theme.primary }]}
-                                    onPress={() => router.push(`/active-trip/${activeTrip._id || activeTrip.id}`)}
+                                    onPress={() => router.push(`/active-trip/${(activeTrip as any)._id || activeTrip.id}`)}
                                 >
                                     <Text style={styles.actionButtonText}>Open Trip Execution</Text>
                                     <ArrowUpRight size={18} color="#fff" />
@@ -546,20 +552,24 @@ const styles = StyleSheet.create({
     quickStats: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
+        justifyContent: 'space-between',
+        marginTop: 6,
     },
     quickStatItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        paddingVertical: 5,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        borderWidth: 1,
     },
     quickStatValue: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
     },
     quickStatLabel: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '600',
     },
     quickStatDivider: {

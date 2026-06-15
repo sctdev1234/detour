@@ -1,10 +1,12 @@
 import { useUIStore } from '@/store/useUIStore';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowDownLeft, ArrowUpRight, CreditCard, DollarSign, History } from 'lucide-react-native';
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, CreditCard, DollarSign, History } from 'lucide-react-native';
 import React from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useCashout, useDeposit, useSubscribe, useTransactions } from '../../hooks/api/useWalletQueries';
+import { useUser } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export default function WalletScreen() {
@@ -12,6 +14,10 @@ export default function WalletScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
+    
+    // Keep user state in sync on wallet updates
+    useUser();
+
     const { data: transactions, isLoading } = useTransactions();
     const { showConfirm, showToast } = useUIStore();
 
@@ -23,11 +29,25 @@ export default function WalletScreen() {
     const renderTransaction = ({ item }: { item: any }) => {
         const isPositive = item.type === 'credit';
         return (
-            <View style={[styles.transactionCard, { backgroundColor: theme.surface }]}>
-                <View style={[styles.iconContainer, { backgroundColor: isPositive ? '#E8F5E9' : '#FFEBEE' }]}>
+            <View style={[
+                styles.transactionCard,
+                { 
+                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: theme.border + '30',
+                    borderWidth: 1
+                }
+            ]}>
+                <View style={[
+                    styles.iconContainer,
+                    { 
+                        backgroundColor: isPositive 
+                            ? (colorScheme === 'dark' ? 'rgba(48, 209, 88, 0.15)' : '#E8F5E9') 
+                            : (colorScheme === 'dark' ? 'rgba(255, 69, 58, 0.15)' : '#FFEBEE') 
+                    }
+                ]}>
                     {isPositive ?
-                        <ArrowDownLeft size={20} color="#4CD964" /> :
-                        <ArrowUpRight size={20} color="#FF3B30" />
+                        <ArrowDownLeft size={20} color={theme.success} /> :
+                        <ArrowUpRight size={20} color={theme.error} />
                     }
                 </View>
                 <View style={styles.transactionInfo}>
@@ -38,7 +58,7 @@ export default function WalletScreen() {
                 </View>
                 <Text style={[
                     styles.transactionAmount,
-                    { color: isPositive ? '#4CD964' : theme.text }
+                    { color: isPositive ? theme.success : theme.text }
                 ]}>
                     {isPositive ? '+' : '-'}{Math.abs(item.amount).toFixed(2)} MAD
                 </Text>
@@ -116,77 +136,110 @@ export default function WalletScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 20, paddingBottom: 10 }]}>
-                <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
-            </View>
-
-            <View style={styles.balanceCard}>
-                <Text style={styles.balanceLabel}>Total Balance</Text>
-                <Text style={styles.balanceAmount}>{user.balance?.toFixed(0) || '0'} MAD</Text>
-                <View style={[styles.statusBadge, { backgroundColor: user.subscription?.status === 'pro' ? '#4CD96420' : 'rgba(255,255,255,0.2)' }]}>
-                    <Text style={[styles.statusText, { color: user.subscription?.status === 'pro' ? '#4CD964' : '#fff' }]}>
-                        {user.subscription?.status === 'pro' ? 'Pro Plan' : 'Standard Plan'}
-                    </Text>
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingTop: 60, paddingBottom: 10 }]}>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity
+                        style={[styles.backBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => {
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.push(user?.role === 'driver' ? '/(driver)' : '/(client)');
+                            }
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <ChevronLeft size={22} color={theme.text} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: theme.text }]}>My Wallet</Text>
                 </View>
+                <View style={{ width: 44 }} />
             </View>
 
-            <View style={styles.topUpSection}>
-                <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 16, marginBottom: 12, paddingHorizontal: 24 }]}>Top Up Balance (Simulated)</Text>
-                <View style={styles.chipContainer}>
-                    {[50, 100, 200, 500].map((amount) => (
-                        <TouchableOpacity
-                            key={amount}
-                            style={[styles.amountChip, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                            onPress={() => handleDeposit(amount)}
-                        >
-                            <Text style={[styles.chipText, { color: theme.text }]}>+{amount} MAD</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            </View>
-
-            <View style={styles.actions}>
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: theme.surface }]}
-                    onPress={handleSubscribe}
-                    disabled={user.subscription?.status === 'pro'}
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+            >
+                <LinearGradient
+                    colors={['#4F46E5', '#007AFF']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.balanceCard}
                 >
-                    <View style={[styles.actionIcon, { backgroundColor: theme.primary + '20' }]}>
-                        <CreditCard size={24} color={theme.primary} />
+                    <View style={styles.cardHeaderRow}>
+                        <CreditCard size={18} color="rgba(255,255,255,0.75)" />
+                        <Text style={styles.cardBrand}>DETOUR PAY</Text>
                     </View>
-                    <Text style={[styles.actionText, { color: theme.text }]}>
-                        {user.subscription?.status === 'pro' ? 'Subscribed' : 'Subscription'}
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: theme.surface }]}
-                    onPress={handleCashout}
-                >
-                    <View style={[styles.actionIcon, { backgroundColor: '#4CD96420' }]}>
-                        <DollarSign size={24} color="#4CD964" />
+                    <Text style={styles.balanceLabel}>Total Balance</Text>
+                    <Text style={styles.balanceAmount}>{user.balance?.toFixed(0) || '0'} <Text style={{ fontSize: 22, fontWeight: '700' }}>MAD</Text></Text>
+                    <View style={[styles.statusBadge, { backgroundColor: user.subscription?.status === 'pro' ? 'rgba(76, 217, 100, 0.2)' : 'rgba(255,255,255,0.15)' }]}>
+                        <Text style={[styles.statusText, { color: user.subscription?.status === 'pro' ? '#4CD964' : '#fff' }]}>
+                            {user.subscription?.status === 'pro' ? 'Pro Plan' : 'Standard Plan'}
+                        </Text>
                     </View>
-                    <Text style={[styles.actionText, { color: theme.text }]}>Cashout</Text>
-                </TouchableOpacity>
-            </View>
+                </LinearGradient>
 
-            <View style={styles.historySection}>
-                <View style={styles.sectionHeader}>
-                    <History size={20} color={theme.text} />
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Transactions</Text>
+                <View style={styles.topUpSection}>
+                    <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 16, marginBottom: 12, paddingHorizontal: 24 }]}>Top Up Balance (Simulated)</Text>
+                    <View style={styles.chipContainer}>
+                        {[50, 100, 200, 500].map((amount) => (
+                            <TouchableOpacity
+                                key={amount}
+                                style={[styles.amountChip, { backgroundColor: theme.surface, borderColor: theme.border + '30' }]}
+                                onPress={() => handleDeposit(amount)}
+                            >
+                                <Text style={[styles.chipText, { color: theme.text }]}>+{amount} MAD</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
                 </View>
 
-                <FlatList
-                    data={transactions || []}
-                    keyExtractor={item => item._id}
-                    renderItem={renderTransaction}
-                    contentContainerStyle={styles.list}
-                    showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={
+                <View style={styles.actions}>
+                    <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: theme.surface, borderColor: theme.border + '30' }]}
+                        onPress={handleSubscribe}
+                        disabled={user.subscription?.status === 'pro'}
+                    >
+                        <View style={[styles.actionIcon, { backgroundColor: theme.primary + '15' }]}>
+                            <CreditCard size={24} color={theme.primary} />
+                        </View>
+                        <Text style={[styles.actionText, { color: theme.text }]}>
+                            {user.subscription?.status === 'pro' ? 'Subscribed' : 'Subscription'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.actionButton, { backgroundColor: theme.surface, borderColor: theme.border + '30' }]}
+                        onPress={handleCashout}
+                    >
+                        <View style={[styles.actionIcon, { backgroundColor: theme.success + '15' }]}>
+                            <DollarSign size={24} color={theme.success} />
+                        </View>
+                        <Text style={[styles.actionText, { color: theme.text }]}>Cashout</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={[styles.historySection, { backgroundColor: theme.surface, borderTopColor: theme.border + '30', borderTopWidth: 1 }]}>
+                    <View style={styles.sectionHeader}>
+                        <History size={20} color={theme.text} />
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Transactions</Text>
+                    </View>
+
+                    {isLoading ? (
+                        <ActivityIndicator color={theme.primary} style={{ marginTop: 20 }} />
+                    ) : transactions && transactions.length > 0 ? (
+                        <View style={styles.list}>
+                            {transactions.map((item: any) => (
+                                <View key={item._id || item.id}>
+                                    {renderTransaction({ item })}
+                                </View>
+                            ))}
+                        </View>
+                    ) : (
                         <Text style={{ textAlign: 'center', marginTop: 20, color: theme.icon }}>No transactions yet.</Text>
-                    }
-                />
-            </View>
+                    )}
+                </View>
+            </ScrollView>
         </View>
     );
 }
@@ -197,49 +250,72 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 20,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
-        marginBottom: 20,
     },
-    backButton: {
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
         width: 44,
         height: 44,
         borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 1,
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
     },
     title: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
+        letterSpacing: -0.5,
     },
     balanceCard: {
-        backgroundColor: '#2A2D3E', // Keep dark card for contrast
         marginHorizontal: 24,
         borderRadius: 32,
         padding: 32,
-        alignItems: 'center',
-        gap: 8,
+        alignItems: 'flex-start',
+        gap: 6,
         elevation: 8,
-        boxShadow: '0px 8px 24px rgba(42, 45, 62, 0.4)',
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 24,
+    },
+    cardHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        marginBottom: 20,
+    },
+    cardBrand: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '800',
+        letterSpacing: 1.5,
+        opacity: 0.9,
     },
     balanceLabel: {
         color: 'rgba(255,255,255,0.7)',
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 1.2,
     },
     balanceAmount: {
         color: '#fff',
-        fontSize: 42,
+        fontSize: 40,
         fontWeight: '800',
-        letterSpacing: -1,
+        letterSpacing: -0.5,
     },
     statusBadge: {
         paddingHorizontal: 16,
@@ -265,7 +341,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         elevation: 4,
-        boxShadow: '0px 4px 12px rgba(0,0,0,0.05)',
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
     },
     actionIcon: {
         width: 56,
@@ -281,12 +361,15 @@ const styles = StyleSheet.create({
     historySection: {
         flex: 1,
         marginTop: 32,
-        backgroundColor: '#fff',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         padding: 24,
         paddingBottom: 0,
-        boxShadow: '0px -4px 24px rgba(0,0,0,0.03)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 12,
+        elevation: 2,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -352,6 +435,10 @@ const styles = StyleSheet.create({
     chipText: {
         fontWeight: '700',
         fontSize: 14,
-    }
+    },
+    scrollContent: {
+        flexGrow: 1,
+        paddingBottom: 40,
+    },
 });
 

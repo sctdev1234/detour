@@ -93,9 +93,10 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
             {/* ===== USER LOCATION (Blue Pulsing Dot) ===== */}
             {userCoords && (
                 <Marker
+                    key="user-location-marker"
                     coordinate={userCoords}
                     anchor={{ x: 0.5, y: 0.5 }}
-                    tracksViewChanges={true}
+                    tracksViewChanges={false}
                 >
                     <View style={externalStyles.userLocationContainer}>
                         {/* Pulse ring */}
