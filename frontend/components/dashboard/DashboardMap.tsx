@@ -32,6 +32,8 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
         theme
     } = props;
 
+    const hasCenteredRef = React.useRef(false);
+
     React.useEffect(() => {
         if (!ref || !('current' in ref) || !ref.current) return;
 
@@ -68,7 +70,8 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
                     animated: true,
                 });
             }, 700);
-        } else if (validMarkers.length === 1) {
+        } else if (validMarkers.length === 1 && !hasCenteredRef.current) {
+            hasCenteredRef.current = true;
             const map = (ref as any).current as MapView;
             map.animateToRegion({
                 latitude: validMarkers[0].latitude,
@@ -96,7 +99,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
                     key="user-location-marker"
                     coordinate={userCoords}
                     anchor={{ x: 0.5, y: 0.5 }}
-                    tracksViewChanges={false}
+                    tracksViewChanges={true}
                 >
                     <View style={externalStyles.userLocationContainer}>
                         {/* Pulse ring */}

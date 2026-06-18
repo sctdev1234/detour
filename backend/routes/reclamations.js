@@ -307,4 +307,32 @@ router.put('/:id/status', auth, async (req, res) => {
     }
 });
 
+// @route   DELETE api/reclamations/:id
+// @desc    Delete a reclamation by reporter
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const reclamation = await Reclamation.findById(req.params.id);
+        if (!reclamation) {
+            return res.status(404).json({ msg: 'Reclamation not found' });
+        }
+
+        // Access control: only the reporter can delete it
+        if (reclamation.reporterId.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized to delete this ticket' });
+        }
+
+        await Reclamation.findByIdAndDelete(req.params.id);
+
+        const io = req.app.get('socketio');
+        if (io) {
+            io.emit('reclamation_deleted', req.params.id);
+        }
+
+        res.json({ success: true, msg: 'Reclamation deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting reclamation:', err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
 module.exports = router;

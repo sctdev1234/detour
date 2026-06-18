@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 });
 
 // Database Connection
-// Database Connection
+// Database Connection (using modern SRV connection string for resilience and DNS resolution)
 const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
     console.error('CRITICAL: MONGODB_URI is not defined in .env');
@@ -60,6 +60,7 @@ mongoose.connect(MONGODB_URI)
     })
     .catch(err => {
         console.error('MongoDB Initial Connection Error:', err);
+        process.exit(1);
     });
 
 mongoose.connection.on('error', err => {

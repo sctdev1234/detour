@@ -123,3 +123,17 @@ export const useAddMessage = (reclamationId: string) => {
         },
     });
 };
+
+export const useDeleteReclamation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (reclamationId: string) => {
+            const res = await api.delete(`/reclamations/${reclamationId}`);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: reclamationKeys.list() });
+        },
+    });
+};

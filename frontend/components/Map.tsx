@@ -323,6 +323,7 @@ const Map = React.memo(({
     const storeUser = useAuthStore(s => s.user);
     const savedPlaces = propSavedPlaces ?? storeUser?.savedPlaces ?? [];
     const mapRef = useRef<MapView>(null);
+    const hasFitPickerRef = useRef(false);
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [routeCoordinates, setRouteCoordinates] = useState<LatLng[]>([]);
@@ -354,8 +355,11 @@ const Map = React.memo(({
 
     // Sync initial points
     React.useEffect(() => {
-        if (initialPoints && initialPoints.length > 0) {
+        if (initialPoints) {
             setPoints(initialPoints);
+            if (initialPoints.length === 0) {
+                hasFitPickerRef.current = false;
+            }
         }
     }, [initialPoints]);
 
@@ -408,11 +412,15 @@ const Map = React.memo(({
         if (boundsPoints && boundsPoints.length > 0) {
             markersToFit = [...boundsPoints];
         } else if (mode === 'picker') {
-            if (savedPlaces?.length) {
-                const saved = savedPlaces.map(p => ({ latitude: p.latitude, longitude: p.longitude }));
-                markersToFit.push(...saved);
+            if (!hasFitPickerRef.current) {
+                if (points.length > 0) {
+                    markersToFit = [...points];
+                    hasFitPickerRef.current = true;
+                } else if (savedPlaces?.length) {
+                    markersToFit = savedPlaces.map(p => ({ latitude: p.latitude, longitude: p.longitude }));
+                    hasFitPickerRef.current = true;
+                }
             }
-            markersToFit.push(...points);
         } else if (mode === 'route') {
             if (startPoint) markersToFit.push(startPoint);
             if (endPoint) markersToFit.push(endPoint);
@@ -577,7 +585,7 @@ const Map = React.memo(({
                         coordinate={{ latitude: driverLocation.latitude, longitude: driverLocation.longitude }}
                         anchor={{ x: 0.5, y: 0.5 }}
                         rotation={driverLocation.heading}
-                        tracksViewChanges={false}
+                        tracksViewChanges={true}
                     >
                         <View style={[styles.carMarker, { backgroundColor: theme.primary }]}>
                             <Car size={20} color="#fff" />

@@ -77,13 +77,20 @@ export default function ReclamationDetailScreen() {
                     messages: [...(oldData.messages || []), newMessage]
                 };
             });
+
+            // If the message is from someone else (Admin/Support), we are actively reading it now
+            const senderId = typeof newMessage.senderId === 'string' ? newMessage.senderId : newMessage.senderId?._id;
+            const currentUserId = user?.id || (user as any)?._id;
+            if (senderId && senderId !== currentUserId) {
+                markRead(id);
+            }
         });
 
         return () => {
             socket.emit('leave_reclamation', id);
             socket.off('new_message');
         };
-    }, [id]);
+    }, [id, user?.id, markRead]);
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -155,8 +162,9 @@ export default function ReclamationDetailScreen() {
 
     const renderMessage = ({ item }: { item: any }) => {
         const senderId = typeof item.senderId === 'string' ? item.senderId : item.senderId._id;
-        console.log('[DEBUG] renderMessage:', { senderId, userId: user?.id, isMe: senderId === user?.id });
-        const isMe = senderId === user?.id;
+        const currentUserId = user?.id || (user as any)?._id;
+        console.log('[DEBUG] renderMessage:', { senderId, userId: currentUserId, isMe: senderId === currentUserId });
+        const isMe = senderId === currentUserId;
         const senderName = typeof item.senderId === 'object' ? item.senderId.fullName : 'Support';
         const senderPhoto = typeof item.senderId === 'object' ? item.senderId.photoURL : null;
 
@@ -349,6 +357,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: 20,
+        paddingTop: 100,
         paddingBottom: 20,
     },
     listHeader: {

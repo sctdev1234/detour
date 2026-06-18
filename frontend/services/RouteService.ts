@@ -56,5 +56,24 @@ export const RouteService = {
             console.error('Geocoding error:', error);
             return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         }
+    },
+
+    geocode: async (query: string): Promise<{ label: string; latitude: number; longitude: number }[]> => {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ma`, {
+                headers: {
+                    'User-Agent': 'DetourApp/1.0'
+                }
+            });
+            const data = await response.json();
+            return data.map((item: any) => ({
+                label: item.display_name,
+                latitude: parseFloat(item.lat),
+                longitude: parseFloat(item.lon)
+            }));
+        } catch (error) {
+            console.error('Geocoding search error:', error);
+            return [];
+        }
     }
 };

@@ -201,7 +201,7 @@ function AppContent() {
         <LocationTracker />
         <Toast />
         <ConfirmationModal />
-        <StatusBar style="auto" />
+        <StatusBar hidden />
       </SafeAreaProvider>
     </ThemeProvider>
   );

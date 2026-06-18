@@ -76,8 +76,10 @@ const UserSchema = new mongoose.Schema({
         tripsDone: { type: Number, default: 0 }, // For both client (rides) and driver (drives)
         clientsServed: { type: Number, default: 0 }, // For driver
         hoursOnline: { type: Number, default: 0 },
-        rating: { type: Number, default: 5.0, min: 0, max: 5 } // Moving rating to user model for easier access
     }
+}, {
+    toObject: { virtuals: true },
+    toJSON: { virtuals: true }
 });
 
 // Add 2d index for location-based queries (supports legacy { latitude, longitude })

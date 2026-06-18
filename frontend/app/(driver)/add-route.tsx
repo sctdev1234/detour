@@ -2,9 +2,9 @@ import { useUIStore } from '@/store/useUIStore';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Car, Check, Clock, MapPin, Route as RouteIcon, X } from 'lucide-react-native';
+import { Car, Check, Clock, MapPin, Route as RouteIcon, X, Maximize2, Search } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View, Modal, TextInput, ActivityIndicator } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import DetourMap from '../../components/Map';
 import { PremiumInput } from '../../components/PremiumInput';
@@ -37,6 +37,42 @@ export default function AddRouteScreen() {
     const [routeMetrics, setRouteMetrics] = useState<{ distance: number; duration: number; geometry: string } | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
     const [pointAddresses, setPointAddresses] = useState<string[]>([]);
+    const [isMapModalVisible, setIsMapModalVisible] = useState(false);
+    
+    // Search states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<{ label: string; latitude: number; longitude: number }[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchFocusPoint, setSearchFocusPoint] = useState<LatLng | null>(null);
+
+    const handleSearch = async (text: string) => {
+        setSearchQuery(text);
+        if (text.trim().length > 2) {
+            setIsSearching(true);
+            try {
+                const results = await RouteService.geocode(text);
+                setSuggestions(results);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setIsSearching(false);
+            }
+        } else {
+            setSuggestions([]);
+        }
+    };
+
+    const handleSelectSuggestion = (suggestion: { label: string; latitude: number; longitude: number }) => {
+        const newPoint: LatLng = {
+            latitude: suggestion.latitude,
+            longitude: suggestion.longitude
+        };
+        const newPoints = [...points, newPoint];
+        handlePointsChange(newPoints);
+        setSearchFocusPoint(newPoint);
+        setSearchQuery('');
+        setSuggestions([]);
+    };
 
     // Initialize selected car when cars are loaded
     useEffect(() => {
@@ -161,15 +197,26 @@ export default function AddRouteScreen() {
                             <Text style={[styles.sectionTitle, { color: theme.text }]}>Route Points</Text>
                         </View>
 
-                        <View style={[styles.mapContainer, { borderColor: theme.border }]}>
-                            <DetourMap mode="picker" onPointsChange={handlePointsChange} theme={theme} savedPlaces={user?.savedPlaces} />
-                            {points.length === 0 && (
-                                <BlurView intensity={80} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.mapOverlay}>
-                                    <MapPin size={24} color={theme.primary} />
-                                    <Text style={[styles.overlayText, { color: theme.text }]}>Tap map to add points</Text>
-                                </BlurView>
-                            )}
-                        </View>
+                        <TouchableOpacity
+                            style={[styles.mapContainer, { borderColor: theme.border }]}
+                            onPress={() => setIsMapModalVisible(true)}
+                            activeOpacity={0.9}
+                        >
+                            <DetourMap 
+                                mode="picker" 
+                                initialPoints={points} 
+                                readOnly={true} 
+                                theme={theme} 
+                                savedPlaces={user?.savedPlaces} 
+                                interactive={false}
+                            />
+                            <BlurView intensity={80} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.mapOverlay}>
+                                <Maximize2 size={18} color={theme.primary} />
+                                <Text style={[styles.overlayText, { color: theme.text }]}>
+                                    {points.length === 0 ? 'Tap to Plan Route (Full Screen)' : 'Tap to Edit Route (Full Screen)'}
+                                </Text>
+                            </BlurView>
+                        </TouchableOpacity>
 
                         {points.length > 0 && (
                             <View style={styles.pointNamesContainer}>
@@ -346,6 +393,107 @@ export default function AddRouteScreen() {
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Full Screen Map Picker Modal */}
+            <Modal
+                visible={isMapModalVisible}
+                animationType="slide"
+                onRequestClose={() => setIsMapModalVisible(false)}
+            >
+                <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+                    <View style={[styles.modalHeader, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
+                        <TouchableOpacity 
+                            onPress={() => setIsMapModalVisible(false)}
+                            style={styles.modalCloseBtn}
+                        >
+                            <X size={24} color={theme.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.modalTitle, { color: theme.text }]}>Select Route Points</Text>
+                        <TouchableOpacity 
+                            onPress={() => handlePointsChange([])}
+                            style={styles.modalClearBtn}
+                        >
+                            <Text style={{ color: '#ef4444', fontWeight: '700' }}>Clear</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={{ flex: 1, position: 'relative' }}>
+                        <DetourMap 
+                            mode="picker" 
+                            initialPoints={points}
+                            onPointsChange={handlePointsChange} 
+                            theme={theme} 
+                            savedPlaces={user?.savedPlaces}
+                            fullScreen
+                            height="100%"
+                            boundsPoints={searchFocusPoint ? [searchFocusPoint] : undefined}
+                            onMapPress={() => setSearchFocusPoint(null)}
+                        />
+                        {/* Modern Floating Search Bar */}
+                        <View style={styles.searchContainer}>
+                            <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                <Search size={20} color={theme.icon} style={styles.searchIcon} />
+                                <TextInput
+                                    style={[styles.searchInput, { color: theme.text }]}
+                                    placeholder="Search places (e.g. Maarif, Casablanca)"
+                                    placeholderTextColor={theme.textSecondary + '80'}
+                                    value={searchQuery}
+                                    onChangeText={handleSearch}
+                                    autoCorrect={false}
+                                />
+                                {isSearching ? (
+                                    <ActivityIndicator size="small" color={theme.primary} style={styles.searchLoader} />
+                                ) : searchQuery.length > 0 ? (
+                                    <TouchableOpacity 
+                                        onPress={() => {
+                                            setSearchQuery('');
+                                            setSuggestions([]);
+                                        }}
+                                        style={styles.searchClearBtn}
+                                    >
+                                        <X size={18} color={theme.icon} />
+                                    </TouchableOpacity>
+                                ) : null}
+                            </View>
+
+                            {suggestions.length > 0 && (
+                                <View style={[styles.suggestionsContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                    <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">
+                                        {suggestions.map((item, index) => (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={[styles.suggestionItem, { borderBottomColor: theme.border }]}
+                                                onPress={() => handleSelectSuggestion(item)}
+                                            >
+                                                <MapPin size={16} color={theme.primary} style={styles.suggestionIcon} />
+                                                <Text style={[styles.suggestionText, { color: theme.text }]} numberOfLines={2}>
+                                                    {item.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+
+                    <View style={[styles.modalFooter, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
+                        <TouchableOpacity
+                            onPress={() => setIsMapModalVisible(false)}
+                            style={[styles.modalConfirmBtn, { backgroundColor: theme.primary }]}
+                            activeOpacity={0.8}
+                        >
+                            <Check size={20} color="#fff" />
+                            <Text style={styles.modalConfirmText}>
+                                {points.length < 2 
+                                    ? `Select Points (${points.length}/2+)` 
+                                    : `Confirm Route (${points.length} Points)`
+                                }
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View >
     );
 }
@@ -591,5 +739,119 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: 'rgba(0,0,0,0.05)',
         borderRadius: 18,
+    },
+    // Modal Styles
+    modalContainer: {
+        flex: 1,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 50 : 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+    },
+    modalCloseBtn: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    modalClearBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    modalFooter: {
+        padding: 20,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+        borderTopWidth: 1,
+    },
+    modalConfirmBtn: {
+        height: 56,
+        borderRadius: 28,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    modalConfirmText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    searchContainer: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        right: 16,
+        zIndex: 999,
+        elevation: 10,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 54,
+        borderRadius: 27,
+        borderWidth: 1,
+        paddingHorizontal: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    searchIcon: {
+        marginRight: 10,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: '600',
+        height: '100%',
+        paddingVertical: 0,
+    },
+    searchLoader: {
+        marginLeft: 8,
+    },
+    searchClearBtn: {
+        padding: 4,
+        marginLeft: 8,
+    },
+    suggestionsContainer: {
+        marginTop: 8,
+        borderRadius: 18,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 5,
+        overflow: 'hidden',
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    suggestionIcon: {
+        marginRight: 12,
+    },
+    suggestionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        flex: 1,
     }
 });

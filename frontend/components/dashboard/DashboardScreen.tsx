@@ -143,11 +143,20 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     }, [currentLocation]);
 
     // --- Get user coords ---
-    const userCoords = (trackedLocation && trackedLocation.coords.latitude !== 0 && trackedLocation.coords.longitude !== 0)
-        ? { latitude: trackedLocation.coords.latitude, longitude: trackedLocation.coords.longitude }
-        : (currentLocation && currentLocation.coords.latitude !== 0 && currentLocation.coords.longitude !== 0)
-            ? { latitude: currentLocation.coords.latitude, longitude: currentLocation.coords.longitude }
-            : null;
+    const userCoords = React.useMemo(() => {
+        const loc = (trackedLocation && trackedLocation.coords.latitude !== 0 && trackedLocation.coords.longitude !== 0)
+            ? trackedLocation
+            : (currentLocation && currentLocation.coords.latitude !== 0 && currentLocation.coords.longitude !== 0)
+                ? currentLocation
+                : null;
+        if (!loc) return null;
+        return { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+    }, [
+        trackedLocation?.coords?.latitude,
+        trackedLocation?.coords?.longitude,
+        currentLocation?.coords?.latitude,
+        currentLocation?.coords?.longitude
+    ]);
 
     const routePolylines = React.useMemo(() => {
         return trips
