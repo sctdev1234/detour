@@ -356,9 +356,13 @@ const Map = React.memo(({
     // Sync initial points
     React.useEffect(() => {
         if (initialPoints) {
-            setPoints(initialPoints);
-            if (initialPoints.length === 0) {
-                hasFitPickerRef.current = false;
+            const isDifferent = initialPoints.length !== points.length || 
+                initialPoints.some((p, idx) => p.latitude !== points[idx]?.latitude || p.longitude !== points[idx]?.longitude);
+            if (isDifferent) {
+                setPoints(initialPoints);
+                if (initialPoints.length === 0) {
+                    hasFitPickerRef.current = false;
+                }
             }
         }
     }, [initialPoints]);

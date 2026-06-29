@@ -1,403 +1,317 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
+import { Bell } from 'lucide-react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    ArrowRight,
-    ArrowUpRight,
-    Bell,
-    Briefcase,
-    ChevronRight,
-    Clock,
-    Home,
-    MapPin,
-    Navigation,
-    Search,
-    Timer,
-    TrendingUp,
-    Zap
-} from 'lucide-react-native';
-import React from 'react';
-import {
-    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
     useColorScheme,
-    View
+    View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GlassCard } from '../../components/GlassCard';
 import DetourMap from '../../components/Map';
-import CardStatItem from '../../components/ui/CardStatItem';
+import TripCreationWizard from '../../components/trips/TripCreationWizard';
+import TripCardsOverlay from '../../components/trips/TripCardsOverlay';
+import ActiveTripTracker from '../../components/trips/ActiveTripTracker';
 import { Colors } from '../../constants/theme';
-import { useClientRequests, useRoutes } from '../../hooks/api/useTripQueries';
-import { useCountdownDate } from '../../hooks/useCountdown';
+import { useClientTrips, useCreateClientTrip, useClientRequests } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
-import { getNextTripOccurrence, IN_PROGRESS_REQUEST_STATUSES } from '../../utils/timeUtils';
+import { useUIStore } from '../../store/useUIStore';
+import { useTrackingStore } from '../../store/useTrackingStore';
+import { RouteService } from '../../services/RouteService';
+import { LatLng, ClientTrip } from '../../types';
+
+type HomeState = 'zero_trips' | 'has_trips' | 'active_trip';
 
 export default function ClientDashboard() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+
     const { user } = useAuthStore();
-    const { data: routes } = useRoutes();
+    const { showToast, setHideGlobalHeader } = useUIStore();
+    const { driverLocation } = useTrackingStore();
+
+    // Data hooks
+    const { data: clientTrips, isLoading } = useClientTrips();
+    const { mutateAsync: createClientTrip, isPending: isCreating } = useCreateClientTrip();
     const { data: requests } = useClientRequests();
 
-    // Filter for client routes and active trips
-    const myRoutes = React.useMemo(() => routes?.filter(r => r.role === 'client').slice(0, 3) || [], [routes]);
-    // Include pending requests in active state
-    // Include pending requests in active state
-    // For active request card: we typically show the *most relevant* one.
-    // Ideally we filter out "offers" (driver initiated) from "active requests" UNLESS we accepted them?
-    // For now, keep existing logic but maybe prioritize accepted ones.
-    const activeRequest = React.useMemo(() => requests?.find((r: any) => ['accepted', 'started', 'picked_up'].includes(r.status) || (r.status === 'pending' && r.initiatedBy === 'client')), [requests]);
+    // Local state
+    const [currentLoc, setCurrentLoc] = useState<LatLng | null>(null);
+    const [currentAddr, setCurrentAddr] = useState('Current Location');
+    const [isCreatingTrip, setIsCreatingTrip] = useState(false);
+    const [mapPoints, setMapPoints] = useState<LatLng[]>([]);
+    const [selectedTrip, setSelectedTrip] = useState<ClientTrip | null>(null);
 
-    const pendingOffers = React.useMemo(() => requests?.filter((r: any) => r.status === 'pending' && r.initiatedBy === 'driver') || [], [requests]);
-    const pendingOffersCount = pendingOffers.length;
-
-    // Calculate next trip countdown
-    let nextTripDate: Date | null = null;
-    let isAnyTripInProgress = false;
-
-    if (activeRequest && IN_PROGRESS_REQUEST_STATUSES.includes(activeRequest.status)) {
-        isAnyTripInProgress = true;
-    }
-
-    if (!isAnyTripInProgress) {
-        (routes || []).filter(r => r.role === 'client').forEach(r => {
-            const occurrence = getNextTripOccurrence(r.timeStart, r.days);
-            if (occurrence) {
-                if (!nextTripDate || occurrence.getTime() < nextTripDate.getTime()) {
-                    nextTripDate = occurrence;
-                }
-            }
-        });
-    }
-
-    const nextTripCountdown = useCountdownDate(nextTripDate);
-
-    const handleQuickAction = (action: string) => {
-        router.push('/(client)/add-route');
-    };
-
-    const QuickDestinationBtn = ({ icon: Icon, label, subLabel, onPress, color = theme.primary }: any) => (
-        <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.7}
-        >
-            <GlassCard style={styles.quickDestBtn} contentContainerStyle={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={[styles.quickDestIcon, { backgroundColor: color + '15' }]}>
-                    <Icon size={22} color={color} strokeWidth={2.5} />
-                </View>
-                <View>
-                    <Text style={[styles.quickDestLabel, { color: theme.text }]}>{label}</Text>
-                    <Text style={[styles.quickDestSub, { color: theme.icon }]}>{subLabel}</Text>
-                </View>
-            </GlassCard>
-        </TouchableOpacity>
+    // Pending offers count
+    const pendingOffersCount = useMemo(() =>
+        (requests || []).filter((r: any) => r.status === 'pending' && r.initiatedBy === 'driver').length,
+        [requests]
     );
 
+    // Hide global header on mount
+    useEffect(() => {
+        setHideGlobalHeader(true);
+        return () => setHideGlobalHeader(false);
+    }, []);
+
+    // Get current location
+    useEffect(() => {
+        (async () => {
+            try {
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') return;
+                let location = await Location.getCurrentPositionAsync({});
+                const loc: LatLng = {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                };
+                setCurrentLoc(loc);
+                const addr = await RouteService.reverseGeocode(loc.latitude, loc.longitude);
+                setCurrentAddr(addr);
+            } catch (error) {
+                console.error('Error fetching current location:', error);
+            }
+        })();
+    }, []);
+
+    // ============================================
+    // DETERMINE HOME STATE
+    // ============================================
+    const activeTrip = useMemo(() =>
+        (clientTrips || []).find(t => t.status === 'active'),
+        [clientTrips]
+    );
+
+    const homeState: HomeState = useMemo(() => {
+        if (activeTrip) return 'active_trip';
+        if (isCreatingTrip) return 'zero_trips'; // Manual trigger
+        if (!clientTrips || clientTrips.length === 0) return 'zero_trips';
+        return 'has_trips';
+    }, [activeTrip, clientTrips, isCreatingTrip]);
+
+    // ============================================
+    // MAP CONFIGURATION BASED ON STATE
+    // ============================================
+    const mapMode = useMemo(() => {
+        switch (homeState) {
+            case 'zero_trips': return isCreatingTrip ? 'picker' : 'view';
+            case 'has_trips': return 'view';
+            case 'active_trip': return 'trip';
+            default: return 'view';
+        }
+    }, [homeState, isCreatingTrip]);
+
+    // Map points for State 2 (show selected trip's route)
+    const mapTripPoints = useMemo(() => {
+        if (homeState === 'has_trips' && selectedTrip) {
+            return [selectedTrip.startPoint, selectedTrip.endPoint];
+        }
+        if (homeState === 'zero_trips' && mapPoints.length > 0) {
+            return mapPoints;
+        }
+        return undefined;
+    }, [homeState, selectedTrip, mapPoints]);
+
+    // Active trip data for map
+    const mapTripData = useMemo(() => {
+        if (homeState === 'active_trip' && activeTrip?.tripId) {
+            return {
+                _id: activeTrip.tripId,
+                routeId: {
+                    startPoint: activeTrip.startPoint,
+                    endPoint: activeTrip.endPoint,
+                },
+                status: activeTrip.tripStatus,
+            };
+        }
+        return undefined;
+    }, [homeState, activeTrip]);
+
+    // ============================================
+    // HANDLERS
+    // ============================================
+    const handlePointsChange = useCallback(async (newPoints: LatLng[]) => {
+        setMapPoints(newPoints);
+    }, []);
+
+    const handleCreateTrip = useCallback(async (data: {
+        startPoint: LatLng;
+        endPoint: LatLng;
+        days: string[];
+        timeStart: string;
+        price: number;
+    }) => {
+        try {
+            await createClientTrip(data);
+            showToast('Trip created! Looking for drivers...', 'success');
+            setIsCreatingTrip(false);
+            setMapPoints([]);
+        } catch (error: any) {
+            console.error(error);
+            showToast(error.response?.data?.msg || 'Failed to create trip', 'error');
+        }
+    }, [createClientTrip, showToast]);
+
+    const handleCancelCreation = useCallback(() => {
+        setIsCreatingTrip(false);
+        setMapPoints([]);
+    }, []);
+
+    const handleTripSelect = useCallback((trip: ClientTrip) => {
+        setSelectedTrip(trip);
+    }, []);
+
+    const handleTripDetails = useCallback((trip: ClientTrip) => {
+        if (trip.tripId) {
+            router.push({ pathname: '/modal', params: { type: 'trip_details', id: trip.tripId } });
+        } else {
+            // No matched trip yet — go to requests
+            router.push('/(client)/requests');
+        }
+    }, [router]);
+
+    const handleAddTrip = useCallback(() => {
+        setIsCreatingTrip(true);
+    }, []);
+
+    // ============================================
+    // RENDER
+    // ============================================
     return (
         <View style={styles.container}>
-            <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
-            <LinearGradient
-                colors={[theme.background, theme.surface]}
-                style={StyleSheet.absoluteFill}
-            />
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <ScrollView
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
-            >
-                {/* Notifications Banner */}
-                {pendingOffersCount > 0 && (
-                    <Animated.View entering={FadeInDown.delay(200)} style={styles.notificationWrapper}>
-                        <TouchableOpacity
-                            style={[styles.notificationCard, { backgroundColor: theme.primary }]}
-                            onPress={() => router.push('/(client)/requests')}
-                            activeOpacity={0.9}
-                        >
-                            <View style={styles.notificationContent}>
-                                <View style={[styles.notificationIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                    <Bell size={18} color="#fff" />
-                                </View>
-                                <View>
-                                    <Text style={styles.notificationTitle}>New Offers</Text>
-                                    <Text style={styles.notificationText}>
-                                        You have <Text style={{ fontWeight: '800' }}>{pendingOffersCount}</Text> pending invite{pendingOffersCount > 1 ? 's' : ''}
-                                    </Text>
-                                </View>
+            {/* Full-screen Background Map */}
+            <View style={StyleSheet.absoluteFillObject}>
+                <DetourMap
+                    mode={mapMode as any}
+                    theme={theme}
+                    initialPoints={mapTripPoints}
+                    onPointsChange={homeState === 'zero_trips' ? handlePointsChange : undefined}
+                    trip={mapTripData as any}
+                    driverLocation={homeState === 'active_trip' ? (driverLocation || undefined) : undefined}
+                    savedPlaces={user?.savedPlaces}
+                    fullScreen={true}
+                    height="100%"
+                    interactive={true}
+                    style={StyleSheet.absoluteFillObject}
+                />
+
+                {/* Dark gradient overlay for contrast */}
+                <LinearGradient
+                    colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
+                    locations={[0, 0.35, 1]}
+                    style={StyleSheet.absoluteFillObject}
+                    pointerEvents="none"
+                />
+            </View>
+
+            {/* Floating Header — Always visible */}
+            <BlurView intensity={30} tint="dark" style={[styles.headerFloating, { paddingTop: insets.top + 10 }]}>
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => router.push('/(client)/profile')} activeOpacity={0.8} style={styles.avatarButton}>
+                        {user?.photoURL ? (
+                            <Animated.Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
+                        ) : (
+                            <View style={[styles.profileAvatarFallback, { backgroundColor: theme.primary }]}>
+                                <Text style={styles.avatarFallbackText}>{user?.fullName?.charAt(0).toUpperCase() || 'C'}</Text>
                             </View>
-                            <View style={styles.arrowContainer}>
-                                <ArrowUpRight size={20} color="#fff" />
-                            </View>
-                        </TouchableOpacity>
-                    </Animated.View>
-                )}
-
-                {/* 1. Active State / Search */}
-                <View style={styles.section}>
-                    {activeRequest ? (
-                        <Animated.View entering={FadeInDown.springify()}>
-                            <TouchableOpacity
-                                activeOpacity={0.9}
-                                onPress={() => {
-                                    if (activeRequest.status === 'pending') {
-                                        router.push('/(client)/requests');
-                                    } else {
-                                        router.push({ pathname: '/(client)/trip-details', params: { requestId: activeRequest.id } });
-                                    }
-                                }}
-                            >
-                                <LinearGradient
-                                    colors={activeRequest.status === 'pending' ? ['#F59E0B', '#FCD34D'] : ['#2563EB', '#4F46E5']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.activeCard}
-                                >
-                                    <View style={styles.activeCardContent}>
-                                        <View style={styles.activeCardHeader}>
-                                            <View style={styles.pulsingDot} />
-                                            <Text style={styles.activeCardTitle}>
-                                                {activeRequest.status === 'pending' ? 'Waiting for Offers' : 'Trip in Progress'}
-                                            </Text>
-                                            <View style={styles.activeStatusBadge}>
-                                                <Text style={styles.activeStatusText}>{activeRequest.status.replace('_', ' ')}</Text>
-                                            </View>
-                                        </View>
-
-                                        <View style={styles.tripRouteContainer}>
-                                            <View style={styles.timelineContainer}>
-                                                <View style={[styles.timelineDot, { backgroundColor: '#fff' }]} />
-                                                <View style={[styles.timelineLine, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
-                                                <View style={[styles.timelineDot, { backgroundColor: '#fff', opacity: 0.5 }]} />
-                                            </View>
-                                            <View style={styles.tripDetails}>
-                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.clientRouteId?.startPoint?.address || 'Start'}</Text>
-                                                <View style={{ height: 16 }} />
-                                                <Text style={styles.tripLocationTextWhite} numberOfLines={1}>{activeRequest.clientRouteId?.endPoint?.address || 'End'}</Text>
-                                            </View>
-                                        </View>
-
-                                        <View style={styles.trackBtn}>
-                                            <Text style={styles.trackBtnText}>
-                                                {activeRequest.status === 'pending' ? 'View Requests' : 'Track Driver'}
-                                            </Text>
-                                            <ArrowRight size={16} color="#fff" />
-                                        </View>
-                                    </View>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    ) : (
-                        <Animated.View entering={FadeInDown.springify()}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Where to?</Text>
-                                {isAnyTripInProgress ? (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ef4444' + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444' }} />
-                                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#ef4444' }}>IN TRIP</Text>
-                                    </View>
-                                ) : nextTripCountdown ? (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.primary + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                                        <Timer size={14} color={theme.primary} />
-                                        <Text style={{ fontSize: 12, fontWeight: '700', color: theme.primary }}>Next {nextTripCountdown}</Text>
-                                    </View>
-                                ) : null}
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={() => router.push('/(client)/add-route')}
-                                activeOpacity={0.9}
-                                style={styles.searchContainer}
-                            >
-                                <GlassCard style={styles.searchBar} contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 }}>
-                                    <Search size={20} color={theme.primary} strokeWidth={2.5} />
-                                    <Text style={[styles.searchPlaceholder, { color: theme.icon }]}>Search destination...</Text>
-                                </GlassCard>
-                            </TouchableOpacity>
-
-                            {/* Saved Place Map Preview */}
-                            <View style={[styles.mapPreview, { borderColor: theme.border }]}>
-                                <DetourMap
-                                    mode="picker"
-                                    readOnly={true}
-                                    theme={theme}
-                                    height={160}
-                                    savedPlaces={user?.savedPlaces}
-                                />
-                                <LinearGradient
-                                    colors={['transparent', 'rgba(0,0,0,0.05)']}
-                                    style={StyleSheet.absoluteFill}
-                                    pointerEvents="none"
-                                />
-                            </View>
-
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={{ gap: 12, paddingRight: 24 }}
-                                style={styles.quickActionsScroll}
-                            >
-                                {user?.savedPlaces && user.savedPlaces.length > 0 ? (
-                                    user.savedPlaces.map((place, index) => (
-                                        <View key={place._id || index} style={{ width: 150 }}>
-                                            <QuickDestinationBtn
-                                                icon={place.icon === 'home' ? Home : place.icon === 'work' ? Briefcase : MapPin}
-                                                label={place.label}
-                                                subLabel={place.address.split(',')[0]}
-                                                color={place.icon === 'home' ? (theme.secondary || '#10b981') : theme.primary}
-                                                onPress={() => router.push({
-                                                    pathname: '/(client)/add-route',
-                                                    params: {
-                                                        destLat: place.latitude,
-                                                        destLng: place.longitude,
-                                                        destAddress: place.address,
-                                                        fromCurrent: 'true'
-                                                    }
-                                                })}
-                                            />
-                                        </View>
-                                    ))
-                                ) : (
-                                    <>
-                                        <View style={{ width: 150 }}>
-                                            <QuickDestinationBtn
-                                                icon={Briefcase}
-                                                label="Work"
-                                                subLabel="Commute"
-                                                onPress={() => handleQuickAction('work')}
-                                            />
-                                        </View>
-                                        <View style={{ width: 150 }}>
-                                            <QuickDestinationBtn
-                                                icon={Home}
-                                                label="Home"
-                                                subLabel="Return"
-                                                color={theme.secondary || '#10b981'}
-                                                onPress={() => handleQuickAction('home')}
-                                            />
-                                        </View>
-                                    </>
-                                )}
-                            </ScrollView>
-                        </Animated.View>
-                    )}
-                </View>
-
-                {/* 2. My Commutes */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={[styles.sectionTitle, { color: theme.text }]}>My Commutes</Text>
-                        <TouchableOpacity onPress={() => router.push('/(client)/routes')}>
-                            <Text style={[styles.sectionAction, { color: theme.primary }]}>Manage</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {myRoutes.length > 0 ? (
-                        <View style={styles.routesList}>
-                            {myRoutes.map((route, index) => (
-                                <Animated.View
-                                    key={route.id}
-                                    entering={FadeInRight.delay(index * 100).springify()}
-                                >
-                                    <GlassCard style={styles.routeCard} contentContainerStyle={{ padding: 16 }}>
-                                        <View style={styles.routeHeader}>
-                                            <View style={styles.timeContainer}>
-                                                <Clock size={16} color={theme.primary} />
-                                                <Text style={[styles.routeTime, { color: theme.text }]}>{route.timeStart}</Text>
-                                            </View>
-                                            <View style={[styles.daysBadge, { backgroundColor: theme.primary + '15' }]}>
-                                                <Text style={[styles.daysText, { color: theme.primary }]}>
-                                                    {route.days.length > 5 ? 'Daily' : `${route.days.length} days`}
-                                                </Text>
-                                            </View>
-                                        </View>
-
-                                        <View style={styles.routeBody}>
-                                            <View style={styles.timelineContainer}>
-                                                <View style={[styles.timelineDot, { borderColor: theme.primary }]} />
-                                                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
-                                                <View style={[styles.timelineDot, { borderColor: theme.secondary || '#10B981' }]} />
-                                            </View>
-                                            <View style={styles.tripDetails}>
-                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>Current Location</Text>
-                                                <View style={{ height: 12 }} />
-                                                <Text style={[styles.locationText, { color: theme.text }]} numberOfLines={1}>{route.endPoint.address}</Text>
-                                            </View>
-                                        </View>
-
-                                        <TouchableOpacity
-                                            style={[styles.findMatchBtn, { backgroundColor: theme.primary + '10' }]}
-                                            onPress={() => router.push('/(client)/requests')}
-                                        >
-                                            <Text style={[styles.findMatchText, { color: theme.primary }]}>Check Requests</Text>
-                                            <ArrowRight size={16} color={theme.primary} />
-                                        </TouchableOpacity>
-                                    </GlassCard>
-                                </Animated.View>
-                            ))}
-                        </View>
-                    ) : (
-                        <TouchableOpacity onPress={() => router.push('/(client)/add-route')}>
-                            <GlassCard style={styles.emptyState} contentContainerStyle={{ alignItems: 'center', padding: 32 }}>
-                                <View style={[styles.emptyIconData, { backgroundColor: theme.primary + '10' }]}>
-                                    <Navigation size={32} color={theme.primary} />
-                                </View>
-                                <Text style={[styles.emptyTitle, { color: theme.text }]}>No commutes yet</Text>
-                                <Text style={[styles.emptyDesc, { color: theme.icon }]}>Set up a recurring route to get matches instantly.</Text>
-                            </GlassCard>
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                {/* 3. Your Activity Stats */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 16 }]}>Your Activity</Text>
-                    <View style={styles.statsRow}>
-                        <CardStatItem
-                            label="Total Rides"
-                            value={user?.stats?.tripsDone || '0'}
-                            icon={Navigation}
-                            color={theme.primary}
-                        />
-                        <CardStatItem
-                            label="Total Spent"
-                            value={`${user?.spending?.total || '0'} MAD`}
-                            icon={TrendingUp}
-                            color="#F59E0B"
-                            onPress={() => router.push('/finance/wallet')}
-                        />
-                    </View>
-                </View>
-
-                {/* 4. Premium Banner */}
-                <Animated.View entering={FadeInDown.delay(400)} style={{ marginBottom: 40, marginHorizontal: 4 }}>
-                    <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/finance/wallet')}>
-                        <LinearGradient
-                            colors={['#8B5CF6', '#EC4899']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.premiumBanner}
-                        >
-                            <View style={styles.premiumContent}>
-                                <View style={styles.premiumIconBox}>
-                                    <Zap size={24} color="#FFF" fill="#FFF" />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.premiumTitle}>Upgrade to Premium</Text>
-                                    <Text style={styles.premiumDesc}>Get priority matching & lower booking fees.</Text>
-                                </View>
-                                <ChevronRight size={20} color="#FFF" />
-                            </View>
-                        </LinearGradient>
+                        )}
                     </TouchableOpacity>
-                </Animated.View>
+                    <View style={styles.greetingText}>
+                        <Text style={styles.greetingTitle}>Salam,</Text>
+                        <Text style={styles.greetingName}>{user?.fullName || 'Client'}</Text>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => router.push('/(client)/requests')}
+                        style={styles.notificationBtn}
+                        activeOpacity={0.8}
+                    >
+                        <Bell size={22} color="#FFF" />
+                        {pendingOffersCount > 0 && (
+                            <View style={styles.notificationBadge}>
+                                <Text style={styles.badgeText}>{pendingOffersCount}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </BlurView>
 
-            </ScrollView>
+            {/* ========================================== */}
+            {/* STATE 1: Zero trips — Creation Wizard      */}
+            {/* ========================================== */}
+            {homeState === 'zero_trips' && (
+                isCreatingTrip ? (
+                    <TripCreationWizard
+                        theme={theme}
+                        colorScheme={colorScheme}
+                        currentLocation={currentLoc}
+                        currentAddress={currentAddr}
+                        onPointsChange={handlePointsChange}
+                        onCancel={handleCancelCreation}
+                        onConfirm={handleCreateTrip}
+                        isSubmitting={isCreating}
+                    />
+                ) : (
+                    /* "Where to?" prompt */
+                    <View style={styles.whereToContainer}>
+                        <Animated.View entering={FadeInDown.springify()}>
+                            <BlurView
+                                intensity={70}
+                                tint={colorScheme === 'dark' ? 'dark' : 'light'}
+                                style={[styles.whereToCard, { backgroundColor: colorScheme === 'dark' ? 'rgba(28,28,30,0.92)' : 'rgba(255,255,255,0.95)' }]}
+                            >
+                                <Text style={[styles.whereToTitle, { color: theme.text }]}>
+                                    Where are you going?
+                                </Text>
+                                <Text style={[styles.whereToSubtitle, { color: theme.textSecondary }]}>
+                                    Create your daily commute and find a driver
+                                </Text>
+                                <TouchableOpacity
+                                    style={[styles.whereToBtn, { backgroundColor: theme.primary }]}
+                                    onPress={() => setIsCreatingTrip(true)}
+                                    activeOpacity={0.85}
+                                >
+                                    <Text style={styles.whereToBtnText}>Set Up My Commute</Text>
+                                </TouchableOpacity>
+                            </BlurView>
+                        </Animated.View>
+                    </View>
+                )
+            )}
+
+            {/* ========================================== */}
+            {/* STATE 2: Has trips — Cards on map           */}
+            {/* ========================================== */}
+            {homeState === 'has_trips' && clientTrips && clientTrips.length > 0 && (
+                <TripCardsOverlay
+                    trips={clientTrips}
+                    theme={theme}
+                    colorScheme={colorScheme}
+                    onTripSelect={handleTripSelect}
+                    onTripDetails={handleTripDetails}
+                    onAddTrip={handleAddTrip}
+                />
+            )}
+
+            {/* ========================================== */}
+            {/* STATE 3: Active trip — Live tracking         */}
+            {/* ========================================== */}
+            {homeState === 'active_trip' && activeTrip && (
+                <ActiveTripTracker
+                    trip={activeTrip}
+                    theme={theme}
+                    colorScheme={colorScheme}
+                />
+            )}
         </View>
     );
 }
@@ -405,339 +319,137 @@ export default function ClientDashboard() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#000',
     },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 100,
+    // Floating Top Header
+    headerFloating: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
         paddingHorizontal: 20,
-    },
-    section: {
-        marginBottom: 32,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingHorizontal: 4,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        marginBottom: 8,
-    },
-    sectionAction: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
-
-    // Notifications
-    notificationWrapper: {
-        marginBottom: 24,
-    },
-    notificationCard: {
-        borderRadius: 20,
-        padding: 16,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 6,
-    },
-    notificationContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    notificationIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    notificationTitle: {
-        color: 'rgba(255,255,255,0.9)',
-        fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 2,
-    },
-    notificationText: {
-        color: '#fff',
-        fontSize: 14,
-    },
-    arrowContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    // Search & Quick Actions
-    searchContainer: {
-        marginBottom: 20,
-        marginTop: 8,
-    },
-    searchBar: {
-        borderRadius: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    searchPlaceholder: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    mapPreview: {
-        borderRadius: 24,
-        overflow: 'hidden',
-        marginBottom: 20,
-        borderWidth: 1,
-    },
-    quickActionsScroll: {
-        overflow: 'visible',
-    },
-    quickDestBtn: {
-        borderRadius: 20,
-    },
-    quickDestIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    quickDestLabel: {
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 2,
-    },
-    quickDestSub: {
-        fontSize: 12,
-        fontWeight: '500',
-    },
-
-    // Active Card
-    activeCard: {
-        borderRadius: 28,
-        padding: 2, // Gradient border effect if needed, usually just fill
-        shadowColor: "#2563EB",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    activeCardContent: {
-        padding: 20,
-    },
-    activeCardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    pulsingDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#fff',
-        marginRight: 8,
-    },
-    activeCardTitle: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '700',
-        flex: 1,
-    },
-    activeStatusBadge: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    activeStatusText: {
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-    },
-    tripRouteContainer: {
-        flexDirection: 'row',
-        marginBottom: 20,
-    },
-    tripLocationTextWhite: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    trackBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 14,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 16,
-        gap: 8,
-    },
-    trackBtnText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '700',
-    },
-
-    // Routes List (Modern)
-    routesList: {
-        gap: 16,
-    },
-    routeCard: {
-        borderRadius: 24,
-    },
-    routeHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingBottom: 16,
+        paddingBottom: 15,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomColor: 'rgba(255,255,255,0.08)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
     },
-    timeContainer: {
+    headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-    },
-    routeTime: {
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    daysBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 10,
-    },
-    daysText: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    routeBody: {
-        flexDirection: 'row',
-        marginBottom: 16,
-    },
-    timelineContainer: {
-        alignItems: 'center',
-        marginRight: 16,
-        width: 16,
-        paddingVertical: 4,
-    },
-    timelineDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        borderWidth: 2,
-        backgroundColor: 'transparent',
-    },
-    timelineLine: {
-        width: 2,
-        flex: 1,
-        marginVertical: 4,
-        borderRadius: 1,
-    },
-    tripDetails: {
-        flex: 1,
         justifyContent: 'space-between',
-        paddingVertical: 0,
     },
-    locationText: {
-        fontSize: 15,
-        fontWeight: '600',
+    avatarButton: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    findMatchBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 12,
-        borderRadius: 14,
-        gap: 8,
-    },
-    findMatchText: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
-
-    // Empty State
-    emptyState: {
-        borderRadius: 24,
-    },
-    emptyIconData: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: 4,
-    },
-    emptyDesc: {
-        fontSize: 14,
-        fontWeight: '500',
-        textAlign: 'center',
-        maxWidth: '80%',
-    },
-
-    // Stats
-    statsRow: {
-        flexDirection: 'row',
-        gap: 16,
-    },
-    statCard: {
-        flex: 1,
-        borderRadius: 24,
-    },
-
-    // Premium Banner
-    premiumBanner: {
-        borderRadius: 28,
-        padding: 20,
-        shadowColor: "#8B5CF6",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    premiumContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 16,
-    },
-    premiumIconBox: {
+    profileAvatar: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 2,
+        borderColor: '#FFF',
+    },
+    profileAvatarFallback: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFF',
+    },
+    avatarFallbackText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    greetingText: {
+        flex: 1,
+        marginLeft: 12,
+    },
+    greetingTitle: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    greetingName: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    notificationBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.15)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    premiumTitle: {
-        color: '#FFF',
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: 4,
+    notificationBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: '#FF3B30',
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#000',
     },
-    premiumDesc: {
-        color: 'rgba(255,255,255,0.9)',
-        fontSize: 13,
+    badgeText: {
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: '800',
+    },
+    // State 1: Where to? prompt
+    whereToContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+    },
+    whereToCard: {
+        borderRadius: 28,
+        padding: 28,
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    whereToTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+        marginBottom: 8,
+    },
+    whereToSubtitle: {
+        fontSize: 14,
         fontWeight: '500',
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 20,
+    },
+    whereToBtn: {
+        width: '100%',
+        height: 52,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 4,
+        boxShadow: '0px 4px 16px rgba(0,102,255,0.3)',
+    },
+    whereToBtnText: {
+        color: '#FFFFFF',
+        fontSize: 17,
+        fontWeight: '700',
     },
 });

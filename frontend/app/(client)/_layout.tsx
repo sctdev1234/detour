@@ -25,7 +25,7 @@ export default function ClientLayout() {
             <SwipeableTabs.Screen
                 name="requests"
                 options={{
-                    title: 'Requests',
+                    title: 'Offers',
                     tabBarIcon: ({ color }) => <Bell size={24} color={color} />,
                 }}
             />
@@ -34,13 +34,6 @@ export default function ClientLayout() {
                 options={{
                     title: 'Places',
                     tabBarIcon: ({ color }) => <Bookmark size={24} color={color} />,
-                }}
-            />
-            <SwipeableTabs.Screen
-                name="routes"
-                options={{
-                    title: 'Routes',
-                    tabBarIcon: ({ color }) => <MapPin size={24} color={color} />,
                 }}
             />
             <SwipeableTabs.Screen
@@ -55,6 +48,28 @@ export default function ClientLayout() {
                 options={{
                     title: 'Profile',
                     tabBarIcon: ({ color }) => <User size={24} color={color} />,
+                }}
+            />
+            {/* Hidden screens — accessible via navigation but not in tab bar */}
+            <SwipeableTabs.Screen
+                name="routes"
+                options={{
+                    // @ts-ignore
+                    href: null,
+                }}
+            />
+            <SwipeableTabs.Screen
+                name="add-route"
+                options={{
+                    // @ts-ignore
+                    href: null,
+                }}
+            />
+            <SwipeableTabs.Screen
+                name="trip-details"
+                options={{
+                    // @ts-ignore
+                    href: null,
                 }}
             />
             <SwipeableTabs.Screen

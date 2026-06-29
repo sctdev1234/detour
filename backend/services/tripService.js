@@ -801,6 +801,56 @@ class TripService {
 
         return trip;
     }
+
+    /**
+     * Create a "client trip" — wraps createRoute but returns trip-shaped data
+     * so the client frontend only thinks in terms of "trips", not "routes".
+     */
+    async createClientTrip(userId, tripData) {
+        const {
+            startPoint, endPoint, waypoints,
+            days, timeStart, price
+        } = tripData;
+
+        // Internally create a Route (needed for geospatial matching)
+        const route = await this.createRoute(userId, {
+            role: 'client',
+            startPoint,
+            endPoint,
+            waypoints: waypoints || [],
+            days: days || [],
+            timeStart: timeStart || '',
+            timeArrival: '',
+            price: price || 0,
+            priceType: 'fix',
+        });
+
+        // Return trip-shaped response for the client
+        return {
+            id: route._id,
+            routeId: route._id,
+            startPoint: {
+                latitude: route.startPoint.coordinates[1],
+                longitude: route.startPoint.coordinates[0],
+                address: route.startPoint.address
+            },
+            endPoint: {
+                latitude: route.endPoint.coordinates[1],
+                longitude: route.endPoint.coordinates[0],
+                address: route.endPoint.address
+            },
+            waypoints: (route.waypoints || []).map(wp => ({
+                latitude: wp.coordinates[1],
+                longitude: wp.coordinates[0],
+                address: wp.address
+            })),
+            days: route.schedule?.days || [],
+            timeStart: route.schedule?.time || '',
+            price: route.price?.amount || 0,
+            status: 'searching', // Client just created it, waiting for driver match
+            createdAt: route.createdAt
+        };
+    }
 }
 
 module.exports = new TripService();

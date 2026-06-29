@@ -360,3 +360,17 @@ exports.finishTrip = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
+
+exports.createClientTrip = async (req, res) => {
+    try {
+        const trip = await tripService.createClientTrip(req.user.id, req.body);
+        res.json(trip);
+    } catch (err) {
+        console.error("Error in createClientTrip:", err.message);
+        if (err.name === 'ZodError') {
+            return res.status(400).json({ msg: err.errors[0].message });
+        }
+        res.status(500).send('Server Error');
+    }
+};
+

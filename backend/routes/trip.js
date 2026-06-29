@@ -11,6 +11,9 @@ router.post('/route', [auth, validate(createRouteSchema)], tripController.create
 router.get('/route', auth, tripController.getRoutes);
 router.delete('/route/:id', auth, tripController.deleteRoute);
 
+// Client Trip (convenience wrapper — creates Route internally, returns trip-shaped data)
+router.post('/client-trip', auth, tripController.createClientTrip);
+
 // Search/Matching (For clients to find drivers)
 router.get('/matches/:routeId', auth, tripController.searchMatches);
 

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import api from '../../services/api';
-import { LatLng, Route, RouteData, Trip } from '../../types';
+import { ClientTrip, LatLng, Route, RouteData, Trip } from '../../types';
+import { getNextTripOccurrence } from '../../utils/timeUtils';
 
 // Query Keys
 export const tripKeys = {
@@ -487,6 +489,168 @@ export const useFinishTrip = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+        }
+    });
+};
+
+// ==========================================
+// CLIENT HOME SCREEN — Unified Trip Hooks
+// ==========================================
+
+const IN_PROGRESS_TRIP_STATUSES = ['STARTING_SOON', 'STARTED', 'IN_PROGRESS', 'ARRIVED_PICKUP', 'CLIENT_PICKED_UP', 'CLIENT_DROPPED_OFF'];
+const IN_PROGRESS_CLIENT_STATUSES = ['READY', 'PICKUP_INCOMING', 'IN_CAR'];
+
+/**
+ * useClientTrips — merges Routes + Trips + JoinRequests into a unified ClientTrip[] array.
+ * This is the single source of truth for the client home screen.
+ */
+export const useClientTrips = () => {
+    const { data: routes, isLoading: routesLoading } = useRoutes();
+    const { data: trips, isLoading: tripsLoading } = useTrips();
+    const { data: requests, isLoading: requestsLoading } = useClientRequests();
+
+    const clientTrips = useMemo((): ClientTrip[] => {
+        const myRoutes = (routes || []).filter(r => r.role === 'client');
+        if (myRoutes.length === 0) return [];
+
+        return myRoutes.map((route): ClientTrip => {
+            // Find if this route is part of any trip (via join request)
+            const matchedRequest = (requests || []).find(
+                (req: any) => req.clientRouteId?._id === route.id || req.clientRouteId === route.id
+            );
+
+            // Also check if this route appears in any trip's clients array
+            const matchedTrip = (trips || []).find(
+                (trip: any) => trip.clients?.some((c: any) =>
+                    (c.routeId?.id === route.id || c.routeId === route.id)
+                )
+            );
+
+            let status: ClientTrip['status'] = 'searching';
+            let driver: ClientTrip['driver'] | undefined;
+            let tripId: string | undefined;
+            let tripStatus: string | undefined;
+            let clientStatus: string | undefined;
+
+            if (matchedTrip) {
+                tripId = matchedTrip.id;
+                tripStatus = matchedTrip.status;
+
+                // Get driver info
+                if (matchedTrip.driverId) {
+                    const d = matchedTrip.driverId;
+                    driver = {
+                        id: typeof d === 'string' ? d : d._id,
+                        fullName: typeof d === 'string' ? 'Driver' : d.fullName,
+                        photoURL: typeof d === 'string' ? undefined : d.photoURL,
+                    };
+                }
+
+                // Get client's status within the trip
+                const clientEntry = matchedTrip.clients?.find(
+                    (c: any) => c.routeId?.id === route.id || c.routeId === route.id
+                );
+                clientStatus = clientEntry?.status;
+
+                // Determine overall status
+                if (matchedTrip.status === 'COMPLETED') {
+                    status = 'completed';
+                } else if (matchedTrip.status === 'CANCELLED') {
+                    status = 'cancelled';
+                } else if (
+                    IN_PROGRESS_TRIP_STATUSES.includes(matchedTrip.status) ||
+                    (clientStatus && IN_PROGRESS_CLIENT_STATUSES.includes(clientStatus))
+                ) {
+                    status = 'active';
+                } else {
+                    status = 'matched';
+                }
+            } else if (matchedRequest) {
+                // Has a request but no trip match yet
+                if (matchedRequest.status === 'accepted') {
+                    // Request accepted, trip should exist — check tripId
+                    const reqTrip = matchedRequest.tripId;
+                    if (reqTrip) {
+                        tripId = typeof reqTrip === 'string' ? reqTrip : reqTrip._id || reqTrip.id;
+                        const driverData = reqTrip.driverId;
+                        if (driverData && typeof driverData !== 'string') {
+                            driver = {
+                                id: driverData._id,
+                                fullName: driverData.fullName,
+                                photoURL: driverData.photoURL,
+                            };
+                        }
+                        tripStatus = reqTrip.status;
+                        status = 'matched';
+
+                        // Check if the trip is active
+                        if (reqTrip.status && IN_PROGRESS_TRIP_STATUSES.includes(reqTrip.status)) {
+                            status = 'active';
+                        }
+                    } else {
+                        status = 'matched';
+                    }
+                } else if (matchedRequest.status === 'pending') {
+                    status = 'searching';
+                } else {
+                    status = 'searching'; // rejected — still searching
+                }
+            }
+
+            // Calculate next occurrence for non-active trips
+            const nextOccurrence = (status !== 'active' && status !== 'completed' && status !== 'cancelled')
+                ? getNextTripOccurrence(route.timeStart, route.days)
+                : null;
+
+            return {
+                id: route.id,
+                routeId: route.id,
+                startPoint: route.startPoint,
+                endPoint: route.endPoint,
+                waypoints: route.waypoints || [],
+                days: route.days,
+                timeStart: route.timeStart,
+                price: route.price,
+                status,
+                driver,
+                tripId,
+                tripStatus,
+                clientStatus,
+                nextOccurrence,
+                createdAt: (route as any).createdAt,
+            };
+        }).filter(t => t.status !== 'completed' && t.status !== 'cancelled'); // Only show active/searching/matched
+    }, [routes, trips, requests]);
+
+    return {
+        data: clientTrips,
+        isLoading: routesLoading || tripsLoading || requestsLoading,
+    };
+};
+
+/**
+ * useCreateClientTrip — calls the convenience endpoint that creates a Route
+ * internally but returns trip-shaped data.
+ */
+export const useCreateClientTrip = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: {
+            startPoint: LatLng;
+            endPoint: LatLng;
+            waypoints?: LatLng[];
+            days: string[];
+            timeStart: string;
+            price: number;
+        }) => {
+            const res = await api.post('/trip/client-trip', data);
+            return res.data as ClientTrip;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripKeys.routes() });
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
+            queryClient.invalidateQueries({ queryKey: tripKeys.clientRequests() });
         }
     });
 };

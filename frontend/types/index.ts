@@ -113,3 +113,31 @@ export type JoinRequest = {
     status: 'pending' | 'accepted' | 'rejected';
     createdAt: string;
 };
+
+/**
+ * ClientTrip — the unified type the client home screen uses.
+ * Merges Route data (schedule, locations) with Trip data (matching status, driver info).
+ * Under the hood, a Route still exists in the backend for geospatial matching.
+ */
+export type ClientTrip = {
+    id: string;           // Route._id (used as the trip identifier for clients)
+    routeId: string;      // Same as id — internal Route._id
+    startPoint: LatLng;
+    endPoint: LatLng;
+    waypoints: LatLng[];
+    days: string[];
+    timeStart: string;
+    price: number;
+    status: 'searching' | 'matched' | 'active' | 'completed' | 'cancelled';
+    // Present when matched with a driver (from Trip/JoinRequest):
+    driver?: {
+        id: string;
+        fullName: string;
+        photoURL?: string;
+    };
+    tripId?: string;      // Actual Trip._id once matched
+    tripStatus?: string;  // Trip-level status (CREATED, STARTED, IN_PROGRESS, etc.)
+    clientStatus?: string; // Client's status within the trip (WAITING, READY, IN_CAR, etc.)
+    nextOccurrence?: Date | null;
+    createdAt?: string;
+};
