@@ -96,7 +96,8 @@ const TabItem = ({ route, index, state, descriptors, navigation, theme, badgeCou
 export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user, role } = useAuthStore();
+    const { user } = useAuthStore();
+    const role = user?.role;
     // const { unreadReclamation } = useUIStore(); // Deprecated in favor of direct query
 
     // Notification Logic

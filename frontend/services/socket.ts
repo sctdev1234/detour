@@ -34,11 +34,11 @@ class SocketService {
         });
 
         this.socket.on('connect', () => {
-            console.log('Socket connected:', this.socket?.id);
+            /* console.log('Socket connected:', this.socket?.id); */
         });
 
         this.socket.on('disconnect', () => {
-            console.log('Socket disconnected');
+            /* console.log('Socket disconnected'); */
         });
 
         return this.socket;
@@ -64,7 +64,7 @@ class SocketService {
     }
 
     public joinUserRoom(userId: string) {
-        console.log(`[SocketService] Joining user room: user:${userId}`);
+        /* console.log(`[SocketService] Joining user room: user:${userId}`); */
         if (!this.socket) {
             console.warn('[SocketService] Socket is null! Cannot join user room.');
             return;

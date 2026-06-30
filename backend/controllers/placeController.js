@@ -1,61 +1,33 @@
-const SavedPlace = require('../models/SavedPlace');
+const placeService = require('../services/placeService');
 
 class PlaceController {
     // Get all saved places for the current user
-    async getPlaces(req, res) {
+    async getPlaces(req, res, next) {
         try {
-            const places = await SavedPlace.find({ user: req.user.id }).sort({ createdAt: -1 });
+            const places = await placeService.getPlaces(req.user.id);
             res.json(places);
         } catch (err) {
-            console.error(err.message);
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
     // Add a new saved place
-    async addPlace(req, res) {
-        const { label, address, latitude, longitude, icon } = req.body;
-
+    async addPlace(req, res, next) {
         try {
-            const newPlace = new SavedPlace({
-                user: req.user.id,
-                label,
-                address,
-                latitude,
-                longitude,
-                icon
-            });
-
-            const place = await newPlace.save();
-            res.json(place);
+            const place = await placeService.addPlace(req.user.id, req.body);
+            res.status(201).json(place);
         } catch (err) {
-            console.error(err.message);
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
     // Delete a saved place
-    async deletePlace(req, res) {
+    async deletePlace(req, res, next) {
         try {
-            const place = await SavedPlace.findById(req.params.id);
-
-            if (!place) {
-                return res.status(404).json({ msg: 'Place not found' });
-            }
-
-            // Make sure user owns the place
-            if (place.user.toString() !== req.user.id) {
-                return res.status(401).json({ msg: 'Not authorized' });
-            }
-
-            await place.deleteOne();
-            res.json({ msg: 'Place removed' });
+            const result = await placeService.deletePlace(req.user.id, req.params.id);
+            res.json(result);
         } catch (err) {
-            console.error(err.message);
-            if (err.kind === 'ObjectId') {
-                return res.status(404).json({ msg: 'Place not found' });
-            }
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 }

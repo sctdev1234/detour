@@ -36,11 +36,11 @@ export const uploadImage = async (uri: string, folder: string = 'misc'): Promise
 
         formData.append('folder', folder);
 
-        console.log(`[Storage] Uploading ${uri} to Firebase via Backend...`);
+        /* console.log(`[Storage] Uploading ${uri} to Firebase via Backend...`); */
         const res = await api.post('/upload', formData);
 
         if (res.data && res.data.url) {
-            console.log(`[Storage] Upload success: ${res.data.url}`);
+            /* console.log(`[Storage] Upload success: ${res.data.url}`); */
             return res.data.url;
         }
 

@@ -62,6 +62,11 @@ const ReclamationSchema = new mongoose.Schema({
             default: Date.now
         }
     }]
+,
+    isDeleted: {
+        type: Boolean,
+        default: false
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Reclamation', ReclamationSchema);

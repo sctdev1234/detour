@@ -3,23 +3,30 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 
-// Try to load .env from root or current directory
-const rootEnvPath = path.join(__dirname, '..', '.env');
-if (require('fs').existsSync(rootEnvPath)) {
-    require('dotenv').config({ path: rootEnvPath });
-} else {
-    require('dotenv').config();
-}
+const env = require('./config/env');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = env.PORT;
 
 // Middleware
 const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const rateLimit = require('express-rate-limit');
+
 app.use(helmet());
+app.use(mongoSanitize()); // Prevent NoSQL injection attacks
+
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // Limit each IP to 1000 requests per `window` (here, per 15 minutes)
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    message: 'Too many requests from this IP, please try again after 15 minutes'
+});
+app.use('/api', apiLimiter);
 
 const corsOptions = {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*', // Allow configuring origins
+    origin: env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',') : '*', // Allow configuring origins
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'Bypass-Tunnel-Reminder'],
     credentials: true
@@ -27,36 +34,27 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Body Parser Middleware
-// TODO: Migrate all file uploads to GridFS to lower this limit further (e.g., to 1mb)
-const BODY_LIMIT = process.env.BODY_LIMIT || '10mb';
+// SPRINT-13: Migrate all file uploads to GridFS to lower this limit further (e.g., to 1mb)
+const BODY_LIMIT = env.BODY_LIMIT;
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    // console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
 
 // Database Connection
-// Database Connection (using modern SRV connection string for resilience and DNS resolution)
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-    console.error('CRITICAL: MONGODB_URI is not defined in .env');
-    process.exit(1);
-}
-if (!process.env.JWT_SECRET) {
-    console.error('CRITICAL: JWT_SECRET is not defined in .env');
-    process.exit(1);
-}
+const MONGODB_URI = env.MONGODB_URI;
 
 // Debug URI (hide password)
 const uriDebug = MONGODB_URI ? MONGODB_URI.replace(/:([^:@]+)@/, ':****@') : 'undefined';
-console.log('Attempting to connect to MongoDB with URI:', uriDebug);
+/* console.log('Attempting to connect to MongoDB with URI:', uriDebug);*/
 
 mongoose.connect(MONGODB_URI)
     .then(() => {
-        console.log('MongoDB Connected');
-        console.log('Connected to Database:', mongoose.connection.name);
+        /* console.log('MongoDB Connected');*/
+        /* console.log('Connected to Database:', mongoose.connection.name);*/
     })
     .catch(err => {
         console.error('MongoDB Initial Connection Error:', err);
@@ -68,11 +66,11 @@ mongoose.connection.on('error', err => {
 });
 
 mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB Disconnected');
+    /* console.log('MongoDB Disconnected');*/
 });
 
 mongoose.connection.on('reconnected', () => {
-    console.log('MongoDB Reconnected');
+    /* console.log('MongoDB Reconnected');*/
 });
 
 // Routes
@@ -105,86 +103,21 @@ app.get('/', (req, res) => {
 });
 
 const server = require('http').createServer(app);
-const io = require('socket.io')(server, {
-    cors: {
-        origin: "*", // Allow all origins for now, restrict in production
-        methods: ["GET", "POST"]
-    }
-});
+const socketModule = require('./sockets/index');
+const io = socketModule.init(server);
 
 // Make io available in routes
 app.set('socketio', io);
-
-io.on('connection', (socket) => {
-    console.log('New client connected:', socket.id);
-
-    socket.on('join_reclamation', (reclamationId) => {
-        socket.join(reclamationId);
-        console.log(`Socket ${socket.id} joined reclamation room: ${reclamationId}`);
-    });
-
-    socket.on('join_user', (userId) => {
-        socket.join(`user:${userId}`);
-        console.log(`Socket ${socket.id} joined user room: user:${userId}`);
-    });
-
-    socket.on('leave_reclamation', (reclamationId) => {
-        socket.leave(reclamationId);
-        console.log(`Socket ${socket.id} left reclamation room: ${reclamationId}`);
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-    });
-
-    // Proximity Tracking (Phase 7)
-    socket.on('driver_location_update', async (data) => {
-        try {
-            const { driverId, tripId, latitude, longitude } = data;
-            if (!driverId || !tripId || !latitude || !longitude) return;
-
-            // Re-broadcast standard location for clients looking at map
-            socket.to(tripId).emit('driver_location_changed', { latitude, longitude });
-
-            // Fetch trip to check proximity for WAITING/READY clients
-            const Trip = require('./models/Trip');
-            const trip = await Trip.findById(tripId).populate('clients.routeId');
-            if (!trip || trip.driverId.toString() !== driverId) return;
-
-            const tripService = require('./services/tripService');
-
-            trip.clients.forEach(client => {
-                // If client is waiting for pickup
-                if (client.status === 'WAITING' || client.status === 'READY') {
-                    const pickupLat = client.routeId?.startPoint?.latitude;
-                    const pickupLng = client.routeId?.startPoint?.longitude;
-
-                    if (pickupLat && pickupLng) {
-                        const distMeters = tripService.calculateDistance(latitude, longitude, pickupLat, pickupLng);
-
-                        // If within 1km (1000m) emit approaching alert
-                        if (distMeters <= 1000) {
-                            // In a full prod system, we'd add a flag to prevent spamming this event
-                            // For this iteration, client handles idempotency/throttling locally
-                            io.to(`user:${client.userId.toString()}`).emit('driver_approaching', {
-                                tripId,
-                                driverId,
-                                distance: distMeters
-                            });
-                        }
-                    }
-                }
-            });
-        } catch (err) {
-            console.error('Socket driver_location_update Error:', err);
-        }
-    });
-});
 
 // Initialize Pre-Trip Notifications Cron Job
 const scheduleTripNotifications = require('./cron/tripNotifications');
 scheduleTripNotifications(io);
 
+const errorHandler = require('./middleware/errorHandler');
+
+// Global Error Handler Middleware
+app.use(errorHandler);
+
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
+    /* console.log(`Server running on port ${PORT}`);*/
 });

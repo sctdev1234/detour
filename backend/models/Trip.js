@@ -68,7 +68,14 @@ const TripSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
-});
+}, { timestamps: true });
+
+TripSchema.index({ driverId: 1, status: 1 });
+TripSchema.index({ 'clients.userId': 1, status: 1 });
 
 module.exports = mongoose.model('Trip', TripSchema);

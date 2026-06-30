@@ -45,7 +45,7 @@ export default function Layout() {
         setSocket(newSocket);
 
         newSocket.on('new_notification', (notification) => {
-            console.log('Received new notification:', notification);
+            /* /* console.log('Received new notification:', notification); */ */
             setNotifications(prev => [notification, ...prev]);
         });
 

@@ -33,11 +33,9 @@ const requireVerification = async (req, res, next) => {
                 return res.status(404).json({ msg: 'User not found' });
             }
 
-            /*
             if (user.verificationStatus !== 'verified') {
-                return res.status(403).json({ msg: 'Driver not verified. Access restricted.' });
+                return res.status(403).json({ success: false, error: 'Driver not verified. Access restricted.' });
             }
-            */
         }
         next();
     } catch (err) {
@@ -46,4 +44,17 @@ const requireVerification = async (req, res, next) => {
     }
 };
 
-module.exports = { auth, requireVerification };
+const authAdmin = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user || user.role !== 'admin') {
+            return res.status(403).json({ msg: 'Admin access required' });
+        }
+        next();
+    } catch (err) {
+        /* console.error(err.message); */
+        res.status(500).send('Server Error');
+    }
+};
+
+module.exports = { auth, requireVerification, authAdmin };

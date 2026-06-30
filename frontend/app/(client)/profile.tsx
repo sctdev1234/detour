@@ -36,7 +36,8 @@ export default function ProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { setRole, user, verificationStatus } = useAuthStore();
+    const { user, updateUser } = useAuthStore();
+    const verificationStatus = user?.verificationStatus;
     const { mutate: logout } = useLogout();
     const { mutateAsync: deleteAccount } = useDeleteAccount();
     const { showToast, showConfirm } = useUIStore();
@@ -259,7 +260,7 @@ export default function ProfileScreen() {
                         icon={Car}
                         title="Switch to Driver Mode"
                         subtitle="Start earning today"
-                        onPress={() => setRole(null)}
+                        onPress={() => updateUser({ role: 'driver' })}
                         index={0}
                     />
                     <MenuItem

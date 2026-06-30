@@ -11,10 +11,10 @@ import { Role } from '../../types';
 export default function RoleSelection() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const setRole = useAuthStore((state) => state.setRole);
+    const updateUser = useAuthStore((state) => state.updateUser);
 
     const handleSelectRole = (role: Role) => {
-        setRole(role);
+        updateUser({ role });
     };
 
     return (

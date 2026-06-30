@@ -8,7 +8,7 @@ export interface User {
     role: Role;
     verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
     photoURL?: string;
-    documents?: any[];
+    documents?: any;
     savedPlaces?: SavedPlace[];
     onboardingStatus?: {
         completed: boolean;

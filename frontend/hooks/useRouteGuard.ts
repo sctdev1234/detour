@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const useRouteGuard = () => {
-    const { role, user, isLoading } = useAuthStore();
+    const { user, isLoading } = useAuthStore();
+    const role = user?.role;
     const segments = useSegments();
     const router = useRouter();
     const navigationState = useRootNavigationState();

@@ -17,7 +17,10 @@ export default function VerificationScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { documents, updateDocuments, verificationStatus, user } = useAuthStore();
+    const { user, updateUser } = useAuthStore();
+    const documents = user?.documents || {};
+    const updateDocuments = (docs: any) => updateUser({ documents: { ...documents, ...docs } });
+    const verificationStatus = user?.verificationStatus;
     const { mutateAsync: submitVerification, isPending: isSubmitting } = useSubmitVerification();
     const { showToast } = useUIStore();
 

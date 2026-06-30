@@ -19,7 +19,8 @@ export default function Header() {
     const segments = useSegments();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user, role } = useAuthStore();
+    const { user } = useAuthStore();
+    const role = user?.role;
 
     // Notification Logic
     const { data: driverRequests } = useDriverRequests();

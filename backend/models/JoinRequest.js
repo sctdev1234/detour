@@ -35,6 +35,11 @@ const JoinRequestSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-});
+,
+    isDeleted: {
+        type: Boolean,
+        default: false
+    }
+}, { timestamps: true });
 
 module.exports = mongoose.model('JoinRequest', JoinRequestSchema);

@@ -6,7 +6,8 @@ import { Colors } from '../constants/theme';
 import { useAuthStore } from '../store/useAuthStore';
 
 export default function VerificationStatus({ theme }: { theme: typeof Colors.light }) {
-    const { verificationStatus } = useAuthStore();
+    const { user } = useAuthStore();
+    const verificationStatus = user?.verificationStatus;
     const router = useRouter();
 
     if (verificationStatus === 'verified') {

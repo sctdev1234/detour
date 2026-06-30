@@ -42,7 +42,7 @@ const uploadToFirebase = (file, folder = 'misc') => {
 // @desc    Generic upload (uses req.body.folder)
 router.post('/', auth, upload.single('image'), async (req, res) => {
     try {
-        console.log('[Upload] Request received');
+        /* /* console.log('[Upload] Request received'); */ */
 
         if (!req.file) {
             return res.status(400).json({ msg: 'No file uploaded' });

@@ -16,13 +16,13 @@ const Reclamation = require('../models/Reclamation');
 async function seedMessageReport() {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        console.log('Connected to MongoDB');
+        /* /* console.log('Connected to MongoDB'); */ */
 
         // Find a chat with messages
         const chat = await Chat.findOne({ 'messages.0': { $exists: true } });
 
         if (!chat) {
-            console.log("No chats with messages found. Run the seed_chats script first.");
+            /* /* console.log("No chats with messages found. Run the seed_chats script first."); */ */
             process.exit(1);
         }
 
@@ -31,11 +31,11 @@ async function seedMessageReport() {
         const reporterId = chat.participants.find(p => p.toString() !== offendingMessage.senderId.toString());
 
         if (!reporterId) {
-            console.log("Could not determine reporter.");
+            /* /* console.log("Could not determine reporter."); */ */
             process.exit(1);
         }
 
-        console.log(`Creating test report for message ID ${offendingMessage._id} in chat ${chat._id}...`);
+        /* /* console.log(`Creating test report for message ID ${offendingMessage._id} in chat ${chat._id}...`); */ */
 
         const newReclamation = new Reclamation({
             reporterId: reporterId, // The other participant is reporting
@@ -48,7 +48,7 @@ async function seedMessageReport() {
         });
 
         await newReclamation.save();
-        console.log(`Successfully created reclamation: ${newReclamation._id}`);
+        /* /* console.log(`Successfully created reclamation: ${newReclamation._id}`); */ */
 
         process.exit(0);
     } catch (err) {

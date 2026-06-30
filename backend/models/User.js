@@ -49,6 +49,16 @@ const UserSchema = new mongoose.Schema({
         speed: Number,
         timestamp: Number,
         updatedAt: { type: Date, default: Date.now }
+    currentLocation: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: [0, 0]
+        }
     },
     // Financials
     balance: {
@@ -76,13 +86,31 @@ const UserSchema = new mongoose.Schema({
         tripsDone: { type: Number, default: 0 }, // For both client (rides) and driver (drives)
         clientsServed: { type: Number, default: 0 }, // For driver
         hoursOnline: { type: Number, default: 0 },
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
 }, {
     toObject: { virtuals: true },
-    toJSON: { virtuals: true }
+    toJSON: { virtuals: true },
+    timestamps: true
 });
 
-// Add 2d index for location-based queries (supports legacy { latitude, longitude })
-UserSchema.index({ location: '2d' });
+// Auto-sync location before save
+UserSchema.pre('save', function(next) {
+    if (this.isModified('location.latitude') || this.isModified('location.longitude')) {
+        if (this.location && this.location.latitude && this.location.longitude) {
+            this.currentLocation = {
+                type: 'Point',
+                coordinates: [this.location.longitude, this.location.latitude]
+            };
+        }
+    }
+    next();
+});
+
+UserSchema.index({ 'currentLocation': '2dsphere' });
+UserSchema.index({ role: 1, isDeleted: 1 });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -15,7 +15,12 @@ const PageSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-});
+,
+    isDeleted: {
+        type: Boolean,
+        default: false
+    }
+}, { timestamps: true });
 
 // Update the timestamp before saving
 PageSchema.pre('save', function (next) {

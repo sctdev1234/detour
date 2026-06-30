@@ -20,6 +20,17 @@ const PlaceSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: [0, 0]
+        }
+    },
     icon: {
         type: String,
         default: 'map-pin'
@@ -36,7 +47,25 @@ const PlaceSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
+}, { timestamps: true });
+
+// Auto-sync location with lat/long before save
+PlaceSchema.pre('save', function(next) {
+    if (this.isModified('latitude') || this.isModified('longitude')) {
+        this.location = {
+            type: 'Point',
+            coordinates: [this.longitude, this.latitude]
+        };
+    }
+    next();
 });
+
+PlaceSchema.index({ 'location': '2dsphere' });
+PlaceSchema.index({ category: 1, isDeleted: 1 });
 
 module.exports = mongoose.model('Place', PlaceSchema);

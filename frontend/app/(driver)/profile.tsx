@@ -38,7 +38,7 @@ export default function DriverProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { setRole, user } = useAuthStore();
+    const { user, updateUser } = useAuthStore();
     const { mutate: logout } = useLogout();
     const { mutateAsync: deleteAccount } = useDeleteAccount();
     const { showConfirm, showToast } = useUIStore();
@@ -245,7 +245,7 @@ export default function DriverProfileScreen() {
                             icon={User}
                             title="Switch to Passenger"
                             subtitle="Book a ride"
-                            onPress={() => setRole(null)}
+                            onPress={() => updateUser({ role: 'client' })}
                             index={0}
                         />
                         <MenuItem

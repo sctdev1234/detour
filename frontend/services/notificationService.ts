@@ -28,7 +28,7 @@ export const registerForPushNotificationsAsync = async () => {
     const isExpoGo = Constants.appOwnership === 'expo';
 
     if (isExpoGo) {
-        console.log('Push notifications are not fully supported in Expo Go. Skipping token registration.');
+        /* console.log('Push notifications are not fully supported in Expo Go. Skipping token registration.'); */
         return null;
     }
 
@@ -40,23 +40,23 @@ export const registerForPushNotificationsAsync = async () => {
             finalStatus = status;
         }
         if (finalStatus !== 'granted') {
-            console.log('Failed to get push token for push notification!');
+            /* console.log('Failed to get push token for push notification!'); */
             return null;
         }
         try {
             const projectId = Constants.expoConfig?.extra?.eas?.projectId;
             if (!projectId || projectId === 'your-project-id-here') {
-                console.log('Project ID not configured, skipping push token fetch.');
+                /* console.log('Project ID not configured, skipping push token fetch.'); */
                 return null;
             }
             token = (await Notifications.getExpoPushTokenAsync({
                 projectId,
             })).data;
         } catch (error) {
-            console.log('Error fetching push token:', error);
+            /* console.log('Error fetching push token:', error); */
         }
     } else {
-        console.log('Must use physical device for Push Notifications');
+        /* console.log('Must use physical device for Push Notifications'); */
     }
 
     if (Platform.OS === 'android') {
@@ -108,7 +108,7 @@ export const scheduleTripReminder = async (tripId: string, preferredTime: string
 
         // Guard against Expo Go on Android
         if (Constants.appOwnership === 'expo' && Platform.OS === 'android') {
-            console.log(`Skipping notification schedule (Expo Go Android): ${minutesBefore}m before`);
+            // console.log(`Skipping notification schedule (Expo Go Android): ${minutesBefore}m before`);
             return;
         }
 
@@ -124,11 +124,11 @@ export const scheduleTripReminder = async (tripId: string, preferredTime: string
                 repeats: false,
             },
         });
-        console.log(`Reminder scheduled for: ${reminderTime.toLocaleString()}`);
+        // console.log(`Reminder scheduled for: ${reminderTime.toLocaleString()}`);
     } else {
         // If less than X mins away, notify immediately (but check constraints)
         if (Constants.appOwnership === 'expo' && Platform.OS === 'android') {
-            console.log('Skipping immediate notification (Expo Go Android)');
+            // console.log('Skipping immediate notification (Expo Go Android)');
             return;
         }
         await sendImmediateNotification(
