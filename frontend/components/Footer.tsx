@@ -7,6 +7,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { Colors } from '../constants/theme';
 import { useClientRequests, useDriverRequests } from '../hooks/api/useTripQueries';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUIStore } from '../store/useUIStore';
 
 // Define visible routes for each role
 const CLIENT_ROUTES = ['index', 'requests', 'routes', 'trips', 'places', 'profile'];
@@ -97,7 +98,7 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user, role } = useAuthStore();
-    // const { unreadReclamation } = useUIStore(); // Deprecated in favor of direct query
+    const { hideGlobalFooter } = useUIStore();
 
     // Notification Logic
     const { data: driverRequests } = useDriverRequests();
@@ -169,6 +170,10 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
     // Hide footer entirely when the active route is a form/hidden screen
     const activeRoute = state.routes[state.index];
     if (activeRoute && !visibleRoutes.includes(activeRoute.name)) {
+        return null;
+    }
+
+    if (hideGlobalFooter) {
         return null;
     }
 

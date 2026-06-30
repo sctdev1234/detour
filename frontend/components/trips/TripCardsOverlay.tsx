@@ -114,10 +114,10 @@ export default function TripCardsOverlay({
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 0,
+        bottom: 75,
         left: 0,
         right: 0,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingBottom: 10,
     },
     headerRow: {
         flexDirection: 'row',

@@ -543,13 +543,29 @@ const Map = React.memo(({
                     longitudeDelta: 0.0421,
                 }}
                 onPress={handlePress}
-                showsUserLocation={mode === 'picker'}
+                showsUserLocation={false}
                 provider={undefined} // Use default provider (Google mostly)
                 scrollEnabled={interactive}
                 zoomEnabled={interactive}
                 rotateEnabled={interactive}
                 pitchEnabled={interactive}
             >
+                {/* Current User Location Marker */}
+                {location && (
+                    <Marker
+                        coordinate={{
+                            latitude: location.coords.latitude,
+                            longitude: location.coords.longitude
+                        }}
+                        anchor={{ x: 0.5, y: 0.5 }}
+                        zIndex={99}
+                    >
+                        <View style={styles.userLocationMarker}>
+                            <User size={12} color="#FFF" />
+                        </View>
+                    </Marker>
+                )}
+
                 {/* Saved Places — visible in all modes EXCEPT trip */}
                 {mode !== 'trip' && (
                     <SavedPlaceMarkers
@@ -868,5 +884,18 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 5,
         zIndex: 10,
-    }
+    },
+    userLocationMarker: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#007AFF',
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        // @ts-ignore
+        boxShadow: '0px 2px 6px rgba(0,0,0,0.3)',
+    },
 });

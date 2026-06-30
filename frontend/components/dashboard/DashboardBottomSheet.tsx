@@ -114,7 +114,7 @@ export default function DashboardBottomSheet() {
         ? { intensity: 90, tint: colorScheme }
         : {};
 
-    const wrapperBottom = isExpanded ? 0 : (insets.bottom > 0 ? insets.bottom : 12);
+    const wrapperBottom = isExpanded ? 0 : 87; // 75px footer + 12px margin
     const wrapperHorizontal = isExpanded ? 0 : 16;
 
     return (

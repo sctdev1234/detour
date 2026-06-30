@@ -35,7 +35,7 @@ export default function ClientDashboard() {
     const theme = Colors[colorScheme];
 
     const { user } = useAuthStore();
-    const { showToast, setHideGlobalHeader } = useUIStore();
+    const { showToast, setHideGlobalHeader, setHideGlobalFooter } = useUIStore();
     const { driverLocation } = useTrackingStore();
 
     // Data hooks
@@ -61,6 +61,16 @@ export default function ClientDashboard() {
         setHideGlobalHeader(true);
         return () => setHideGlobalHeader(false);
     }, []);
+
+    // Hide global footer when creating a trip
+    useEffect(() => {
+        if (isCreatingTrip) {
+            setHideGlobalFooter(true);
+        } else {
+            setHideGlobalFooter(false);
+        }
+        return () => setHideGlobalFooter(false);
+    }, [isCreatingTrip]);
 
     // Get current location
     useEffect(() => {
@@ -102,12 +112,12 @@ export default function ClientDashboard() {
     // ============================================
     const mapMode = useMemo(() => {
         switch (homeState) {
-            case 'zero_trips': return isCreatingTrip ? 'picker' : 'view';
+            case 'zero_trips': return 'view';
             case 'has_trips': return 'view';
             case 'active_trip': return 'trip';
             default: return 'view';
         }
-    }, [homeState, isCreatingTrip]);
+    }, [homeState]);
 
     // Map points for State 2 (show selected trip's route)
     const mapTripPoints = useMemo(() => {
@@ -195,7 +205,6 @@ export default function ClientDashboard() {
                     mode={mapMode as any}
                     theme={theme}
                     initialPoints={mapTripPoints}
-                    onPointsChange={homeState === 'zero_trips' ? handlePointsChange : undefined}
                     trip={mapTripData as any}
                     driverLocation={homeState === 'active_trip' ? (driverLocation || undefined) : undefined}
                     savedPlaces={user?.savedPlaces}
@@ -255,6 +264,7 @@ export default function ClientDashboard() {
                         colorScheme={colorScheme}
                         currentLocation={currentLoc}
                         currentAddress={currentAddr}
+                        mapPoints={mapPoints}
                         onPointsChange={handlePointsChange}
                         onCancel={handleCancelCreation}
                         onConfirm={handleCreateTrip}
@@ -410,14 +420,13 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '800',
     },
-    // State 1: Where to? prompt
     whereToContainer: {
         position: 'absolute',
-        bottom: 0,
+        bottom: 75,
         left: 0,
         right: 0,
         paddingHorizontal: 20,
-        paddingBottom: 40,
+        paddingBottom: 20,
     },
     whereToCard: {
         borderRadius: 28,

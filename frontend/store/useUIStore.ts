@@ -40,6 +40,10 @@ interface ConfirmSlice {
     // Header Global Visibility
     hideGlobalHeader: boolean;
     setHideGlobalHeader: (hide: boolean) => void;
+
+    // Footer Global Visibility
+    hideGlobalFooter: boolean;
+    setHideGlobalFooter: (hide: boolean) => void;
 }
 
 export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
@@ -89,4 +93,8 @@ export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
     // Header Visibility Initial State
     hideGlobalHeader: false,
     setHideGlobalHeader: (hide) => set({ hideGlobalHeader: hide }),
+
+    // Footer Visibility Initial State
+    hideGlobalFooter: false,
+    setHideGlobalFooter: (hide) => set({ hideGlobalFooter: hide }),
 }));
