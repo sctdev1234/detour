@@ -293,3 +293,70 @@
 {"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:59:55"}
 {"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:59:55"}
 {"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: userRepository.findById(...).select is not a function","service":"detour-backend","stack":"TypeError: userRepository.findById(...).select is not a function\n    at AuthService.getUser (D:\\detour\\backend\\services\\authService.js:141:60)\n    at AuthController.getMe (D:\\detour\\backend\\controllers\\authController.js:124:44)\n    at D:\\detour\\backend\\routes\\auth.js:44:60\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at auth (D:\\detour\\backend\\middleware\\auth.js:19:9)\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (D:\\detour\\backend\\node_modules\\router\\index.js:435:11)","timestamp":"2026-07-01 12:59:55"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 13:03:54"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 13:03:55"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 13:03:55"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 13:03:57"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 13:03:57"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:07:26"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 13:07:26"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 13:07:26"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 13:07:26"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:07:26"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:07:26"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 13:07:44"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 13:07:45"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 13:07:45"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:07:45"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:07:54"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:07:55"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:07:55"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 13:07:55"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:08:38"}
+{"level":"info","message":"POST /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:09:07"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:09:09"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 13:09:17"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 13:09:17"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:09:18"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:09:18"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 13:09:18"}
+{"level":"info","message":"POST /api/places","service":"detour-backend","timestamp":"2026-07-01 13:09:31"}
+{"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: next is not a function","service":"detour-backend","stack":"TypeError: next is not a function\n    at PlaceController.addPlace (D:\\detour\\backend\\controllers\\placeController.js:20:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","timestamp":"2026-07-01 13:09:31"}
+{"level":"info","message":"POST /api/places","service":"detour-backend","timestamp":"2026-07-01 13:09:33"}
+{"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: next is not a function","service":"detour-backend","stack":"TypeError: next is not a function\n    at PlaceController.addPlace (D:\\detour\\backend\\controllers\\placeController.js:20:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","timestamp":"2026-07-01 13:09:33"}
+{"level":"info","message":"POST /api/places","service":"detour-backend","timestamp":"2026-07-01 13:09:35"}
+{"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: next is not a function","service":"detour-backend","stack":"TypeError: next is not a function\n    at PlaceController.addPlace (D:\\detour\\backend\\controllers\\placeController.js:20:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","timestamp":"2026-07-01 13:09:35"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:09:41"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:09:42"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:10:32"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:10:32"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:10:41"}
+{"level":"info","message":"DELETE /api/trip/route/6a450363c54dfdb32127f00d","service":"detour-backend","timestamp":"2026-07-01 13:11:06"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:11:07"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:11:29"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 13:11:29"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 13:11:29"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 13:11:29"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:11:29"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:11:29"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:11:30"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 13:11:49"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:11:49"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:11:53"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:11:55"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:00"}
+{"level":"info","message":"GET /api/transactions","service":"detour-backend","timestamp":"2026-07-01 13:12:05"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:05"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:06"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 13:12:08"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:08"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:12:09"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:12"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:12:14"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:16"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 13:12:34"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 13:12:34"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 13:12:34"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:12:34"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 13:12:34"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:36"}
