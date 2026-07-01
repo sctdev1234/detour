@@ -1,9 +1,9 @@
 import { useUIStore } from '@/store/useUIStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowDownLeft, ArrowUpRight, ChevronLeft, CreditCard, DollarSign, History } from 'lucide-react-native';
-import React from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, CreditCard, DollarSign, History, Tag } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Colors } from '../../constants/theme';
 import { useCashout, useDeposit, useSubscribe, useTransactions } from '../../hooks/api/useWalletQueries';
 import { useUser } from '../../hooks/api/useAuthQueries';
@@ -20,6 +20,9 @@ export default function WalletScreen() {
 
     const { data: transactions, isLoading } = useTransactions();
     const { showConfirm, showToast } = useUIStore();
+
+    const [promoCode, setPromoCode] = useState('');
+    const [isApplyingPromo, setIsApplyingPromo] = useState(false);
 
     // Mutations
     const subscribeMutation = useSubscribe();
@@ -69,8 +72,8 @@ export default function WalletScreen() {
     const handleDeposit = (amount: number) => {
         showConfirm({
             title: 'Top Up Balance',
-            message: `Add ${amount} MAD to your wallet? (Simulated)`,
-            confirmText: 'Confirm',
+            message: `Add ${amount} MAD to your wallet? (Simulated payment gateway)`,
+            confirmText: 'Top Up',
             cancelText: 'Cancel',
             onConfirm: () => {
                 depositMutation.mutate(amount, {
@@ -83,6 +86,22 @@ export default function WalletScreen() {
                 });
             }
         });
+    };
+
+    const handleApplyPromo = () => {
+        if (!promoCode.trim()) return;
+        setIsApplyingPromo(true);
+        // Simulate API call for promo code
+        setTimeout(() => {
+            setIsApplyingPromo(false);
+            if (promoCode.toUpperCase() === 'WELCOME50') {
+                showToast('Promo code applied! 50 MAD added.', 'success');
+                setPromoCode('');
+                // Would mutate wallet here in real app
+            } else {
+                showToast('Invalid or expired promo code', 'error');
+            }
+        }, 1000);
     };
 
     const handleSubscribe = () => {
@@ -180,7 +199,7 @@ export default function WalletScreen() {
                 </LinearGradient>
 
                 <View style={styles.topUpSection}>
-                    <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 16, marginBottom: 12, paddingHorizontal: 24 }]}>Top Up Balance (Simulated)</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 16, marginBottom: 12, paddingHorizontal: 24 }]}>Quick Top Up</Text>
                     <View style={styles.chipContainer}>
                         {[50, 100, 200, 500].map((amount) => (
                             <TouchableOpacity
@@ -191,6 +210,32 @@ export default function WalletScreen() {
                                 <Text style={[styles.chipText, { color: theme.text }]}>+{amount} MAD</Text>
                             </TouchableOpacity>
                         ))}
+                    </View>
+                </View>
+
+                {/* Promo Code Section */}
+                <View style={styles.promoSection}>
+                    <View style={[styles.promoContainer, { backgroundColor: theme.surface, borderColor: theme.border + '30' }]}>
+                        <Tag size={20} color={theme.icon} />
+                        <TextInput
+                            style={[styles.promoInput, { color: theme.text }]}
+                            placeholder="Enter Promo Code"
+                            placeholderTextColor={theme.icon}
+                            value={promoCode}
+                            onChangeText={setPromoCode}
+                            autoCapitalize="characters"
+                        />
+                        <TouchableOpacity
+                            style={[styles.applyBtn, { backgroundColor: promoCode.trim() ? theme.primary : theme.border }]}
+                            onPress={handleApplyPromo}
+                            disabled={!promoCode.trim() || isApplyingPromo}
+                        >
+                            {isApplyingPromo ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Text style={styles.applyBtnText}>Apply</Text>
+                            )}
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -422,23 +467,56 @@ const styles = StyleSheet.create({
     },
     chipContainer: {
         flexDirection: 'row',
-        paddingHorizontal: 24,
+        flexWrap: 'wrap',
         gap: 12,
+        paddingHorizontal: 24,
     },
     amountChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
+        flex: 1,
+        minWidth: '40%',
+        paddingVertical: 14,
+        borderRadius: 16,
+        alignItems: 'center',
         borderWidth: 1,
-        elevation: 1,
     },
     chipText: {
+        fontSize: 16,
         fontWeight: '700',
+    },
+    promoSection: {
+        paddingHorizontal: 24,
+        marginBottom: 24,
+    },
+    promoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderRadius: 16,
+        paddingLeft: 16,
+        paddingRight: 6,
+        paddingVertical: 6,
+        gap: 12,
+    },
+    promoInput: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: '500',
+        height: 40,
+    },
+    applyBtn: {
+        paddingHorizontal: 16,
+        height: 38,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    applyBtnText: {
+        color: '#FFF',
         fontSize: 14,
+        fontWeight: '600',
     },
     scrollContent: {
         flexGrow: 1,
         paddingBottom: 40,
     },
 });
-

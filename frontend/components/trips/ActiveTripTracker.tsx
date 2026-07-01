@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, Share } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
@@ -11,6 +11,7 @@ import {
     MapPin,
     User,
     Shield,
+    Share2,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { ClientTrip } from '../../types';
@@ -72,6 +73,17 @@ export default function ActiveTripTracker({ trip, theme, colorScheme }: Props) {
         }
     };
 
+    const handleShareTrip = async () => {
+        try {
+            const vehicle = (trip.driver as any)?.vehicle;
+            await Share.share({
+                message: `Track my Detour ride! I'm in a ${vehicle?.model || 'car'} (Plate: ${vehicle?.plate || 'Unknown'}) driven by ${trip.driver?.fullName || 'my driver'}. I'm heading to ${trip.endPoint.address || 'my destination'}.`,
+            });
+        } catch (error) {
+            console.error('Error sharing trip', error);
+        }
+    };
+
     const cardBg = isDark ? 'rgba(28, 28, 30, 0.95)' : 'rgba(255, 255, 255, 0.97)';
 
     return (
@@ -125,6 +137,13 @@ export default function ActiveTripTracker({ trip, theme, colorScheme }: Props) {
                         </View>
 
                         <View style={styles.driverActions}>
+                            <TouchableOpacity
+                                style={[styles.actionBtn, { backgroundColor: theme.primary + '15' }]}
+                                onPress={handleShareTrip}
+                                activeOpacity={0.8}
+                            >
+                                <Share2 size={18} color={theme.primary} />
+                            </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.actionBtn, { backgroundColor: theme.secondary }]}
                                 onPress={handleMessage}

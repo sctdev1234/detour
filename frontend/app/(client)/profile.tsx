@@ -244,11 +244,18 @@ export default function ProfileScreen() {
                         index={0}
                     />
                     <MenuItem
+                        icon={AlertCircle} // Using AlertCircle for Emergency Contacts
+                        title="Emergency Contacts"
+                        subtitle="Manage trusted contacts"
+                        onPress={() => showToast('Emergency Contacts feature coming soon', 'info')}
+                        index={1}
+                    />
+                    <MenuItem
                         icon={FileText}
                         title="Terms of Service"
                         onPress={() => showToast('Terms of Service content goes here', 'info')}
                         showChevron={true}
-                        index={1}
+                        index={2}
                     />
                 </View>
             </Animated.View>

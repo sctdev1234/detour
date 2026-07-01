@@ -210,7 +210,7 @@ export default function DriverOnboardingScreen() {
                         <GlassCard intensity={80} variant="default" style={[styles.formCard, { marginTop: 40 }]}>
                             <PremiumButton
                                 title="Go to Dashboard"
-                                onPress={() => router.replace('/(driver)/home')}
+                                onPress={() => router.replace('/(driver)/home' as any)}
                             />
                         </GlassCard>
                     </Animated.View>

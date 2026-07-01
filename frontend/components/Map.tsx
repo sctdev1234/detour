@@ -183,7 +183,7 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
         <>
             {/* Driver Start */}
             {driverRoute.startPoint && (
-                <Marker coordinate={driverRoute.startPoint} pinColor="green" onPress={handleDriverRoutePress}>
+                <Marker coordinate={driverRoute.startPoint} pinColor="green" onPress={handleDriverRoutePress} tracksViewChanges={false}>
                     <View style={[styles.markerBadge, { backgroundColor: '#10b981' }]}>
                         <Car size={14} color="#fff" />
                     </View>
@@ -192,7 +192,7 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
 
             {/* Driver End */}
             {driverRoute.endPoint && (
-                <Marker coordinate={driverRoute.endPoint} pinColor="red" onPress={handleDriverRoutePress}>
+                <Marker coordinate={driverRoute.endPoint} pinColor="red" onPress={handleDriverRoutePress} tracksViewChanges={false}>
                     <View style={[styles.markerBadge, { backgroundColor: '#ef4444' }]}>
                         <MapPin size={14} color="#fff" />
                     </View>
@@ -230,6 +230,7 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
                             onPress={() => onRouteSelect?.(routeId)}
                             anchor={{ x: 0.5, y: 0.5 }}
                             zIndex={(isSelected || isNext) ? 10 : 1}
+                            tracksViewChanges={false}
                         >
                             {isNext && (
                                 <RNAnimated.View style={[

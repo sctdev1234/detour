@@ -360,3 +360,120 @@
 {"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 13:12:34"}
 {"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 13:12:34"}
 {"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 13:12:36"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:06:05"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:06:17"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:06:17"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:06:18"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:06:18"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:08:49"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 16:10:27"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 16:10:27"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:10:27"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:10:27"}
+{"level":"info","message":"GET /api/transactions","service":"detour-backend","timestamp":"2026-07-01 16:10:32"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:10:32"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 16:10:34"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 16:10:35"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 16:10:35"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 16:10:35"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:27:01"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:27:02"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:27:02"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:27:03"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:27:03"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:27:04"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:30:18"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:30:18"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:30:18"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:30:33"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:30:33"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:30:33"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:37:49"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:38:52"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 16:39:45"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 16:39:45"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:39:45"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:39:45"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 16:40:54"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 16:40:54"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:40:54"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 16:40:55"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 16:40:55"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 16:40:55"}
+{"level":"info","message":"POST /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 16:41:40"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 16:41:40"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:41:48"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 16:41:49"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 16:42:02"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:47:17"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:47:17"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:47:17"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:47:18"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:47:18"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:47:18"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:47:26"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:47:27"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:47:27"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:47:27"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:47:27"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:47:27"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:47:47"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:47:48"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:47:48"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:47:48"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:47:49"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:47:50"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:47:50"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:47:50"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:47:51"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:47:51"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:47:51"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:48:03"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:48:04"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:48:04"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:48:04"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:48:04"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:48:04"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:48:16"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:48:16"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:48:16"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:48:17"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:48:17"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:48:17"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 16:48:38"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 16:48:39"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 16:48:39"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:48:39"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 16:48:39"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 16:48:39"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 16:52:05"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:52:05"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 16:52:05"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:52:25"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 16:52:25"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:53:07"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 16:53:36"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 16:54:40"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:54:40"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 16:56:00"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 16:56:00"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:57:52"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:58:00"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:58:15"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:58:36"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:58:43"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 16:59:18"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 17:05:38"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 17:06:21"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 17:06:22"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 17:06:22"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 17:06:22"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 17:06:22"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 17:06:22"}
+{"level":"info","message":"GET /api/places","service":"detour-backend","timestamp":"2026-07-01 17:06:23"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 17:07:18"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 17:07:35"}
+{"level":"info","message":"DELETE /api/trip/route/6a45353443ae550b6f59b44d","service":"detour-backend","timestamp":"2026-07-01 17:08:06"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 17:08:06"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 17:09:20"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 17:44:02"}

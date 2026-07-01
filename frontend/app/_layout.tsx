@@ -10,6 +10,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import Header from '../components/Header';
 import LocationTracker from '../components/LocationTracker';
 import Toast from '../components/Toast';
+import OfflineBanner from '../components/OfflineBanner';
 import { Colors } from '../constants/theme';
 import '../global.css';
 import { useUser } from '../hooks/api/useAuthQueries';
@@ -124,7 +125,7 @@ function AppContent() {
         console.log('Received verification_status_changed socket event:', data);
         const authStore = useAuthStore.getState();
         if (authStore.user) {
-           authStore.updateUser({ verificationStatus: data.status });
+           authStore.updateUser({ verificationStatus: data.status as any });
         }
         const { useUIStore } = require('../store/useUIStore');
         const uiStore = useUIStore.getState();
@@ -212,6 +213,7 @@ function AppContent() {
         </Stack>
         <LocationTracker />
         <Toast />
+        <OfflineBanner />
         <ConfirmationModal />
         <StatusBar hidden />
       </SafeAreaProvider>

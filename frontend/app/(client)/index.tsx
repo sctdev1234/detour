@@ -25,6 +25,9 @@ import { useUIStore } from '../../store/useUIStore';
 import { useTrackingStore } from '../../store/useTrackingStore';
 import { RouteService } from '../../services/RouteService';
 import { LatLng, ClientTrip } from '../../types';
+import { useRideStore } from '../../store/useRideStore';
+import { useRideFlow } from '../../hooks/useRideFlow';
+import OfferList from '../../components/trips/OfferList';
 
 type HomeState = 'zero_trips' | 'has_trips' | 'active_trip';
 
@@ -35,6 +38,7 @@ export default function ClientDashboard() {
     const theme = Colors[colorScheme];
 
     const { user } = useAuthStore();
+    const { status: rideStatus, offers } = useRideStore();
     const { showToast, setHideGlobalHeader, setHideGlobalFooter } = useUIStore();
     const { driverLocation } = useTrackingStore();
 
@@ -152,23 +156,33 @@ export default function ClientDashboard() {
         setMapPoints(newPoints);
     }, []);
 
+    const { requestRide, acceptOffer, rejectOffer } = useRideFlow();
+
     const handleCreateTrip = useCallback(async (data: {
         startPoint: LatLng;
         endPoint: LatLng;
         days: string[];
         timeStart: string;
         price: number;
+        rideType: 'immediate' | 'scheduled';
     }) => {
         try {
-            await createClientTrip(data);
-            showToast('Trip created! Looking for drivers...', 'success');
-            setIsCreatingTrip(false);
-            setMapPoints([]);
+            if (data.rideType === 'immediate') {
+                await requestRide(data.startPoint, data.endPoint, 'Pickup', 'Destination', data.price, 5000, 600); // Approximate distance/duration for now
+                showToast('Looking for drivers...', 'success');
+                setIsCreatingTrip(false);
+                setMapPoints([]);
+            } else {
+                await createClientTrip(data);
+                showToast('Scheduled trip created! Looking for drivers...', 'success');
+                setIsCreatingTrip(false);
+                setMapPoints([]);
+            }
         } catch (error: any) {
             console.error(error);
             showToast(error.response?.data?.msg || 'Failed to create trip', 'error');
         }
-    }, [createClientTrip, showToast]);
+    }, [createClientTrip, showToast, requestRide]);
 
     const handleCancelCreation = useCallback(() => {
         setIsCreatingTrip(false);
@@ -321,6 +335,21 @@ export default function ClientDashboard() {
                     theme={theme}
                     colorScheme={colorScheme}
                 />
+            )}
+
+            {/* ========================================== */}
+            {/* STATE 4: Searching / Offers Incoming         */}
+            {/* ========================================== */}
+            {(rideStatus === 'SEARCHING' || rideStatus === 'OFFERS_INCOMING') && (
+                <View style={[styles.whereToContainer, { bottom: 0 }]}>
+                    <OfferList
+                        offers={offers}
+                        theme={theme}
+                        isDark={colorScheme === 'dark'}
+                        onAccept={acceptOffer}
+                        onReject={rejectOffer}
+                    />
+                </View>
             )}
         </View>
     );

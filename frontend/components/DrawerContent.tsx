@@ -7,6 +7,7 @@ import {
     Bell,
     Car,
     ChevronRight,
+    HelpCircle,
     History,
     LayoutDashboard,
     LogOut,
@@ -74,7 +75,12 @@ export default function DrawerContent(props: any) {
         {
             icon: Settings,
             label: 'Settings',
-            route: '/edit-profile',
+            route: '/(client)/settings',
+        },
+        {
+            icon: HelpCircle,
+            label: 'Support',
+            route: '/(client)/support',
         },
     ];
 

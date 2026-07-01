@@ -92,7 +92,7 @@ app.use('/api/tracking', require('./routes/tracking'));
 app.use('/api/trip', require('./routes/trip'));
 app.use('/api/places', require('./routes/places'));
 // app.use('/api/upload', require('./routes/upload')); // Logic moved to client (Base64)
-// app.use('/api/trips', require('./routes/trips')); // To be implemented
+app.use('/api/rides', require('./routes/rides'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
@@ -121,6 +121,12 @@ const io = socketModule.init(server);
 
 // Make io available in routes
 app.set('socketio', io);
+
+// Pass IO instance to services
+const tripService = require('./services/tripService');
+const rideService = require('./services/rideService');
+tripService.setIO(io);
+rideService.setIO(io);
 
 // Initialize Pre-Trip Notifications Cron Job
 const scheduleTripNotifications = require('./cron/tripNotifications');

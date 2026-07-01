@@ -138,7 +138,7 @@ class AuthService {
     }
 
     async getUser(userId) {
-        const user = await userRepository.findById(userId).select('-password');
+        const user = await userRepository.findById(userId);
         if (!user) return null;
 
         const savedPlaces = await SavedPlaceRepository.find({ user: userId });

@@ -26,12 +26,19 @@ import {
     User,
     Navigation,
     Crosshair,
+    Home,
+    Briefcase,
+    Dumbbell,
+    GraduationCap,
+    Star
 } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LatLng } from '../../types';
 import { RouteService } from '../../services/RouteService';
+import { usePlacesStore } from '../../store/usePlacesStore';
+import { useNetInfo } from '@react-native-community/netinfo';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -54,6 +61,7 @@ type Props = {
         days: string[];
         timeStart: string;
         price: number;
+        rideType: 'immediate' | 'scheduled';
     }) => Promise<void>;
     isSubmitting?: boolean;
 };
@@ -72,6 +80,7 @@ export default function TripCreationWizard({
     const insets = useSafeAreaInsets();
     const mapRef = useRef<MapView>(null);
     const isDark = colorScheme === 'dark';
+    const netInfo = useNetInfo();
 
     // Step
     const [step, setStep] = useState<Step>('pickup');
@@ -95,7 +104,7 @@ export default function TripCreationWizard({
 
     // Search state
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<{ label: string; latitude: number; longitude: number }[]>([]);
+    const [searchResults, setSearchResults] = useState<{ label: string; latitude: number; longitude: number; isSavedPlace?: boolean; icon?: string }[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
     // Schedule state
@@ -103,6 +112,7 @@ export default function TripCreationWizard({
     const [timeStart, setTimeStart] = useState('08:00');
     const [isTimePickerVisible, setIsTimePickerVisible] = useState(false);
     const [price, setPrice] = useState('15');
+    const [rideType, setRideType] = useState<'immediate' | 'scheduled'>('immediate');
 
     // Animation values
     const sheetTranslateY = useRef(new Animated.Value(0)).current;
@@ -226,27 +236,59 @@ export default function TripCreationWizard({
     // =========================================
 
     const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const { places } = usePlacesStore();
 
     const handleSearch = useCallback((text: string) => {
         setSearchQuery(text);
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
 
-        if (text.trim().length > 2) {
-            searchTimeout.current = setTimeout(async () => {
-                setIsSearching(true);
-                try {
-                    const results = await RouteService.geocode(text);
-                    setSearchResults(results);
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            }, 400);
+        if (text.trim().length > 0) {
+            // Filter saved places locally first
+            const matchedPlaces = places
+                .filter(p => p.label.toLowerCase().includes(text.toLowerCase()) || p.address.toLowerCase().includes(text.toLowerCase()))
+                .map(p => ({ label: `${p.label} - ${p.address}`, latitude: p.latitude, longitude: p.longitude, isSavedPlace: true, icon: p.icon }));
+
+            if (text.trim().length > 2) {
+                searchTimeout.current = setTimeout(async () => {
+                    setIsSearching(true);
+                    try {
+                        const results = await RouteService.geocode(text);
+                        setSearchResults([...matchedPlaces, ...results]);
+                    } catch {
+                        setSearchResults(matchedPlaces);
+                    } finally {
+                        setIsSearching(false);
+                    }
+                }, 400);
+            } else {
+                setSearchResults(matchedPlaces);
+            }
         } else {
-            setSearchResults([]);
+            // Show all saved places when query is empty
+            const savedResults = places.map(p => ({
+                label: `${p.label} - ${p.address}`,
+                latitude: p.latitude,
+                longitude: p.longitude,
+                isSavedPlace: true,
+                icon: p.icon
+            }));
+            setSearchResults(savedResults);
         }
-    }, []);
+    }, [places]);
+
+    // Initialize with saved places when search opens
+    useEffect(() => {
+        if (step === ('destination_search' as any) && searchQuery === '') {
+            const savedResults = places.map(p => ({
+                label: `${p.label} - ${p.address}`,
+                latitude: p.latitude,
+                longitude: p.longitude,
+                isSavedPlace: true,
+                icon: p.icon
+            }));
+            setSearchResults(savedResults);
+        }
+    }, [step, places]);
 
     const handleSelectDestination = useCallback((item: { label: string; latitude: number; longitude: number }) => {
         const point: LatLng = { latitude: item.latitude, longitude: item.longitude };
@@ -304,13 +346,14 @@ export default function TripCreationWizard({
     const handleConfirm = useCallback(async () => {
         if (!pickup || !destination) return;
         await onConfirm({
-            startPoint: { ...pickup, address: pickupAddress },
-            endPoint: { ...destination, address: destAddress },
-            days: selectedDays,
-            timeStart,
-            price: parseFloat(price) || 0,
+            startPoint: pickup,
+            endPoint: destination,
+            days: rideType === 'scheduled' ? selectedDays : [],
+            timeStart: rideType === 'scheduled' ? timeStart : new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+            price: Number(price),
+            rideType
         });
-    }, [pickup, destination, pickupAddress, destAddress, selectedDays, timeStart, price, onConfirm]);
+    }, [pickup, destination, selectedDays, timeStart, price, rideType, onConfirm]);
 
     const toggleDay = useCallback((day: string) => {
         setSelectedDays(prev =>
@@ -597,14 +640,19 @@ export default function TripCreationWizard({
                             activeOpacity={0.7}
                         >
                             <View style={[styles.resultIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
-                                <MapPin size={16} color={theme.primary} />
+                                {item.icon === 'home' ? <Home size={16} color={theme.primary} /> :
+                                 item.icon === 'briefcase' ? <Briefcase size={16} color={theme.primary} /> :
+                                 item.icon === 'gym' ? <Dumbbell size={16} color={theme.primary} /> :
+                                 item.icon === 'graduation-cap' ? <GraduationCap size={16} color={theme.primary} /> :
+                                 item.isSavedPlace ? <Star size={16} color={theme.primary} /> :
+                                 <MapPin size={16} color={theme.primary} />}
                             </View>
                             <View style={styles.resultTextWrap}>
                                 <Text style={[styles.resultTitle, { color: theme.text }]} numberOfLines={1}>
-                                    {item.label.split(',')[0]}
+                                    {item.label.split('-')[0].split(',')[0]}
                                 </Text>
                                 <Text style={[styles.resultSubtitle, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>
-                                    {item.label}
+                                    {item.label.includes('-') ? item.label.split('-')[1].trim() : item.label}
                                 </Text>
                             </View>
                         </TouchableOpacity>
@@ -624,7 +672,7 @@ export default function TripCreationWizard({
     // =========================================
 
     const renderScheduleStep = () => {
-        const canConfirm = selectedDays.length > 0 && !!timeStart && !!price && parseFloat(price) > 0;
+        const canConfirm = !!price && parseFloat(price) > 0 && (rideType === 'immediate' || (selectedDays.length > 0 && !!timeStart));
 
         return (
             <View style={styles.fullScreen}>
@@ -717,46 +765,59 @@ export default function TripCreationWizard({
                                 </View>
                             </View>
 
-                            {/* Days */}
-                            <Text style={[styles.sectionLabel, { color: theme.text }]}>When do you travel?</Text>
-
-                            <TouchableOpacity
-                                style={[styles.weekdaysBtn, { backgroundColor: theme.primary + '12' }]}
-                                onPress={selectWeekdays}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.weekdaysBtnText, { color: theme.primary }]}>Mon – Fri (Weekdays)</Text>
-                            </TouchableOpacity>
-
-                            <View style={styles.daysGrid}>
-                                {DAYS.map(day => {
-                                    const active = selectedDays.includes(day);
-                                    return (
-                                        <TouchableOpacity
-                                            key={day}
-                                            style={[
-                                                styles.dayChip,
-                                                { backgroundColor: active ? theme.primary : inputBg },
-                                            ]}
-                                            onPress={() => toggleDay(day)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={[styles.dayChipText, { color: active ? '#FFF' : theme.text }]}>{day}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                            {/* Ride Type Toggle */}
+                            <View style={[styles.rideTypeToggle, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+                                <TouchableOpacity
+                                    style={[styles.rideTypeBtn, rideType === 'immediate' && [styles.rideTypeBtnActive, { backgroundColor: theme.primary }]]}
+                                    onPress={() => setRideType('immediate')}
+                                    activeOpacity={0.8}
+                                >
+                                    <Navigation size={16} color={rideType === 'immediate' ? '#FFF' : theme.icon} />
+                                    <Text style={[styles.rideTypeText, { color: rideType === 'immediate' ? '#FFF' : theme.icon }]}>Ride Now</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.rideTypeBtn, rideType === 'scheduled' && [styles.rideTypeBtnActive, { backgroundColor: theme.primary }]]}
+                                    onPress={() => setRideType('scheduled')}
+                                    activeOpacity={0.8}
+                                >
+                                    <Clock size={16} color={rideType === 'scheduled' ? '#FFF' : theme.icon} />
+                                    <Text style={[styles.rideTypeText, { color: rideType === 'scheduled' ? '#FFF' : theme.icon }]}>Schedule</Text>
+                                </TouchableOpacity>
                             </View>
 
-                            {/* Time */}
-                            <TouchableOpacity
-                                style={[styles.timeRow, { backgroundColor: inputBg }]}
-                                onPress={() => setIsTimePickerVisible(true)}
-                                activeOpacity={0.8}
-                            >
-                                <Clock size={20} color={theme.primary} />
-                                <Text style={[styles.timeRowText, { color: theme.text }]}>Departure at {timeStart}</Text>
-                                <ChevronRight size={18} color={theme.icon || '#888'} />
-                            </TouchableOpacity>
+                            {rideType === 'scheduled' && (
+                                <>
+                                    <View style={styles.daysHeader}>
+                                        <Clock size={18} color={theme.text} />
+                                        <Text style={[styles.daysTitle, { color: theme.text }]}>Repeats every</Text>
+                                    </View>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll} contentContainerStyle={styles.daysScrollContent}>
+                                        {DAYS.map(day => {
+                                            const isSelected = selectedDays.includes(day);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={day}
+                                                    style={[
+                                                        styles.dayChip,
+                                                        { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: 'transparent' },
+                                                        isSelected && { backgroundColor: theme.primary + '15', borderColor: theme.primary }
+                                                    ]}
+                                                    onPress={() => toggleDay(day)}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[styles.dayChipText, { color: isDark ? '#8E8E93' : '#6B7280' }, isSelected && { color: theme.primary, fontWeight: '600' }]}>{day}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+
+                                    <TouchableOpacity style={[styles.timePickerBtn, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]} onPress={() => setIsTimePickerVisible(true)} activeOpacity={0.7}>
+                                        <Text style={[styles.timeLabel, { color: theme.textSecondary || '#888' }]}>Departure Time</Text>
+                                        <Text style={[styles.timeValue, { color: theme.text }]}>{timeStart}</Text>
+                                        <ChevronRight size={18} color={theme.icon || '#888'} />
+                                    </TouchableOpacity>
+                                </>
+                            )}
 
                             {/* Price */}
                             <Text style={[styles.sectionLabel, { color: theme.text, marginTop: 20 }]}>Your price per trip</Text>
@@ -791,12 +852,12 @@ export default function TripCreationWizard({
                             style={[
                                 styles.finalConfirmBtn,
                                 {
-                                    backgroundColor: canConfirm ? theme.primary : theme.primary + '40',
+                                    backgroundColor: (canConfirm && netInfo.isConnected !== false) ? theme.primary : theme.primary + '40',
                                     marginBottom: Platform.OS === 'ios' ? insets.bottom : 16,
                                 },
                             ]}
                             onPress={handleConfirm}
-                            disabled={!canConfirm || isSubmitting}
+                            disabled={!canConfirm || isSubmitting || netInfo.isConnected === false}
                             activeOpacity={0.85}
                         >
                             {isSubmitting ? (
@@ -1279,6 +1340,66 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         fontWeight: '600',
+    },
+
+    // ── Ride Type Toggle ──
+    rideTypeToggle: {
+        flexDirection: 'row',
+        borderRadius: 16,
+        padding: 4,
+        marginBottom: 20,
+    },
+    rideTypeBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+    rideTypeBtnActive: {
+        elevation: 2,
+    },
+    rideTypeText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+
+    daysHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    daysTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    daysScroll: {
+        marginBottom: 16,
+    },
+    daysScrollContent: {
+        gap: 8,
+    },
+    timePickerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 16,
+        marginBottom: 20,
+    },
+    timeLabel: {
+        flex: 1,
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    timeValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginRight: 8,
     },
 
     // ── Schedule section ──
