@@ -51,7 +51,12 @@ const BODY_LIMIT = env.BODY_LIMIT;
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 
+// Pre-Phase 3 Observability: Correlation ID Context
+const correlationMiddleware = require('./middleware/correlationMiddleware');
+app.use(correlationMiddleware);
+
 app.use((req, res, next) => {
+    // Add correlationId to the standard log if desired, or let the custom logger handle it.
     logger.info(`${req.method} ${req.url}`);
     next();
 });
@@ -107,9 +112,15 @@ app.use('/api/analytics', require('./routes/analytics'));
 // app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
+// V2 Pipeline Endpoints
+app.use('/api/v2/dispatch', require('./routes/dispatchRoutes'));
+
 // Error Handling Middleware
 const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);
+
+// Observability: Health & Readiness
+app.use('/', require('./routes/health'));
 
 // Base route
 app.get('/', (req, res) => {
@@ -128,6 +139,10 @@ const tripService = require('./services/tripService');
 const rideService = require('./services/rideService');
 tripService.setIO(io);
 rideService.setIO(io);
+
+// Initialize V2 Domain Notification Service
+const NotificationService = require('./services/notificationService');
+NotificationService.initialize(io);
 
 // Initialize Pre-Trip Notifications Cron Job
 const scheduleTripNotifications = require('./cron/tripNotifications');
