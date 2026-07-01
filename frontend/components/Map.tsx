@@ -2,8 +2,8 @@ import * as Location from 'expo-location';
 import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Trash2, User } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Easing, Image, Animated as RNAnimated, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
-import { Callout, Marker, Polyline } from 'react-native-maps';
 import MapView from 'react-native-map-clustering';
+import { Callout, Marker, Polyline } from 'react-native-maps';
 import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuthStore } from '../store/useAuthStore';
 import { LatLng, Trip } from '../types';
@@ -357,7 +357,7 @@ const Map = React.memo(({
     // Sync initial points
     React.useEffect(() => {
         if (initialPoints) {
-            const isDifferent = initialPoints.length !== points.length || 
+            const isDifferent = initialPoints.length !== points.length ||
                 initialPoints.some((p, idx) => p.latitude !== points[idx]?.latitude || p.longitude !== points[idx]?.longitude);
             if (isDifferent) {
                 setPoints(initialPoints);
@@ -535,22 +535,22 @@ const Map = React.memo(({
             }
         ]}>
             <MapView
-            ref={mapRef as any}
-            style={[styles.map, style, { height }]}
-            initialRegion={initialRegion}
-            showsUserLocation
-            showsMyLocationButton={false}
-            customMapStyle={mapStyle}
-            showsCompass={false}
-            scrollEnabled={!readOnly && interactive}
-            zoomEnabled={!readOnly && interactive}
-            pitchEnabled={!readOnly && interactive}
-            rotateEnabled={!readOnly && interactive}
-            onPress={handleMapPress}
-            clusterColor={theme.colors.primary}
-            clusterTextColor={theme.colors.background}
-            radius={40}
-        >
+                ref={mapRef as any}
+                style={[styles.map, style, { height }]}
+                initialRegion={initialRegion}
+                showsUserLocation
+                showsMyLocationButton={false}
+                customMapStyle={mapStyle}
+                showsCompass={false}
+                scrollEnabled={!readOnly && interactive}
+                zoomEnabled={!readOnly && interactive}
+                pitchEnabled={!readOnly && interactive}
+                rotateEnabled={!readOnly && interactive}
+                onPress={handleMapPress}
+                clusterColor={theme.colors.primary}
+                clusterTextColor={theme.colors.background}
+                radius={40}
+            >
                 {/* Saved Places — visible in all modes EXCEPT trip */}
                 {mode !== 'trip' && (
                     <SavedPlaceMarkers
@@ -869,5 +869,18 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 5,
         zIndex: 10,
-    }
+    },
+    userLocationMarker: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#007AFF',
+        borderWidth: 2,
+        borderColor: '#ffffff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        // @ts-ignore
+        boxShadow: '0px 2px 6px rgba(0,0,0,0.3)',
+    },
 });

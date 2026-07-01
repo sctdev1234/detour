@@ -173,6 +173,10 @@ export function Footer({ state, descriptors, navigation }: MaterialTopTabBarProp
         return null;
     }
 
+    // if (hideGlobalFooter) {
+    //     return null;
+    // }
+
     const Container = Platform.OS === 'ios' ? BlurView : View;
     const containerStyle = Platform.OS === 'ios'
         ? [styles.container, { backgroundColor: 'transparent' }]

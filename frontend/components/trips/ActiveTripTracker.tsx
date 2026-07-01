@@ -177,7 +177,7 @@ export default function ActiveTripTracker({ trip, theme, colorScheme }: Props) {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 0,
+        bottom: 75,
         left: 0,
         right: 0,
     },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     // Driver card
     driverCardContainer: {
         paddingHorizontal: 16,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingBottom: 10,
     },
     driverCard: {
         borderRadius: 24,
