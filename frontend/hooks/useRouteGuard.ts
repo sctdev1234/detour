@@ -22,8 +22,9 @@ export const useRouteGuard = () => {
         const sharedRoutes = ['change-password', 'edit-profile', 'chat', 'modal', 'finance', 'reclamations', 'active-trip'];
 
         if (!user) {
-            if (!inAuthGroup || (!isLoginScreen && !isSignupScreen)) {
-                router.replace('/(auth)/login');
+            const isWelcomeScreen = segmentsArray.length > 1 && segmentsArray[1] === 'welcome';
+            if (!inAuthGroup || (!isLoginScreen && !isSignupScreen && !isWelcomeScreen)) {
+                router.replace('/(auth)/welcome');
             }
         } else if (!role) {
             if (segmentsArray.length > 1 && segmentsArray[1] !== 'role-selection') {

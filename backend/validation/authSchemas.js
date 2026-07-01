@@ -1,9 +1,9 @@
 const { z } = require('zod');
 
 const signupSchema = z.object({
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    fullName: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Invalid email address').optional(),
+    password: z.string().min(8, 'Password must be at least 8 characters').optional(),
+    fullName: z.string().min(2, 'Name must be at least 2 characters').optional(),
     role: z.enum(['client', 'driver']).optional(),
     photoURL: z.string().optional(),
     phone: z.string().optional(),
@@ -17,7 +17,11 @@ const loginSchema = z.object({
 const updateProfileSchema = z.object({
     fullName: z.string().min(2).optional(),
     photoURL: z.string().optional(),
-    // Add other updateable fields
+    language: z.string().optional(),
+    preferences: z.object({
+        notifications: z.boolean().optional(),
+        privacy: z.boolean().optional()
+    }).optional()
 });
 
 const changePasswordSchema = z.object({

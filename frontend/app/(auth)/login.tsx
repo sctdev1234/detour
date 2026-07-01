@@ -1,4 +1,4 @@
-import { useUIStore } from '@/store/useUIStore';
+
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -11,21 +11,29 @@ import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useLogin } from '../../hooks/api/useAuthQueries';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useUIStore } from '../../store/useUIStore';
 
 export default function LoginScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const { showToast } = useUIStore();
+    const isOffline = useAuthStore(state => state.isOffline);
 
     const { mutateAsync: login, isPending: loading } = useLogin();
-    const { showToast } = useUIStore();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
     const handleLogin = async () => {
         if (!email || !password) {
-            showToast('Please fill in all fields', 'warning');
+            showToast('Please enter both email and password', 'warning');
+            return;
+        }
+
+        if (isOffline) {
+            showToast('You are currently offline', 'error');
             return;
         }
 
@@ -46,6 +54,12 @@ export default function LoginScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}
             >
+                {isOffline && (
+                    <Animated.View entering={FadeInDown} style={[styles.offlineBanner, { backgroundColor: theme.error }]}>
+                        <Text style={styles.offlineText}>No internet connection</Text>
+                    </Animated.View>
+                )}
+
                 <ScrollView
                     contentContainerStyle={styles.contentContainer}
                     showsVerticalScrollIndicator={false}
@@ -101,6 +115,22 @@ export default function LoginScreen() {
                                     loading={loading}
                                     icon={LogIn}
                                 />
+
+                                <View style={styles.dividerContainer}>
+                                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                                    <Text style={[styles.dividerText, { color: theme.icon }]}>OR</Text>
+                                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                                </View>
+
+                                <View style={styles.oauthContainer}>
+                                    <TouchableOpacity style={[styles.oauthButton, { borderColor: theme.border }]} onPress={() => showToast('Google Login coming soon', 'info')}>
+                                        <Text style={[styles.oauthText, { color: theme.text }]}>Google</Text>
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity style={[styles.oauthButton, { borderColor: theme.border }]} onPress={() => showToast('Apple Login coming soon', 'info')}>
+                                        <Text style={[styles.oauthText, { color: theme.text }]}>Apple</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         </GlassCard>
                     </Animated.View>
@@ -239,5 +269,49 @@ const styles = StyleSheet.create({
     quickLoginText: {
         fontSize: 14,
         fontWeight: '700',
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 10,
+    },
+    divider: {
+        flex: 1,
+        height: 1,
+    },
+    dividerText: {
+        marginHorizontal: 10,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    oauthContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 4,
+    },
+    oauthButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    oauthText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    offlineBanner: {
+        paddingTop: Platform.OS === 'ios' ? 40 : 20,
+        paddingBottom: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    offlineText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 14,
     },
 });

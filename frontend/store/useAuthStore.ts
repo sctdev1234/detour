@@ -4,6 +4,14 @@ import { create } from 'zustand';
 import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
 
 import { Role, User } from '../types';
+import NetInfo from '@react-native-community/netinfo';
+
+interface RetryAction {
+    id: string;
+    action: string;
+    payload: any;
+    timestamp: number;
+}
 
 const secureStorage: StateStorage = {
     getItem: async (name: string): Promise<string | null> => {
@@ -25,14 +33,25 @@ interface AuthState {
     token: string | null;
     refreshToken: string | null;
     isLoading: boolean;
+    isOffline: boolean;
+    retryQueue: RetryAction[];
 
     // Actions (Synchronous setters only)
     setSession: (user: User, token: string, refreshToken?: string) => void;
     logout: () => void;
     updateUser: (user: Partial<User>) => void;
     setLoading: (loading: boolean) => void;
+    setOffline: (isOffline: boolean) => void;
+    addToRetryQueue: (action: Omit<RetryAction, 'id' | 'timestamp'>) => void;
+    clearRetryQueue: () => void;
+    handleSessionConflict: () => void;
     checkAuth: () => Promise<void>;
 }
+
+// Start network listener
+NetInfo.addEventListener(state => {
+    useAuthStore.getState().setOffline(!state.isConnected);
+});
 
 export const useAuthStore = create<AuthState>()(
     persist(
@@ -41,6 +60,8 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             refreshToken: null,
             isLoading: true, // Initial load state
+            isOffline: false,
+            retryQueue: [],
 
             setSession: (user, token, refreshToken) => set({
                 user,
@@ -61,6 +82,33 @@ export const useAuthStore = create<AuthState>()(
             })),
 
             setLoading: (isLoading) => set({ isLoading }),
+
+            setOffline: (isOffline) => set({ isOffline }),
+
+            addToRetryQueue: (action) => set((state) => ({
+                retryQueue: [...state.retryQueue, {
+                    ...action,
+                    id: Math.random().toString(36).substring(7),
+                    timestamp: Date.now()
+                }]
+            })),
+
+            clearRetryQueue: () => set({ retryQueue: [] }),
+
+            handleSessionConflict: () => {
+                // If the backend detects another login with the same user, we log them out and notify them
+                set({
+                    user: null,
+                    token: null,
+                    refreshToken: null,
+                    isLoading: false
+                });
+                const { useUIStore } = require('./useUIStore');
+                useUIStore.getState().showToast('Session expired. You were logged in on another device.', 'error');
+                
+                const { router } = require('expo-router');
+                router.replace('/(auth)/login');
+            },
 
             // Async Actions
             checkAuth: async () => {

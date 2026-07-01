@@ -3,16 +3,46 @@ const mongoose = require('mongoose');
 const UserSchema = new mongoose.Schema({
     email: {
         type: String,
-        required: true,
-        unique: true
+        unique: true,
+        sparse: true
     },
     password: {
-        type: String, // Hashed password
-        required: true
+        type: String // Hashed password, optional for OAuth/Guest
+    },
+    authProvider: {
+        type: String,
+        enum: ['email', 'phone', 'google', 'apple', 'guest'],
+        default: 'email'
+    },
+    googleId: { type: String, sparse: true, unique: true },
+    appleId: { type: String, sparse: true, unique: true },
+    guestId: { type: String, sparse: true, unique: true },
+    devices: [{
+        deviceId: String,
+        deviceType: String,
+        pushToken: String,
+        lastActive: Date,
+        isActive: { type: Boolean, default: true }
+    }],
+    profileCompletion: {
+        percentage: { type: Number, default: 0 },
+        missingFields: [String]
+    },
+    language: {
+        type: String,
+        default: 'en'
+    },
+    preferences: {
+        notifications: { type: Boolean, default: true },
+        privacy: { type: Boolean, default: false }
+    },
+    accountStatus: {
+        type: String,
+        enum: ['active', 'deactivated', 'deleted', 'blocked'],
+        default: 'active'
     },
     fullName: {
-        type: String,
-        required: true
+        type: String // Optional initially for phone/guest onboarding
     },
     photoURL: String, // URL
     role: {
@@ -42,6 +72,12 @@ const UserSchema = new mongoose.Schema({
         license: String,
         carRegistration: String,
         facePhoto: String,
+        status: {
+            type: String,
+            enum: ['pending', 'approved', 'rejected', 'partial'],
+            default: 'pending'
+        },
+        rejectionReason: String,
         submittedAt: {
             type: Date,
             default: Date.now
@@ -111,7 +147,7 @@ const UserSchema = new mongoose.Schema({
 });
 
 // Auto-sync location before save
-UserSchema.pre('save', function(next) {
+UserSchema.pre('save', function() {
     if (this.isModified('location.latitude') || this.isModified('location.longitude')) {
         if (this.location && this.location.latitude && this.location.longitude) {
             this.currentLocation = {
@@ -120,7 +156,6 @@ UserSchema.pre('save', function(next) {
             };
         }
     }
-    next();
 });
 
 UserSchema.index({ 'currentLocation': '2dsphere' });

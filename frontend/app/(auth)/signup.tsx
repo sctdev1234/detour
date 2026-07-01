@@ -1,7 +1,7 @@
 import { useUIStore } from '@/store/useUIStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Car, CheckCircle, Lock, Mail, User } from 'lucide-react-native';
+import { Car, CheckCircle, Lock, Mail, User, UserPlus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -10,13 +10,15 @@ import { PremiumButton } from '../../components/PremiumButton';
 import { PremiumInput } from '../../components/PremiumInput';
 import { Colors } from '../../constants/theme';
 import { useRegister } from '../../hooks/api/useAuthQueries';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function SignupScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const isOffline = useAuthStore(state => state.isOffline);
 
-    const { mutateAsync: register, isPending: loading } = useRegister();
+    const { mutateAsync: signup, isPending: loading } = useRegister();
     const { showToast } = useUIStore();
 
     const [name, setName] = useState('');
@@ -36,8 +38,13 @@ export default function SignupScreen() {
             return;
         }
 
+        if (isOffline) {
+            showToast('You are currently offline', 'error');
+            return;
+        }
+
         try {
-            await register({ email, password, fullName: name, role });
+            await signup({ email, password, fullName: name, role });
             // Success - will redirect to role selection via _layout
         } catch (error: any) {
             showToast(error.message || 'Signup Failed', 'error');
@@ -53,6 +60,11 @@ export default function SignupScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.container}
             >
+                {isOffline && (
+                    <Animated.View entering={FadeInDown} style={[styles.offlineBanner, { backgroundColor: theme.error }]}>
+                        <Text style={styles.offlineText}>No internet connection</Text>
+                    </Animated.View>
+                )}
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     <Animated.View
                         entering={FadeInDown.delay(200).duration(1000).springify()}
@@ -140,7 +152,24 @@ export default function SignupScreen() {
                                     title="Create Account"
                                     onPress={handleSignup}
                                     loading={loading}
+                                    icon={UserPlus}
                                 />
+
+                                <View style={styles.dividerContainer}>
+                                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                                    <Text style={[styles.dividerText, { color: theme.icon }]}>OR</Text>
+                                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                                </View>
+
+                                <View style={styles.oauthContainer}>
+                                    <TouchableOpacity style={[styles.oauthButton, { borderColor: theme.border }]} onPress={() => showToast('Google Signup coming soon', 'info')}>
+                                        <Text style={[styles.oauthText, { color: theme.text }]}>Google</Text>
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity style={[styles.oauthButton, { borderColor: theme.border }]} onPress={() => showToast('Apple Signup coming soon', 'info')}>
+                                        <Text style={[styles.oauthText, { color: theme.text }]}>Apple</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         </GlassCard>
                     </Animated.View>
@@ -201,7 +230,6 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         borderWidth: 1,
         elevation: 2,
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.05)',
     },
     roleText: {
         fontSize: 15,
@@ -218,8 +246,51 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 4,
-        marginBottom: 10,
+        marginTop: 12,
         gap: 4,
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 10,
+    },
+    divider: {
+        flex: 1,
+        height: 1,
+    },
+    dividerText: {
+        marginHorizontal: 10,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    oauthContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 4,
+    },
+    oauthButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    oauthText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    offlineBanner: {
+        paddingTop: Platform.OS === 'ios' ? 40 : 20,
+        paddingBottom: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    offlineText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 14,
     },
 });

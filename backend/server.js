@@ -15,7 +15,18 @@ const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 
 app.use(helmet());
-app.use(mongoSanitize()); // Prevent NoSQL injection attacks
+app.use((req, res, next) => {
+    if (req.body) req.body = mongoSanitize.sanitize(req.body);
+    if (req.params) req.params = mongoSanitize.sanitize(req.params);
+    if (req.query) {
+        const sanitizedQuery = mongoSanitize.sanitize({ ...req.query });
+        Object.defineProperty(req, 'query', {
+            get: () => sanitizedQuery,
+            configurable: true
+        });
+    }
+    next();
+}); // Prevent NoSQL injection attacks
 
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

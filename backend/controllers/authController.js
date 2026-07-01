@@ -2,7 +2,7 @@ const authService = require('../services/authService');
 const User = require('../models/User');
 
 class AuthController {
-    async signup(req, res) {
+    async signup(req, res, next) {
         try {
             const { signupSchema } = require('../validation/authSchemas');
             const validatedData = signupSchema.parse(req.body);
@@ -26,7 +26,7 @@ class AuthController {
         }
     }
 
-    async login(req, res) {
+    async login(req, res, next) {
         try {
             const { loginSchema } = require('../validation/authSchemas');
             const validatedData = loginSchema.parse(req.body);
@@ -49,7 +49,7 @@ class AuthController {
         }
     }
 
-    async forgotPassword(req, res) {
+    async forgotPassword(req, res, next) {
         try {
             const { forgotPasswordSchema } = require('../validation/authSchemas');
             const { email } = forgotPasswordSchema.parse(req.body);
@@ -61,7 +61,7 @@ class AuthController {
         }
     }
 
-    async resetPassword(req, res) {
+    async resetPassword(req, res, next) {
         try {
             const { resetPasswordSchema } = require('../validation/authSchemas');
             const { token, newPassword } = resetPasswordSchema.parse(req.body);
@@ -97,7 +97,7 @@ class AuthController {
         }
     }
 
-    async update(req, res) {
+    async update(req, res, next) {
         try {
             const { updateProfileSchema } = require('../validation/authSchemas');
             const validatedData = updateProfileSchema.parse(req.body);
@@ -105,84 +105,120 @@ class AuthController {
             const user = await authService.updateProfile(req.user.id, validatedData);
             res.json(user);
         } catch (err) {
-            console.error(err.message);
-            if (err.name === 'ZodError') {
-                return res.status(400).json({ msg: err.errors[0].message });
-            }
-            if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
-    async verify(req, res) {
+
+    async verify(req, res, next) {
         try {
             const user = await authService.verifyDriver(req.user.id, req.body);
             res.json(user);
         } catch (err) {
-            console.error(err.message);
-            if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
-    async delete(req, res) {
+    async getMe(req, res, next) {
+        try {
+            const user = await authService.getUser(req.user.id);
+            res.json(user);
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async deactivate(req, res, next) {
+        try {
+            await authService.deactivateAccount(req.user.id);
+            res.json({ msg: 'Account deactivated' });
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async delete(req, res, next) {
         try {
             await authService.deleteAccount(req.user.id);
             res.json({ msg: 'User deleted' });
         } catch (err) {
-            console.error(err.message);
-            if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
-    async changePassword(req, res) {
+    async changePassword(req, res, next) {
         try {
             const { oldPassword, newPassword } = req.body;
-
             if (!oldPassword || !newPassword) {
                 return res.status(400).json({ msg: 'Please provide both old and new passwords' });
             }
             await authService.changePassword(req.user.id, { oldPassword, newPassword });
             res.json({ msg: 'Password updated successfully' });
         } catch (err) {
-            console.error(err.message);
-            if (err.message === 'Invalid current password') {
-                return res.status(400).json({ msg: err.message });
-            }
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
-    async addSavedPlace(req, res) {
+    async addSavedPlace(req, res, next) {
         try {
             const places = await authService.addSavedPlace(req.user.id, req.body);
             res.json(places);
         } catch (err) {
-            console.error(err.message);
-            if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
-    async removeSavedPlace(req, res) {
+    async removeSavedPlace(req, res, next) {
         try {
             const places = await authService.removeSavedPlace(req.user.id, req.params.id);
             res.json(places);
         } catch (err) {
-            console.error(err.message);
-            if (err.message === 'User not found') return res.status(404).json({ msg: 'User not found' });
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
-    async getMe(req, res) {
+    async oauthLogin(req, res, next) {
         try {
-            const user = await authService.getUser(req.user.id);
-            res.json(user);
+            const { email, fullName, photoURL, provider, providerId } = req.body;
+            if (!provider || !providerId) {
+                return res.status(400).json({ msg: 'Provider and Provider ID are required' });
+            }
+            const result = await authService.oauthLogin({ email, fullName, photoURL, provider, providerId });
+            res.json(result);
         } catch (err) {
-            console.error(err.message);
-            res.status(500).send('Server Error');
+            next(err);
+        }
+    }
+
+    async guestLogin(req, res, next) {
+        try {
+            const { deviceId } = req.body;
+            if (!deviceId) {
+                return res.status(400).json({ msg: 'Device ID is required for guest access' });
+            }
+            const result = await authService.guestLogin(deviceId);
+            res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async logout(req, res, next) {
+        try {
+            const { deviceId } = req.body;
+            await authService.logout(req.user.id, deviceId);
+            res.json({ msg: 'Logged out successfully' });
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async revokeAll(req, res, next) {
+        try {
+            await authService.revokeAllTokens(req.user.id);
+            res.json({ msg: 'All sessions revoked' });
+        } catch (err) {
+            next(err);
         }
     }
 }

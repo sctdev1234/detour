@@ -91,6 +91,44 @@ export const useRegister = () => {
     });
 };
 
+export const useGuestLogin = () => {
+    const queryClient = useQueryClient();
+    const { setLoading } = useAuthStore();
+
+    return useMutation({
+        mutationFn: async (deviceId: string) => {
+            const { data } = await api.post('/auth/guest', { deviceId });
+            return data;
+        },
+        onSuccess: (data) => {
+            useAuthStore.getState().setSession(data.user, data.token);
+            queryClient.setQueryData(authKeys.user(), data.user);
+        },
+        onError: () => {
+            setLoading(false);
+        }
+    });
+};
+
+export const useOAuthLogin = () => {
+    const queryClient = useQueryClient();
+    const { setLoading } = useAuthStore();
+
+    return useMutation({
+        mutationFn: async (oauthData: any) => {
+            const { data } = await api.post('/auth/oauth', oauthData);
+            return data;
+        },
+        onSuccess: (data) => {
+            useAuthStore.getState().setSession(data.user, data.token);
+            queryClient.setQueryData(authKeys.user(), data.user);
+        },
+        onError: () => {
+            setLoading(false);
+        }
+    });
+};
+
 export const useLogout = () => {
     const queryClient = useQueryClient();
     const { logout } = useAuthStore();

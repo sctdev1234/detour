@@ -1,3 +1,4 @@
+const { AppError } = require('../utils/errors');
 const userRepository = require('../repositories/UserRepository');
 const placeRepository = require('../repositories/PlaceRepository');
 const routeRepository = require('../repositories/RouteRepository');
@@ -11,11 +12,11 @@ class AuthService {
     async signup({ email, password, fullName, role, photoURL, phone }) {
         let user = await userRepository.findByEmail(email);
         if (user) {
-            throw new Error('User already exists');
+            throw new AppError('User already exists', 400);
         }
         if (phone) {
             let userByPhone = await userRepository.findOne({ phone });
-            if (userByPhone) throw new Error('Phone number already in use');
+            if (userByPhone) throw new AppError('Phone number already in use', 400);
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -75,14 +76,14 @@ class AuthService {
 
     async verifyOTP(userId, code) {
         const user = await userRepository.findById(userId);
-        if (!user) throw new Error('User not found');
-        if (user.phoneVerified) throw new Error('Phone already verified');
+        if (!user) throw new AppError('User not found', 404);
+        if (user.phoneVerified) throw new AppError('Phone already verified', 400);
         
         if (!user.otpCode || user.otpCode !== code) {
-            throw new Error('Invalid OTP code');
+            throw new AppError('Invalid OTP code', 400);
         }
         if (user.otpExpiresAt < new Date()) {
-            throw new Error('OTP code expired');
+            throw new AppError('OTP code expired', 400);
         }
 
         user.phoneVerified = true;
@@ -100,8 +101,8 @@ class AuthService {
 
     async resendOTP(userId) {
         const user = await userRepository.findById(userId);
-        if (!user) throw new Error('User not found');
-        if (user.phoneVerified) throw new Error('Phone already verified');
+        if (!user) throw new AppError('User not found', 404);
+        if (user.phoneVerified) throw new AppError('Phone already verified', 400);
         
         await this.sendOTP(user);
         return { msg: 'OTP resent successfully' };
@@ -110,16 +111,16 @@ class AuthService {
     async login({ email, password }) {
         const user = await userRepository.findOne({ email });
         if (!user) {
-            throw new Error('Invalid Credentials');
+            throw new AppError('Invalid Credentials', 401);
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            throw new Error('Invalid Credentials');
+            throw new AppError('Invalid Credentials', 401);
         }
 
         // Fetch saved places
-        const savedPlaces = await placeRepository.find({ user: user.id });
+        const savedPlaces = await placeRepository.SavedPlaceRepository.find({ user: user.id });
         const userObj = user.toObject();
         userObj.savedPlaces = savedPlaces;
         userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
@@ -153,7 +154,7 @@ class AuthService {
     async forgotPassword({ email }) {
         const user = await userRepository.findOne({ email });
         if (!user) {
-            throw new Error('User not found');
+            throw new AppError('User not found', 404);
         }
 
         const crypto = require('crypto');
@@ -185,30 +186,24 @@ class AuthService {
         return true;
     }
 
-    async updateProfile(userId, { fullName, photoURL }) {
-        const updateFields = {};
-        if (fullName) updateFields.fullName = fullName;
-        if (photoURL) updateFields.photoURL = photoURL;
+        async updateProfile(userId, updateData) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new AppError('User not found', 404);
 
-        const user = await userRepository.update(
-            userId,
-            { $set: updateFields },
-            { new: true }
-        ).select('-password');
+        if (updateData.fullName !== undefined) user.fullName = updateData.fullName;
+        if (updateData.photoURL !== undefined) user.photoURL = updateData.photoURL;
+        if (updateData.language !== undefined) user.language = updateData.language;
+        if (updateData.preferences !== undefined) {
+            user.preferences = { ...user.preferences, ...updateData.preferences };
+        }
 
-
-        if (!user) throw new Error('User not found');
-
-        const userObj = user.toObject();
-        userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
-
-        return userObj;
-
+        await user.save();
+        return user.toObject();
     }
 
     async verifyDriver(userId, documents) {
         const user = await userRepository.findById(userId);
-        if (!user) throw new Error('User not found');
+        if (!user) throw new AppError('User not found', 404);
 
         user.documents.push(documents);
         user.verificationStatus = 'pending';
@@ -222,16 +217,26 @@ class AuthService {
 
     }
 
+        async deactivateAccount(userId) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new AppError('User not found', 404);
+        user.accountStatus = 'deactivated';
+        user.refreshToken = null;
+        user.devices = [];
+        await user.save();
+        return true;
+    }
+
     async deleteAccount(userId) {
         const user = await userRepository.hardDelete(userId);
-        if (!user) throw new Error('User not found');
+        if (!user) throw new AppError('User not found', 404);
         return true;
     }
 
     async changePassword(userId, { oldPassword, newPassword }) {
         const user = await userRepository.findById(userId);
         if (!user) {
-            throw new Error('User not found');
+            throw new AppError('User not found', 404);
         }
 
         const isMatch = await bcrypt.compare(oldPassword, user.password);
@@ -250,7 +255,7 @@ class AuthService {
 
     async addSavedPlace(userId, placeData) {
         const user = await userRepository.findById(userId);
-        if (!user) throw new Error('User not found');
+        if (!user) throw new AppError('User not found', 404);
 
         const newPlace = new SavedPlace({
             user: userId,
@@ -273,6 +278,93 @@ class AuthService {
 
     async getSavedPlaces(userId) {
         return placeRepository.find({ user: userId });
+    }
+
+    
+    async oauthLogin({ email, fullName, photoURL, provider, providerId }) {
+        let user;
+        if (provider === 'google') {
+            user = await userRepository.findOne({ googleId: providerId });
+        } else if (provider === 'apple') {
+            user = await userRepository.findOne({ appleId: providerId });
+        }
+
+        if (!user && email) {
+            user = await userRepository.findByEmail(email);
+        }
+
+        if (!user) {
+            // Register new user
+            const payload = {
+                email,
+                fullName,
+                photoURL,
+                authProvider: provider,
+                role: 'client',
+                verificationStatus: 'verified' // Assume OAuth emails are verified
+            };
+            if (provider === 'google') payload.googleId = providerId;
+            if (provider === 'apple') payload.appleId = providerId;
+            user = await userRepository.create(payload);
+        } else {
+            // Link existing user
+            if (provider === 'google' && !user.googleId) {
+                user.googleId = providerId;
+            } else if (provider === 'apple' && !user.appleId) {
+                user.appleId = providerId;
+            }
+            await user.save();
+        }
+
+        const { accessToken, refreshToken } = this.generateTokens(user);
+        user.refreshToken = refreshToken;
+        await user.save();
+
+        const userObj = user.toObject();
+        userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
+
+        return { token: accessToken, refreshToken, user: userObj };
+    }
+
+    async guestLogin(deviceId) {
+        let user = await userRepository.findOne({ guestId: deviceId });
+        
+        if (!user) {
+            user = await userRepository.create({
+                authProvider: 'guest',
+                guestId: deviceId,
+                role: 'client',
+                verificationStatus: 'unverified'
+            });
+        }
+
+        const { accessToken, refreshToken } = this.generateTokens(user);
+        user.refreshToken = refreshToken;
+        await user.save();
+
+        return { token: accessToken, refreshToken, user: user.toObject() };
+    }
+
+    async logout(userId, deviceId) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new AppError('User not found', 404);
+        
+        // Remove device or clear refresh token
+        user.refreshToken = null;
+        if (deviceId) {
+            user.devices = user.devices.filter(d => d.deviceId !== deviceId);
+        }
+        await user.save();
+        return true;
+    }
+
+    async revokeAllTokens(userId) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new AppError('User not found', 404);
+        user.refreshToken = null;
+        user.devices = [];
+        await user.save();
+        return true;
     }
 
     generateTokens(user) {
@@ -318,22 +410,20 @@ class AuthService {
             throw new Error('Invalid or expired refresh token');
         }
     }
+
     async calculateOnboardingStatus(user) {
         const status = {
             completed: false,
             steps: []
         };
 
-        // Normalize role to ensure matching works mainly for legacy data
         const role = user.role ? user.role.toLowerCase() : 'client';
 
         if (role === 'client') {
-            // Check if user has at least one route created (Required to unlock app)
-            const routeCount = await Route.countDocuments({ userId: user._id, role: 'client' });
+            const routeCount = await routeRepository.count({ userId: user._id, role: 'client' });
             const hasRoute = routeCount > 0;
 
-            // Check if user has saved places (Optional)
-            const placesCount = await SavedPlace.countDocuments({ user: user._id });
+            const placesCount = await placeRepository.SavedPlaceRepository.count({ user: user._id });
             const hasPlaces = placesCount >= 2;
 
             status.steps.push({
@@ -352,25 +442,19 @@ class AuthService {
 
             status.completed = hasRoute;
         } else if (role === 'driver') {
-            // 1. Upload Documents (Required)
             const docs = Array.isArray(user.documents) && user.documents.length > 0 ? user.documents[user.documents.length - 1] : null;
             const hasDocs = !!docs;
 
-            // 2. Add Car (Required)
-            // Check if user owns a car OR is assigned to one
-            // Use lean queries for performance and safety
-            const carOwned = await Car.findOne({ ownerId: user._id });
-            const carAssigned = await Car.findOne({
+            const carOwned = await carRepository.findOne({ ownerId: user._id });
+            const carAssigned = await carRepository.findOne({
                 'assignment.driverEmail': user.email,
                 'assignment.status': 'active'
             });
             const hasCar = !!(carOwned || carAssigned);
 
-            // 3. Admin Approval (Required)
             const isApproved = user.verificationStatus === 'verified';
 
-            // 4. Create Route (Optional)
-            const routeCount = await Route.countDocuments({ userId: user._id, role: 'driver' });
+            const routeCount = await routeRepository.count({ userId: user._id, role: 'driver' });
             const hasRoute = routeCount > 0;
 
             status.steps.push({
@@ -401,14 +485,11 @@ class AuthService {
                 required: false
             });
 
-            // Only unlock if ALL required steps are done.
-            // For legacy users without onboardingStatus, this calculation determines access.
             status.completed = hasDocs && hasCar && isApproved;
         }
 
         return status;
     }
 }
-
 
 module.exports = new AuthService();
