@@ -6,19 +6,19 @@ const TripSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    routeId: {
+    driverTripInstanceId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Route', // The Driver's Route
-        required: true
+        ref: 'TripInstance', // The Driver's scheduled instance (optional for Immediate dispatch)
     },
     clients: [{
         userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
         },
-        routeId: {
+        tripInstanceId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Route' // The Client's Route
+            ref: 'TripInstance', // The Client's specific Ride Instance
+            required: true
         },
         price: {
             type: Number,
@@ -61,9 +61,14 @@ const TripSchema = new mongoose.Schema({
         ref: 'User'
     },
     stateTimestamps: {
+        arrivedAt: Date,
         startedAt: Date,
         completedAt: Date,
         cancelledAt: Date
+    },
+    commissionAmount: {
+        type: Number,
+        default: 0
     },
     createdAt: {
         type: Date,

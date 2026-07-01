@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const OfferSchema = new mongoose.Schema({
-    rideRequestId: {
+    tripInstanceId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'RideRequest',
+        ref: 'TripInstance',
         required: true
     },
     driverId: {

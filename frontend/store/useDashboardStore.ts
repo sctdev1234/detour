@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 
-export type DriverStatus = 'online' | 'offline';
+export type DriverStatus = 'ONLINE' | 'OFFLINE' | 'BUSY' | 'BREAK';
 export type BottomSheetState = 'collapsed' | 'expanded' | 'hidden';
 
 interface DashboardState {
     // Driver Status
     driverStatus: DriverStatus;
+    isUpdatingStatus: boolean;
     setDriverStatus: (status: DriverStatus) => void;
-    toggleDriverStatus: () => void;
+    toggleDriverStatus: () => Promise<void>;
 
     // Bottom Sheet
     bottomSheetState: BottomSheetState;
@@ -28,13 +29,27 @@ interface DashboardState {
     setSelectedMapRouteId: (id: string | null) => void;
 }
 
-export const useDashboardStore = create<DashboardState>((set) => ({
+import driverService from '../services/driverService';
+
+export const useDashboardStore = create<DashboardState>((set, get) => ({
     // Driver Status
-    driverStatus: 'offline',
+    driverStatus: 'OFFLINE',
+    isUpdatingStatus: false,
     setDriverStatus: (status) => set({ driverStatus: status }),
-    toggleDriverStatus: () => set((state) => ({
-        driverStatus: state.driverStatus === 'online' ? 'offline' : 'online'
-    })),
+    toggleDriverStatus: async () => {
+        const state = get();
+        if (state.isUpdatingStatus) return;
+        set({ isUpdatingStatus: true });
+        try {
+            const nextStatus = state.driverStatus === 'ONLINE' ? 'OFFLINE' : 'ONLINE';
+            const status = await driverService.updateStatus(nextStatus);
+            set({ driverStatus: status as DriverStatus });
+        } catch (error) {
+            console.error('Failed to update driver status', error);
+        } finally {
+            set({ isUpdatingStatus: false });
+        }
+    },
 
     // Bottom Sheet
     bottomSheetState: 'collapsed',

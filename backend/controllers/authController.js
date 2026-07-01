@@ -109,6 +109,22 @@ class AuthController {
         }
     }
 
+    async updateStatus(req, res, next) {
+        try {
+            const { status } = req.body;
+            if (!status || !['ONLINE', 'OFFLINE', 'BUSY', 'BREAK'].includes(status)) {
+                return res.status(400).json({ msg: 'Invalid status provided' });
+            }
+            const user = await authService.updateDriverStatus(req.user.id, status);
+            
+            // Broadcast driver status update via socket if possible
+            req.app.get('io').emit('driver:status_changed', { driverId: user._id, status });
+            
+            res.json({ msg: 'Driver status updated successfully', status: user.driverStatus });
+        } catch (err) {
+            next(err);
+        }
+    }
 
     async verify(req, res, next) {
         try {

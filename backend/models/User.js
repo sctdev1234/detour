@@ -55,6 +55,11 @@ const UserSchema = new mongoose.Schema({
         enum: ['pending', 'verified', 'rejected', 'unverified'],
         default: 'unverified'
     },
+    driverStatus: {
+        type: String,
+        enum: ['OFFLINE', 'ONLINE', 'BUSY', 'BREAK'],
+        default: 'OFFLINE'
+    },
     phone: {
         type: String,
         unique: true,
@@ -135,6 +140,11 @@ const UserSchema = new mongoose.Schema({
         tripsDone: { type: Number, default: 0 }, // For both client (rides) and driver (drives)
         clientsServed: { type: Number, default: 0 }, // For driver
         hoursOnline: { type: Number, default: 0 },
+        offersAccepted: { type: Number, default: 0 },
+        offersIgnored: { type: Number, default: 0 },
+        offersRejected: { type: Number, default: 0 },
+        tripsCompleted: { type: Number, default: 0 },
+        tripsCancelled: { type: Number, default: 0 }
     },
     isDeleted: {
         type: Boolean,

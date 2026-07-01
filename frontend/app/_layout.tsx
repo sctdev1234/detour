@@ -132,11 +132,29 @@ function AppContent() {
         uiStore.showToast(`Your account has been ${data.status}!`, 'info');
       });
 
+      socket?.on('driver:status_changed', (data: { driverId: string, status: string }) => {
+        if (data.driverId === user.id || data.driverId === user._id) {
+            const { useDashboardStore } = require('../store/useDashboardStore');
+            useDashboardStore.getState().setDriverStatus(data.status as any);
+        }
+      });
+
+      socket?.on('wallet:updated', (data: { earning?: number, balance?: number }) => {
+          const { useFinanceStore } = require('../store/useFinanceStore');
+          useFinanceStore.getState().fetchWallet();
+          if (data.earning) {
+              const { useUIStore } = require('../store/useUIStore');
+              useUIStore.getState().showToast(`You earned ${data.earning} MAD!`, 'success');
+          }
+      });
+
       return () => {
         socket?.off('notification', handleNotification);
         socket?.off('trip_updated');
         socket?.off('trip_notification');
         socket?.off('verification_status_changed');
+        socket?.off('driver:status_changed');
+        socket?.off('wallet:updated');
       };
     }
   }, [user]);

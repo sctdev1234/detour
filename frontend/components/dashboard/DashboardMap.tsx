@@ -121,6 +121,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
                         key={`place-${place._id || index}`}
                         coordinate={{ latitude: place.latitude, longitude: place.longitude }}
                         anchor={{ x: 0.5, y: 0.5 }}
+                        tracksViewChanges={false}
                     >
                         <View style={[externalStyles.savedPlaceMarker, { backgroundColor: getSavedPlaceColor(place.icon) }]}>
                             <View style={externalStyles.savedPlaceInner}>
@@ -147,6 +148,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
                         <Marker
                             coordinate={route.startPoint}
                             anchor={{ x: 0.5, y: 0.5 }}
+                            tracksViewChanges={false}
                         >
                             <View style={[externalStyles.routeEndpoint, {
                                 backgroundColor: route.isActive ? '#10b981' : 'rgba(79, 70, 229, 0.6)',
@@ -161,6 +163,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
                         <Marker
                             coordinate={route.endPoint}
                             anchor={{ x: 0.5, y: 0.5 }}
+                            tracksViewChanges={false}
                         >
                             <View style={[externalStyles.routeEndpoint, {
                                 backgroundColor: route.isActive ? '#ef4444' : 'rgba(239, 68, 68, 0.5)',
@@ -189,7 +192,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
                     <>
                         {/* Start (Car) */}
                         {startPoint && startPoint.latitude !== 0 && (
-                            <Marker coordinate={startPoint} anchor={{ x: 0.5, y: 0.5 }}>
+                            <Marker coordinate={startPoint} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
                                 <View style={[styles.markerIcon, { backgroundColor: '#10b981' }]}>
                                     <Car size={18} color="#fff" />
                                 </View>
@@ -198,10 +201,16 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
 
                         {/* Middle Points (Numbers) */}
                         {sortedPoints.map((point: any, idx: number) => {
+                            if (!point || point.latitude === 0 || point.longitude === 0) return null;
                             const color = point.type === 'pickup' ? theme.primary : theme.secondary;
                             return (
-                                <Marker key={`wp-${idx}`} coordinate={{ latitude: point.lat, longitude: point.lon }} anchor={{ x: 0.5, y: 0.5 }}>
-                                    <View style={[styles.markerIcon, { backgroundColor: color, width: 24, height: 24, borderRadius: 12 }]}>
+                                <Marker
+                                    key={`trip-point-${idx}`}
+                                    coordinate={{ latitude: point.lat || point.latitude, longitude: point.lon || point.longitude }}
+                                    anchor={{ x: 0.5, y: 0.5 }}
+                                    tracksViewChanges={false}
+                                >
+                                    <View style={[styles.markerIcon, { backgroundColor: color || theme.primary, width: 24, height: 24, borderRadius: 12 }]}>
                                         <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{idx + 1}</Text>
                                     </View>
                                 </Marker>
@@ -210,7 +219,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
 
                         {/* End (Pin) */}
                         {endPoint && endPoint.latitude !== 0 && (
-                            <Marker coordinate={endPoint} anchor={{ x: 0.5, y: 0.5 }}>
+                            <Marker coordinate={endPoint} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
                                 <View style={[styles.markerIcon, { backgroundColor: '#ef4444' }]}>
                                     <MapPin size={18} color="#fff" />
                                 </View>

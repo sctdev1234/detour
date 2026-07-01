@@ -101,6 +101,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/pages', require('./routes/pages'));
 app.use('/api/wallet', require('./routes/wallet'));
+app.use('/api/analytics', require('./routes/analytics'));
 
 // Serve Static Folder if needed (currently cloud-only)
 // app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -131,6 +132,10 @@ rideService.setIO(io);
 // Initialize Pre-Trip Notifications Cron Job
 const scheduleTripNotifications = require('./cron/tripNotifications');
 scheduleTripNotifications(io);
+
+// Initialize Dispatch Engine Cron Jobs (Recurring, Scheduled dispatch)
+const CronServices = require('./services/cronJobs');
+CronServices.init();
 
 server.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server started on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);

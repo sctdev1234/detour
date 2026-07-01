@@ -1,7 +1,10 @@
-const RideRequest = require('../models/RideRequest');
+const TripTemplate = require('../models/TripTemplate');
+const TripInstance = require('../models/TripInstance');
 const Offer = require('../models/Offer');
 const Trip = require('../models/Trip');
 const AppError = require('../utils/AppError');
+const DispatchService = require('./dispatchService');
+const { transitionState } = require('../utils/stateMachine');
 
 class RideService {
     constructor() {
@@ -13,10 +16,12 @@ class RideService {
     }
 
     async createRideRequest(passengerId, data) {
-        const { startPoint, endPoint, pricingMetrics, rideType, scheduledDeparture } = data;
+        const { startPoint, endPoint, pricingMetrics, recurrenceType, scheduledDeparture, schedule } = data;
         
-        const request = new RideRequest({
-            passengerId,
+        // 1. Create the unified TripTemplate
+        const template = new TripTemplate({
+            userId: passengerId,
+            role: 'passenger',
             startPoint: {
                 type: 'Point',
                 coordinates: [startPoint.longitude, startPoint.latitude],
@@ -27,58 +32,82 @@ class RideService {
                 coordinates: [endPoint.longitude, endPoint.latitude],
                 address: endPoint.address
             },
-            pricingMetrics,
-            rideType: rideType || 'IMMEDIATE',
-            scheduledDeparture
+            pricing: {
+                amount: pricingMetrics.basePrice,
+                type: 'fix'
+            },
+            recurrenceType: recurrenceType || 'IMMEDIATE',
+            scheduledDeparture,
+            schedule,
+            distanceKm: pricingMetrics.estimatedDistance / 1000,
+            estimatedDurationMin: pricingMetrics.estimatedDuration / 60
         });
 
-        await request.save();
-        return request;
-    }
+        await template.save();
 
-    async startSearching(requestId, passengerId) {
-        const request = await RideRequest.findOne({ _id: requestId, passengerId });
-        if (!request) throw new AppError('Ride request not found', 404);
-        if (request.status !== 'DRAFT') throw new AppError('Request is already active', 400);
-
-        request.status = 'SEARCHING';
-        request.expiresAt = new Date(Date.now() + 180000); // 3 minutes timeout for Immediate
-        await request.save();
-
-        if (this.io) {
-            // Broadcast to drivers in area (simulated broadcast event)
-            this.io.emit('ride:created', request);
+        // 2. If IMMEDIATE, spawn a TripInstance immediately
+        if (template.recurrenceType === 'IMMEDIATE') {
+            const instance = new TripInstance({
+                templateId: template._id,
+                userId: passengerId,
+                role: 'passenger',
+                departureTime: new Date(),
+                startPoint: template.startPoint,
+                endPoint: template.endPoint,
+                distanceKm: template.distanceKm,
+                estimatedDurationMin: template.estimatedDurationMin,
+                pricing: pricingMetrics,
+                status: 'DRAFT'
+            });
+            await instance.save();
+            return { template, instance };
         }
 
-        // Setup radius expansion timer
-        setTimeout(async () => {
-            const reqCheck = await RideRequest.findById(requestId);
-            if (reqCheck && reqCheck.status === 'SEARCHING') {
-                reqCheck.searchRadius = 5000; // Expand to 5km
-                await reqCheck.save();
-                if (this.io) this.io.emit('ride:updated', { id: requestId, searchRadius: 5000 });
-            }
-        }, 60000); // 60s
-
-        return request;
+        return { template };
     }
 
-    async cancelRideRequest(requestId, passengerId) {
-        const request = await RideRequest.findOne({ _id: requestId, passengerId });
-        if (!request) throw new AppError('Ride request not found', 404);
+    async startSearching(instanceId, passengerId) {
+        const instance = await TripInstance.findOne({ _id: instanceId, userId: passengerId });
+        if (!instance) throw new AppError('Trip instance not found', 404);
         
-        request.status = 'CANCELLED';
-        await request.save();
+        // State machine validation via utility
+        await transitionState(instance, 'SEARCHING');
 
         if (this.io) {
-            this.io.emit('ride:cancelled', { id: requestId });
+            // Find eligible drivers via Dispatch Engine and ping them
+            const drivers = await DispatchService.findEligibleDrivers(instance);
+            drivers.forEach(driver => {
+                this.io.to(`user:${driver._id.toString()}`).emit('ride:created', instance);
+            });
+        }
+
+        // Setup radius expansion timer (60s)
+        setTimeout(async () => {
+            const expanded = await DispatchService.expandSearchRadius(instanceId);
+            if (expanded && this.io) {
+                this.io.emit('ride:updated', { id: instanceId, searchRadius: expanded.searchRadius });
+            }
+        }, 60000);
+
+        return instance;
+    }
+
+    async cancelRideRequest(instanceId, passengerId) {
+        const instance = await TripInstance.findOne({ _id: instanceId, userId: passengerId });
+        if (!instance) throw new AppError('Trip instance not found', 404);
+        
+        await transitionState(instance, 'CANCELLED_BY_PASSENGER');
+
+        if (this.io) {
+            this.io.emit('ride:cancelled', { id: instanceId });
         }
     }
 
     async searchNearbyRequests(lat, lng) {
-        // Find searching requests within max radius of 5km
-        return await RideRequest.find({
-            status: { $in: ['SEARCHING', 'OFFERS_INCOMING'] },
+        // Find searching instances within 5km for drivers
+        return await TripInstance.find({
+            status: { $in: ['SEARCHING', 'OFFERS_OPEN'] },
+            role: 'passenger',
             startPoint: {
                 $nearSphere: {
                     $geometry: {
@@ -88,26 +117,24 @@ class RideService {
                     $maxDistance: 5000 
                 }
             }
-        }).populate('passengerId', 'firstName lastName profilePicture rating');
+        }).populate('userId', 'firstName lastName profilePicture rating');
     }
 
     async submitOffer(driverId, data) {
-        const { rideRequestId, proposedPrice, etaMinutes } = data;
+        const { tripInstanceId, proposedPrice, etaMinutes } = data;
         
-        const request = await RideRequest.findById(rideRequestId);
-        if (!request) throw new AppError('Ride request not found', 404);
-        if (!['SEARCHING', 'OFFERS_INCOMING'].includes(request.status)) {
-            throw new AppError('Request is no longer accepting offers', 400);
+        const instance = await TripInstance.findById(tripInstanceId);
+        if (!instance) throw new AppError('Trip instance not found', 404);
+        if (!['SEARCHING', 'OFFERS_OPEN'].includes(instance.status)) {
+            throw new AppError('Instance is no longer accepting offers', 400);
         }
 
-        // Update request status
-        if (request.status === 'SEARCHING') {
-            request.status = 'OFFERS_INCOMING';
-            await request.save();
+        if (instance.status === 'SEARCHING') {
+            await transitionState(instance, 'OFFERS_OPEN');
         }
 
         const offer = new Offer({
-            rideRequestId,
+            tripInstanceId,
             driverId,
             proposedPrice,
             etaMinutes
@@ -116,61 +143,29 @@ class RideService {
         await offer.save();
 
         if (this.io) {
-            this.io.to(request.passengerId.toString()).emit('offer:received', offer);
+            this.io.to(`user:${instance.userId.toString()}`).emit('offer:received', offer);
         }
 
         return offer;
     }
 
     async acceptOffer(offerId, passengerId) {
-        const offer = await Offer.findById(offerId).populate('rideRequestId');
-        if (!offer) throw new AppError('Offer not found', 404);
-        
-        const request = offer.rideRequestId;
-        if (request.passengerId.toString() !== passengerId.toString()) {
-            throw new AppError('Unauthorized', 403);
-        }
-        if (offer.status !== 'PENDING') throw new AppError('Offer is no longer available', 400);
-
-        // Update states
-        offer.status = 'ACCEPTED';
-        await offer.save();
-
-        request.status = 'ACCEPTED';
-        await request.save();
-
-        // Expire all other offers
-        await Offer.updateMany(
-            { rideRequestId: request._id, _id: { $ne: offerId } },
-            { $set: { status: 'REJECTED' } }
-        );
-
-        // Create official Trip
-        const trip = new Trip({
-            driverId: offer.driverId,
-            routeId: request._id, // Will adapt this field mapping later
-            clients: [{
-                userId: passengerId,
-                price: offer.proposedPrice,
-                status: 'WAITING'
-            }],
-            status: 'DRIVER_GOING'
-        });
-
-        await trip.save();
+        // DispatchService handles race conditions using atomic update
+        const { tripInstance, newTrip } = await DispatchService.acceptOffer(offerId, passengerId);
 
         if (this.io) {
-            this.io.to(offer.driverId.toString()).emit('offer:accepted', { tripId: trip._id });
+            const offer = await Offer.findById(offerId);
+            this.io.to(`user:${offer.driverId.toString()}`).emit('offer:accepted', { tripId: newTrip._id });
         }
 
-        return trip;
+        return newTrip;
     }
 
     async rejectOffer(offerId, passengerId) {
-        const offer = await Offer.findById(offerId).populate('rideRequestId');
+        const offer = await Offer.findById(offerId).populate('tripInstanceId');
         if (!offer) throw new AppError('Offer not found', 404);
         
-        if (offer.rideRequestId.passengerId.toString() !== passengerId.toString()) {
+        if (offer.tripInstanceId.userId.toString() !== passengerId.toString()) {
             throw new AppError('Unauthorized', 403);
         }
 
@@ -178,7 +173,7 @@ class RideService {
         await offer.save();
 
         if (this.io) {
-            this.io.to(offer.driverId.toString()).emit('offer:rejected', { offerId });
+            this.io.to(`user:${offer.driverId.toString()}`).emit('offer:rejected', { offerId });
         }
     }
 }

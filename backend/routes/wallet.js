@@ -52,4 +52,38 @@ router.post('/topup', auth, async (req, res) => {
     }
 });
 
+const walletService = require('../services/walletService');
+
+// @route   GET api/wallet/driver
+// @desc    Get driver wallet balance and history
+router.get('/driver', auth, async (req, res, next) => {
+    try {
+        if (req.user.role !== 'driver') {
+            return res.status(403).json({ msg: 'Access denied' });
+        }
+        const wallet = await walletService.getDriverWallet(req.user.id);
+        res.json(wallet);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// @route   POST api/wallet/driver/withdraw
+// @desc    Withdraw funds
+router.post('/driver/withdraw', auth, async (req, res, next) => {
+    try {
+        if (req.user.role !== 'driver') {
+            return res.status(403).json({ msg: 'Access denied' });
+        }
+        const { amount } = req.body;
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ msg: 'Invalid amount' });
+        }
+        const tx = await walletService.withdraw(req.user.id, amount);
+        res.json({ msg: 'Withdrawal requested successfully', transaction: tx });
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;

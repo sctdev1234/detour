@@ -420,6 +420,8 @@ class TripService {
                 trip.status = 'CANCELLED';
                 trip.cancellationReason = reason || 'Cancelled by driver';
                 trip.cancelledBy = userId;
+                trip.stateTimestamps = trip.stateTimestamps || {};
+                trip.stateTimestamps.cancelledAt = new Date();
 
                 // Mark all clients as cancelled
                 trip.clients.forEach(c => {
@@ -427,9 +429,12 @@ class TripService {
                 });
 
                 await trip.save({ session });
+                
+                const analyticsService = require('./analyticsService');
+                await analyticsService.logTripCompletion(userId, true); // true for cancelled
 
                 if (this.io) {
-                    this.io.to(`trip:${tripId}`).emit('trip_cancelled', { tripId, reason, cancelledBy: 'Driver' });
+                    this.io.to(`trip:${tripId}`).emit('trip_cancelled', { tripId, reason, cancelledBy: 'Driver', cancelledAt: trip.stateTimestamps.cancelledAt });
                 }
             } else if (isClient) {
                 // Client cancelling their seat
@@ -476,6 +481,11 @@ class TripService {
         trip.stateTimestamps = trip.stateTimestamps || {};
         trip.stateTimestamps.startedAt = new Date();
         await trip.save();
+
+        if (this.io) {
+            this.io.to(`trip:${tripId}`).emit('trip_started', { tripId, startedAt: trip.stateTimestamps.startedAt });
+            this.io.to(`user:${userId}`).emit('trip_updated', { tripId });
+        }
 
         return trip;
     }
@@ -846,11 +856,32 @@ class TripService {
         }
 
         trip.status = 'COMPLETED';
+        trip.stateTimestamps = trip.stateTimestamps || {};
+        trip.stateTimestamps.completedAt = new Date();
+        
+        // Calculate total earnings for this trip
+        let totalTripPrice = 0;
+        trip.clients.forEach(c => {
+            if (c.status === 'COMPLETED' || c.status === 'DROPPED_OFF') {
+                totalTripPrice += c.price || 0;
+            }
+        });
+
+        // Process wallet earnings
+        const walletService = require('./walletService');
+        const { driverEarning, commissionAmount } = await walletService.processTripEarnings(trip._id, trip.driverId, totalTripPrice);
+        trip.commissionAmount = commissionAmount;
+        
         await trip.save();
 
+        // Log Analytics
+        const analyticsService = require('./analyticsService');
+        await analyticsService.logTripCompletion(trip.driverId, false);
+
         if (this.io) {
-            this.io.to(`trip:${tripId}`).emit('trip_completed', { tripId });
+            this.io.to(`trip:${tripId}`).emit('trip_completed', { tripId, completedAt: trip.stateTimestamps.completedAt });
             this.io.to(`user:${driverId}`).emit('trip_updated', { tripId });
+            this.io.to(`user:${driverId}`).emit('wallet:updated', { earning: driverEarning });
             trip.clients.forEach(c => {
                 this.io.to(`user:${c.userId}`).emit('trip_updated', { tripId });
             });

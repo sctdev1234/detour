@@ -217,6 +217,31 @@ class AuthService {
 
     }
 
+    async updateDriverStatus(userId, status) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new AppError('User not found', 404);
+        if (user.role !== 'driver') throw new AppError('User is not a driver', 403);
+        if (status === 'ONLINE' && user.verificationStatus !== 'verified') {
+            throw new AppError('Driver is not verified yet', 403);
+        }
+
+        // Strictly block status change if active trip
+        if (['OFFLINE', 'BREAK'].includes(status)) {
+            const Trip = require('../models/Trip');
+            const activeTrip = await Trip.findOne({ 
+                driverId: userId, 
+                status: { $nin: ['RIDE_COMPLETED', 'CANCELLED', 'ARCHIVED'] } 
+            });
+            if (activeTrip) {
+                throw new AppError('Cannot go offline or break during an active trip', 400);
+            }
+        }
+
+        user.driverStatus = status;
+        await user.save();
+        return user.toObject();
+    }
+
         async deactivateAccount(userId) {
         const user = await userRepository.findById(userId);
         if (!user) throw new AppError('User not found', 404);

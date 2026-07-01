@@ -14,7 +14,8 @@ import {
     Settings,
     Star,
     User,
-    Wallet
+    Wallet,
+    BarChart
 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -45,6 +46,7 @@ export default function DrawerContent(props: any) {
     const theme = Colors[colorScheme];
     const { user, logout } = useAuthStore();
     const { driverStatus } = useDashboardStore();
+    const isOnline = driverStatus === 'ONLINE';
 
     const menuItems: MenuItem[] = [
         {
@@ -65,7 +67,12 @@ export default function DrawerContent(props: any) {
         {
             icon: Wallet,
             label: 'Wallet',
-            route: '/finance/wallet',
+            route: user?.role === 'driver' ? '/(driver)/wallet' : '/finance/wallet',
+        },
+        {
+            icon: BarChart,
+            label: 'Performance',
+            route: user?.role === 'driver' ? '/(driver)/stats' : undefined,
         },
         {
             icon: History,
@@ -101,8 +108,6 @@ export default function DrawerContent(props: any) {
         logout();
         router.replace('/(auth)/login');
     };
-
-    const isOnline = driverStatus === 'online';
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -208,7 +213,7 @@ export default function DrawerContent(props: any) {
                 contentContainerStyle={styles.menuContainer}
                 showsVerticalScrollIndicator={false}
             >
-                {menuItems.map((item, index) => {
+                {menuItems.filter(item => item.route || item.onPress).map((item, index) => {
                     const Icon = item.icon;
                     const isActive = false; // Could check current route
 

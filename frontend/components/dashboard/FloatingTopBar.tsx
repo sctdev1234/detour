@@ -32,7 +32,7 @@ export default function FloatingTopBar({ onMenuPress }: FloatingTopBarProps) {
     const { data: requests } = useDriverRequests();
     const pendingCount = requests?.filter((r: any) => r.status === 'pending').length || 0;
 
-    const isOnline = driverStatus === 'online';
+    const isOnline = driverStatus === 'ONLINE';
 
     // Greeting based on time
     const hour = new Date().getHours();

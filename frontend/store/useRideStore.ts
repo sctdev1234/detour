@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { LatLng } from 'react-native-maps';
 
-export type RideStatus = 'DRAFT' | 'SEARCHING' | 'OFFERS_INCOMING' | 'OFFER_SELECTED' | 'ACCEPTED' | 'FAILED' | 'CANCELLED';
+export type RideStatus = 'DRAFT' | 'SEARCHING' | 'OFFERS_OPEN' | 'OFFER_ACCEPTED' | 'DRIVER_ASSIGNED' | 'CANCELLED_BY_PASSENGER' | 'CANCELLED_BY_SYSTEM';
 
 export interface Offer {
     _id: string;
@@ -18,7 +18,7 @@ export interface Offer {
 
 interface RideState {
     status: RideStatus;
-    rideRequestId: string | null;
+    tripInstanceId: string | null;
     pickup: LatLng | null;
     destination: LatLng | null;
     pickupAddress: string;
@@ -41,7 +41,7 @@ interface RideState {
 
 export const useRideStore = create<RideState>((set) => ({
     status: 'DRAFT',
-    rideRequestId: null,
+    tripInstanceId: null,
     pickup: null,
     destination: null,
     pickupAddress: '',
@@ -54,7 +54,7 @@ export const useRideStore = create<RideState>((set) => ({
     setStatus: (status) => set({ status }),
     
     setRideRequestDetails: (id, pickup, destination, pickupAddress, destinationAddress, basePrice) => set({
-        rideRequestId: id,
+        tripInstanceId: id,
         pickup,
         destination,
         pickupAddress,
@@ -69,7 +69,7 @@ export const useRideStore = create<RideState>((set) => ({
         if (exists) return state;
         return { 
             offers: [...state.offers, offer],
-            status: state.status === 'SEARCHING' ? 'OFFERS_INCOMING' : state.status
+            status: state.status === 'SEARCHING' ? 'OFFERS_OPEN' : state.status
         };
     }),
 
@@ -77,7 +77,7 @@ export const useRideStore = create<RideState>((set) => ({
         const newOffers = state.offers.filter(o => o._id !== offerId);
         return {
             offers: newOffers,
-            status: newOffers.length === 0 && state.status === 'OFFERS_INCOMING' ? 'SEARCHING' : state.status,
+            status: newOffers.length === 0 && state.status === 'OFFERS_OPEN' ? 'SEARCHING' : state.status,
             selectedOfferId: state.selectedOfferId === offerId ? null : state.selectedOfferId
         };
     }),
@@ -90,7 +90,7 @@ export const useRideStore = create<RideState>((set) => ({
 
     reset: () => set({
         status: 'DRAFT',
-        rideRequestId: null,
+        tripInstanceId: null,
         pickup: null,
         destination: null,
         pickupAddress: '',

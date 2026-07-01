@@ -64,6 +64,8 @@ export default function DriverLayout() {
             <Drawer.Screen name="assign-car" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
             <Drawer.Screen name="verification" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
             <Drawer.Screen name="find-clients" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
+            <Drawer.Screen name="wallet" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
+            <Drawer.Screen name="stats" options={{ swipeEnabled: false, drawerItemStyle: { display: 'none' } }} />
         </Drawer>
     );
 }

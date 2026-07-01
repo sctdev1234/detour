@@ -22,9 +22,9 @@ export default function QuickActions({ onCenterMap, onCreateRoute }: QuickAction
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { driverStatus, toggleDriverStatus } = useDashboardStore();
+    const { driverStatus, toggleDriverStatus, isUpdatingStatus } = useDashboardStore();
 
-    const isOnline = driverStatus === 'online';
+    const isOnline = driverStatus === 'ONLINE';
 
     const actions = [
         {
@@ -37,7 +37,7 @@ export default function QuickActions({ onCenterMap, onCreateRoute }: QuickAction
         {
             id: 'toggle-status',
             icon: Power,
-            label: isOnline ? 'Online' : 'Offline',
+            label: isUpdatingStatus ? 'Updating' : isOnline ? 'Online' : 'Offline',
             onPress: toggleDriverStatus,
             gradient: isOnline
                 ? ['#34D399', '#10B981'] as [string, string]

@@ -85,6 +85,7 @@ const SavedPlaceMarkers = React.memo(({ savedPlaces, theme, interactive, onPlace
                         coordinate={{ latitude: place.latitude, longitude: place.longitude }}
                         anchor={{ x: 0.5, y: 0.5 }}
                         onPress={interactive ? (e) => onPlacePress?.(e.nativeEvent.coordinate) : undefined}
+                        tracksViewChanges={false}
                     >
                         <View style={[styles.savedPlaceMarker, { backgroundColor: theme.primary, borderColor: '#FFD700' }]}>
                             <IconComponent size={16} color="#fff" />
@@ -205,6 +206,7 @@ const TripMarkers = React.memo(({ trip, theme, selectedRouteId, onRouteSelect, c
                     key={`waypoint-${i}`}
                     coordinate={{ latitude: wp.lat, longitude: wp.lon }}
                     onPress={handleDriverRoutePress}
+                    tracksViewChanges={false}
                 >
                     <View style={[styles.waypointMarker, { backgroundColor: theme.primary }]}>
                         <Text style={styles.waypointText}>{i + 1}</Text>
@@ -276,21 +278,21 @@ const RouteMarkers = React.memo(({ startPoint, endPoint, waypoints }: any) => {
     return (
         <>
             {startPoint && (
-                <Marker coordinate={startPoint}>
+                <Marker coordinate={startPoint} tracksViewChanges={false}>
                     <View style={[styles.markerBadge, { backgroundColor: '#10b981' }]}>
                         <Navigation size={14} color="#fff" />
                     </View>
                 </Marker>
             )}
             {endPoint && (
-                <Marker coordinate={endPoint}>
+                <Marker coordinate={endPoint} tracksViewChanges={false}>
                     <View style={[styles.markerBadge, { backgroundColor: '#ef4444' }]}>
                         <MapPin size={14} color="#fff" />
                     </View>
                 </Marker>
             )}
             {waypoints.map((wp: any, index: number) => (
-                <Marker key={index} coordinate={wp}>
+                <Marker key={index} coordinate={wp} tracksViewChanges={false}>
                     <View style={[styles.waypointMarker, { backgroundColor: '#f59e0b' }]}>
                         <Text style={styles.waypointText}>{index + 1}</Text>
                     </View>

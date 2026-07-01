@@ -17,7 +17,7 @@ const TransactionSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        enum: ['payment', 'commission', 'refund', 'deposit', 'withdrawal', 'pickup_payment'],
+        enum: ['payment', 'commission', 'refund', 'deposit', 'withdrawal', 'pickup_payment', 'earning'],
         required: true
     },
     relatedUserId: {
