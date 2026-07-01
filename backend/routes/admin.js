@@ -16,7 +16,7 @@ const { auth, authAdmin } = require('../middleware/auth');
 // @route   GET api/admin/pending-drivers
 // @desc    Get all drivers with pending verification
 // @access  Admin
-router.get('/pending-drivers', auth, authAdmin, async (req, res) => {
+router.get('/pending-drivers', auth, authAdmin, async (req, res, next) => {
     try {
         const drivers = await User.find({
             role: 'driver',
@@ -32,7 +32,7 @@ router.get('/pending-drivers', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/verify-driver/:id
 // @desc    Approve a driver
 // @access  Admin
-router.post('/verify-driver/:id', auth, authAdmin, async (req, res) => {
+router.post('/verify-driver/:id', auth, authAdmin, async (req, res, next) => {
     try {
         let user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -49,7 +49,7 @@ router.post('/verify-driver/:id', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/reject-driver/:id
 // @desc    Reject a driver
 // @access  Admin
-router.post('/reject-driver/:id', auth, authAdmin, async (req, res) => {
+router.post('/reject-driver/:id', auth, authAdmin, async (req, res, next) => {
     try {
         let user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -66,7 +66,7 @@ router.post('/reject-driver/:id', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/users
 // @desc    Get all users (with optional role and verification filter, and pagination)
 // @access  Admin
-router.get('/users', auth, authAdmin, async (req, res) => {
+router.get('/users', auth, authAdmin, async (req, res, next) => {
     try {
         const { role, verificationStatus, page = 1, limit = 10 } = req.query;
         let query = {};
@@ -109,7 +109,7 @@ router.get('/users', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/users
 // @desc    Create a new user (Admin/Support/Client/Driver)
 // @access  Admin
-router.post('/users', auth, authAdmin, async (req, res) => {
+router.post('/users', auth, authAdmin, async (req, res, next) => {
     const { fullName, email, password, role, phone } = req.body;
     try {
         let user = await User.findOne({ email });
@@ -144,7 +144,7 @@ router.post('/users', auth, authAdmin, async (req, res) => {
 // @route   PUT api/admin/users/:id
 // @desc    Update a user
 // @access  Admin
-router.put('/users/:id', auth, authAdmin, async (req, res) => {
+router.put('/users/:id', auth, authAdmin, async (req, res, next) => {
     const { fullName, email, role, phone } = req.body;
     try {
         let user = await User.findById(req.params.id);
@@ -169,7 +169,7 @@ router.put('/users/:id', auth, authAdmin, async (req, res) => {
 // @route   DELETE api/admin/users/:id
 // @desc    Delete a user
 // @access  Admin
-router.delete('/users/:id', auth, authAdmin, async (req, res) => {
+router.delete('/users/:id', auth, authAdmin, async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -186,7 +186,7 @@ router.delete('/users/:id', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/ban-user/:id
 // @desc    Ban a user
 // @access  Admin
-router.post('/ban-user/:id', auth, authAdmin, async (req, res) => {
+router.post('/ban-user/:id', auth, authAdmin, async (req, res, next) => {
     try {
         let user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -203,7 +203,7 @@ router.post('/ban-user/:id', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/unban-user/:id
 // @desc    Unban a user
 // @access  Admin
-router.post('/unban-user/:id', auth, authAdmin, async (req, res) => {
+router.post('/unban-user/:id', auth, authAdmin, async (req, res, next) => {
     try {
         let user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -233,9 +233,9 @@ router.post('/unban-user/:id', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/places
 // @desc    Get all places
 // @access  Admin
-router.get('/places', auth, authAdmin, async (req, res) => {
+router.get('/places', auth, authAdmin, async (req, res, next) => {
     try {
-        /* /* console.log('GET /places params:', req.query); */ */
+        // console.log('GET /places params:', req.query);
         const { page = 1, limit = 10 } = req.query;
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
@@ -245,7 +245,7 @@ router.get('/places', auth, authAdmin, async (req, res) => {
         }
 
         const skip = (pageNum - 1) * limitNum;
-        /* /* console.log(`Pagination: page=${pageNum}, limit=${limitNum}, skip=${skip}`); */ */
+        // console.log(`Pagination: page=${pageNum}, limit=${limitNum}, skip=${skip}`); 
 
         const totalPlaces = await Place.countDocuments();
         const places = await Place.find()
@@ -270,7 +270,7 @@ router.get('/places', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/places
 // @desc    Add a new place
 // @access  Admin
-router.post('/places', auth, authAdmin, async (req, res) => {
+router.post('/places', auth, authAdmin, async (req, res, next) => {
     try {
         const { name, address, category, latitude, longitude } = req.body;
 
@@ -300,7 +300,7 @@ router.post('/places', auth, authAdmin, async (req, res) => {
 // @route   DELETE api/admin/places/:id
 // @desc    Delete a place
 // @access  Admin
-router.delete('/places/:id', auth, authAdmin, async (req, res) => {
+router.delete('/places/:id', auth, authAdmin, async (req, res, next) => {
     try {
         const place = await Place.findById(req.params.id);
         if (!place) return res.status(404).json({ msg: 'Place not found' });
@@ -316,7 +316,7 @@ router.delete('/places/:id', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/subscriptions
 // @desc    Get all subscriptions
 // @access  Admin
-router.get('/subscriptions', auth, authAdmin, async (req, res) => {
+router.get('/subscriptions', auth, authAdmin, async (req, res, next) => {
     try {
         const subs = await Subscription.find().sort({ createdAt: -1 });
         res.json(subs);
@@ -329,7 +329,7 @@ router.get('/subscriptions', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/subscriptions
 // @desc    Create a subscription plan
 // @access  Admin
-router.post('/subscriptions', auth, authAdmin, async (req, res) => {
+router.post('/subscriptions', auth, authAdmin, async (req, res, next) => {
     try {
         const newSub = new Subscription(req.body);
         const savedSub = await newSub.save();
@@ -343,7 +343,7 @@ router.post('/subscriptions', auth, authAdmin, async (req, res) => {
 // @route   DELETE api/admin/subscriptions/:id
 // @desc    Delete a subscription plan
 // @access  Admin
-router.delete('/subscriptions/:id', auth, authAdmin, async (req, res) => {
+router.delete('/subscriptions/:id', auth, authAdmin, async (req, res, next) => {
     try {
         const sub = await Subscription.findById(req.params.id);
         if (!sub) return res.status(404).json({ msg: 'Plan not found' });
@@ -359,7 +359,7 @@ router.delete('/subscriptions/:id', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/coupons
 // @desc    Get all coupons
 // @access  Admin
-router.get('/coupons', auth, authAdmin, async (req, res) => {
+router.get('/coupons', auth, authAdmin, async (req, res, next) => {
     try {
         const coupons = await Coupon.find().sort({ createdAt: -1 });
         res.json(coupons);
@@ -372,7 +372,7 @@ router.get('/coupons', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/coupons
 // @desc    Create a coupon
 // @access  Admin
-router.post('/coupons', auth, authAdmin, async (req, res) => {
+router.post('/coupons', auth, authAdmin, async (req, res, next) => {
     try {
         const newCoupon = new Coupon(req.body);
         const savedCoupon = await newCoupon.save();
@@ -386,7 +386,7 @@ router.post('/coupons', auth, authAdmin, async (req, res) => {
 // @route   DELETE api/admin/coupons/:id
 // @desc    Delete a coupon
 // @access  Admin
-router.delete('/coupons/:id', auth, authAdmin, async (req, res) => {
+router.delete('/coupons/:id', auth, authAdmin, async (req, res, next) => {
     try {
         const coupon = await Coupon.findById(req.params.id);
         if (!coupon) return res.status(404).json({ msg: 'Coupon not found' });
@@ -402,7 +402,7 @@ router.delete('/coupons/:id', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/withdrawals
 // @desc    Get all withdrawals
 // @access  Admin
-router.get('/withdrawals', auth, authAdmin, async (req, res) => {
+router.get('/withdrawals', auth, authAdmin, async (req, res, next) => {
     try {
         const withdrawals = await Withdrawal.find()
             .populate('user', 'fullName email')
@@ -417,7 +417,7 @@ router.get('/withdrawals', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/withdrawals/:id/:action
 // @desc    Approve or Reject withdrawal
 // @access  Admin
-router.post('/withdrawals/:id/:action', auth, authAdmin, async (req, res) => {
+router.post('/withdrawals/:id/:action', auth, authAdmin, async (req, res, next) => {
     try {
         const { id, action } = req.params;
         const withdrawal = await Withdrawal.findById(id);
@@ -453,7 +453,7 @@ router.post('/withdrawals/:id/:action', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/stats
 // @desc    Get dashboard statistics
 // @access  Admin
-router.get('/stats', auth, authAdmin, async (req, res) => {
+router.get('/stats', auth, authAdmin, async (req, res, next) => {
     try {
         const totalUsers = await User.countDocuments({ role: 'client' });
         const totalDrivers = await User.countDocuments({ role: 'driver' });
@@ -470,7 +470,7 @@ router.get('/stats', auth, authAdmin, async (req, res) => {
             activeTrips = await Trip.countDocuments({ status: 'active' });
             completedTrips = await Trip.countDocuments({ status: 'completed' });
         } catch (e) {
-            /* /* console.log('Trip model not found or error', e); */ */
+            // console.log('Trip model not found or error', e); 
         }
 
         res.json({
@@ -490,7 +490,7 @@ router.get('/stats', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/trips
 // @desc    Get all trips
 // @access  Admin
-router.get('/trips', auth, authAdmin, async (req, res) => {
+router.get('/trips', auth, authAdmin, async (req, res, next) => {
     try {
         const { page = 1, limit = 10, status } = req.query;
         const pageNum = parseInt(page);
@@ -528,7 +528,7 @@ router.get('/trips', auth, authAdmin, async (req, res) => {
 // @route   GET api/admin/cars
 // @desc    Get all cars (with pagination and filtering)
 // @access  Admin
-router.get('/cars', auth, authAdmin, async (req, res) => {
+router.get('/cars', auth, authAdmin, async (req, res, next) => {
     try {
         const { page = 1, limit = 10, verificationStatus, search } = req.query;
         let query = {};
@@ -570,7 +570,7 @@ router.get('/cars', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/cars/:id/verify
 // @desc    Approve/verify a car
 // @access  Admin
-router.post('/cars/:id/verify', auth, authAdmin, async (req, res) => {
+router.post('/cars/:id/verify', auth, authAdmin, async (req, res, next) => {
     try {
         let car = await Car.findById(req.params.id);
         if (!car) return res.status(404).json({ msg: 'Car not found' });
@@ -587,7 +587,7 @@ router.post('/cars/:id/verify', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/cars/:id/reject
 // @desc    Reject a car verification
 // @access  Admin
-router.post('/cars/:id/reject', auth, authAdmin, async (req, res) => {
+router.post('/cars/:id/reject', auth, authAdmin, async (req, res, next) => {
     try {
         let car = await Car.findById(req.params.id);
         if (!car) return res.status(404).json({ msg: 'Car not found' });
@@ -604,7 +604,7 @@ router.post('/cars/:id/reject', auth, authAdmin, async (req, res) => {
 // @route   DELETE api/admin/cars/:id
 // @desc    Delete a car
 // @access  Admin
-router.delete('/cars/:id', auth, authAdmin, async (req, res) => {
+router.delete('/cars/:id', auth, authAdmin, async (req, res, next) => {
     try {
         const car = await Car.findById(req.params.id);
         if (!car) return res.status(404).json({ msg: 'Car not found' });
@@ -620,7 +620,7 @@ router.delete('/cars/:id', auth, authAdmin, async (req, res) => {
 // @route   POST api/admin/cars
 // @desc    Create a new car by admin
 // @access  Admin
-router.post('/cars', auth, authAdmin, async (req, res) => {
+router.post('/cars', auth, authAdmin, async (req, res, next) => {
     try {
         const { marque, model, year, color, places, ownerId, images } = req.body;
 
@@ -651,7 +651,7 @@ router.post('/cars', auth, authAdmin, async (req, res) => {
 // @route   PUT api/admin/cars/:id
 // @desc    Update a car by admin
 // @access  Admin
-router.put('/cars/:id', auth, authAdmin, async (req, res) => {
+router.put('/cars/:id', auth, authAdmin, async (req, res, next) => {
     try {
         const { marque, model, year, color, places, ownerId, images } = req.body;
 
@@ -683,7 +683,7 @@ router.put('/cars/:id', auth, authAdmin, async (req, res) => {
 // @route   GET /api/admin/reviews/users
 // @desc    Get all users who have given or received reviews, with counts
 // @access  Admin
-router.get('/reviews/users', auth, authAdmin, async (req, res) => {
+router.get('/reviews/users', auth, authAdmin, async (req, res, next) => {
     try {
         const { page = 1, limit = 10, search = '', role = 'all' } = req.query;
         const pageNum = parseInt(page);
@@ -772,7 +772,7 @@ router.get('/reviews/users', auth, authAdmin, async (req, res) => {
 // @route   GET /api/admin/reviews/user/:userId
 // @desc    Get detailed reviews given and received by a specific user
 // @access  Admin
-router.get('/reviews/user/:userId', auth, authAdmin, async (req, res) => {
+router.get('/reviews/user/:userId', auth, authAdmin, async (req, res, next) => {
     try {
         const { userId } = req.params;
 
@@ -809,7 +809,7 @@ router.get('/reviews/user/:userId', auth, authAdmin, async (req, res) => {
 // @route   DELETE /api/admin/reviews/:id
 // @desc    Delete a review
 // @access  Admin
-router.delete('/reviews/:id', auth, authAdmin, async (req, res) => {
+router.delete('/reviews/:id', auth, authAdmin, async (req, res, next) => {
     try {
         const review = await Review.findById(req.params.id);
         if (!review) {
@@ -834,7 +834,7 @@ router.delete('/reviews/:id', auth, authAdmin, async (req, res) => {
 // @route   GET /api/admin/chats
 // @desc    Get all chats
 // @access  Admin
-router.get('/chats', auth, authAdmin, async (req, res) => {
+router.get('/chats', auth, authAdmin, async (req, res, next) => {
     try {
         const { page = 1, limit = 20, search = '' } = req.query;
         const pageNum = parseInt(page);

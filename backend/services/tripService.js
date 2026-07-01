@@ -1,7 +1,7 @@
 const Route = require('../models/Route');
-const Trip = require('../models/Trip');
+const tripRepository = require('../repositories/TripRepository');
 const JoinRequest = require('../models/JoinRequest');
-const User = require('../models/User');
+const userRepository = require('../repositories/UserRepository');
 const transactionService = require('./transactionService');
 
 class TripService {
@@ -79,7 +79,7 @@ class TripService {
 
         // If Driver created a route, automatically create an empty Trip
         if (role === 'driver') {
-            const newTrip = new Trip({
+            const newTrip = new tripRepository.model({
                 driverId: userId,
                 routeId: savedRoute._id,
                 status: 'PENDING'
@@ -106,7 +106,7 @@ class TripService {
 
         // Also clean up associated Trips if it was a driver route
         if (route.role === 'driver') {
-            await Trip.deleteMany({ routeId: route._id });
+            await tripRepository.model.deleteMany({ routeId: route._id });
         }
 
         return { msg: 'Route removed' };
@@ -126,13 +126,13 @@ class TripService {
         const matches = await Route.find({
             role: targetRole,
             status: { $in: ['pending', 'active'] }, // Include active for clients waiting? Pending is default.
-            'startPoint.coordinates': {
+            'startPoint': {
                 $near: {
                     $geometry: { type: "Point", coordinates: pickup },
                     $maxDistance: maxDistance
                 }
             },
-            'endPoint.coordinates': {
+            'endPoint': {
                 $geoWithin: {
                     $centerSphere: [destination, maxDistance / 6378100]
                 }
@@ -144,7 +144,7 @@ class TripService {
         if (role === 'driver') {
             // Check existing requests for these clients (related to this driver's trip)
             // A Driver Route corresponds to a Trip.
-            const trip = await Trip.findOne({ routeId: originId, status: { $ne: 'completed' } });
+            const trip = await tripRepository.findOne({ routeId: originId, status: { $ne: 'completed' } });
 
             // If no trip yet (shouldn't happen if created on route creation), or just checking matches
             // We want to see if we already sent a request to this client route
@@ -168,7 +168,7 @@ class TripService {
         // Logic for Clients searching Drivers (Legacy / Fallback if needed)
         // Link with their active Trips
         const routeIds = matches.map(m => m._id);
-        const trips = await Trip.find({
+        const trips = await tripRepository.find({
             routeId: { $in: routeIds },
             status: { $ne: 'completed' }
         });
@@ -195,10 +195,10 @@ class TripService {
     }
 
     async sendJoinRequest(senderId, { clientRouteId, tripId, proposedPrice }) {
-        const sender = await User.findById(senderId);
+        const sender = await userRepository.findById(senderId);
         if (!sender) throw new Error('User not found');
 
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         let clientId, initiatedBy;
@@ -279,7 +279,7 @@ class TripService {
 
         if (status === 'accepted') {
             // Update the Trip with the new client
-            await Trip.findByIdAndUpdate(trip._id, {
+            await tripRepository.update(trip._id, {
                 $push: {
                     clients: {
                         userId: joinRequest.clientId,
@@ -311,7 +311,7 @@ class TripService {
                 newTripStatus = 'CONFIRMED';
             }
             if (trip.status !== 'STARTED' && trip.status !== 'IN_PROGRESS' && trip.status !== 'COMPLETED') {
-                await Trip.findByIdAndUpdate(trip._id, { status: newTripStatus });
+                await tripRepository.update(trip._id, { status: newTripStatus });
             }
         }
 
@@ -319,7 +319,7 @@ class TripService {
     }
 
     async getTrips(userId) {
-        return await Trip.find({
+        return await tripRepository.find({
             $or: [
                 { driverId: userId },
                 { 'clients.userId': userId }
@@ -332,7 +332,7 @@ class TripService {
     }
 
     async getDriverRequests(userId) {
-        const trips = await Trip.find({ driverId: userId });
+        const trips = await tripRepository.find({ driverId: userId });
         const tripIds = trips.map(t => t._id);
 
         return await JoinRequest.find({ tripId: { $in: tripIds }, status: 'pending' })
@@ -364,7 +364,7 @@ class TripService {
     }
 
     async driverConfirmReady(userId, tripId) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
         if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
 
@@ -382,22 +382,19 @@ class TripService {
     }
 
     async clientConfirmReady(userId, tripId) {
-        const trip = await Trip.findById(tripId);
-        if (!trip) throw new Error('Trip not found');
+        const trip = await tripRepository.model.findOneAndUpdate(
+            { 
+                _id: tripId, 
+                status: { $in: ['STARTING_SOON', 'CONFIRMED', 'PARTIAL'] },
+                clients: { $elemMatch: { userId: userId, status: 'WAITING' } }
+            },
+            {
+                $set: { 'clients.$.status': 'READY' }
+            },
+            { new: true }
+        );
 
-        const client = trip.clients.find(c => c.userId.toString() === userId);
-        if (!client) throw new Error('Client not found in trip');
-
-        if (trip.status !== 'STARTING_SOON' && trip.status !== 'CONFIRMED' && trip.status !== 'PARTIAL') {
-            throw new Error(`Trip is not in a valid state to confirm readiness: ${trip.status}`);
-        }
-
-        if (client.status !== 'WAITING') {
-            throw new Error(`Cannot confirm readiness. You are currently: ${client.status}`);
-        }
-
-        client.status = 'READY';
-        await trip.save();
+        if (!trip) throw new Error('Trip not found or invalid state transition');
 
         if (this.io) {
             this.io.to(`trip:${tripId}`).emit('trip_updated', { tripId });
@@ -407,50 +404,62 @@ class TripService {
     }
 
     async cancelTrip(userId, { tripId, reason }) {
-        const trip = await Trip.findById(tripId);
-        if (!trip) throw new Error('Trip not found');
+        const session = await tripRepository.model.startSession();
+        session.startTransaction();
 
-        const isDriver = trip.driverId.toString() === userId;
-        const isClient = trip.clients.some(c => c.userId.toString() === userId);
+        try {
+            const trip = await tripRepository.findById(tripId).session(session);
+            if (!trip) throw new Error('Trip not found');
 
-        if (!isDriver && !isClient) throw new Error('Not authorized to cancel this trip');
+            const isDriver = trip.driverId.toString() === userId;
+            const isClient = trip.clients.some(c => c.userId.toString() === userId);
 
-        if (isDriver) {
-            trip.status = 'CANCELLED';
-            trip.cancellationReason = reason || 'Cancelled by driver';
-            trip.cancelledBy = userId;
+            if (!isDriver && !isClient) throw new Error('Not authorized to cancel this trip');
 
-            // Mark all clients as cancelled
-            trip.clients.forEach(c => {
-                c.status = 'CANCELLED';
-            });
+            if (isDriver) {
+                trip.status = 'CANCELLED';
+                trip.cancellationReason = reason || 'Cancelled by driver';
+                trip.cancelledBy = userId;
 
-            await trip.save();
+                // Mark all clients as cancelled
+                trip.clients.forEach(c => {
+                    c.status = 'CANCELLED';
+                });
 
-            if (this.io) {
-                this.io.to(`trip:${tripId}`).emit('trip_cancelled', { tripId, reason, cancelledBy: 'Driver' });
+                await trip.save({ session });
+
+                if (this.io) {
+                    this.io.to(`trip:${tripId}`).emit('trip_cancelled', { tripId, reason, cancelledBy: 'Driver' });
+                }
+            } else if (isClient) {
+                // Client cancelling their seat
+                const clientIndex = trip.clients.findIndex(c => c.userId.toString() === userId);
+                if (clientIndex === -1) throw new Error('Client not found');
+
+                trip.clients[clientIndex].status = 'CANCELLED';
+
+                // Refund logic could go here if payment was authorized/hold
+
+                await trip.save({ session });
+
+                if (this.io) {
+                    this.io.to(`user:${trip.driverId}`).emit('client_cancelled', { tripId, clientId: userId, reason });
+                }
             }
-        } else if (isClient) {
-            // Client cancelling their seat
-            const clientIndex = trip.clients.findIndex(c => c.userId.toString() === userId);
-            if (clientIndex === -1) throw new Error('Client not found');
 
-            trip.clients[clientIndex].status = 'CANCELLED';
+            await session.commitTransaction();
+            session.endSession();
 
-            // Refund logic could go here if payment was authorized/hold
-
-            await trip.save();
-
-            if (this.io) {
-                this.io.to(`user:${trip.driverId}`).emit('client_cancelled', { tripId, clientId: userId, reason });
-            }
+            return trip;
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
         }
-
-        return trip;
     }
 
     async startTrip(userId, tripId) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
@@ -472,7 +481,7 @@ class TripService {
     }
 
     async completeTrip(userId, tripId) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== userId) throw new Error('Not authorized');
@@ -490,7 +499,7 @@ class TripService {
     }
 
     async removeClient(userId, { tripId, clientId }) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         // Verify driver ownership
@@ -526,56 +535,89 @@ class TripService {
     }
 
     async confirmPickup(driverId, { tripId, clientId, driverLocation }) {
-        const trip = await Trip.findById(tripId).populate('clients.routeId').populate('routeId');
-        if (!trip) throw new Error('Trip not found');
-
-        if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
-
-        if (trip.status !== 'ARRIVED_PICKUP' && trip.status !== 'IN_PROGRESS' && trip.status !== 'STARTED') {
-            throw new Error(`Invalid Transition: Cannot confirm pickup from state ${trip.status}`);
-        }
-
-        const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
-        if (clientIndex === -1) throw new Error('Client not found in trip');
-
-        const clientEntry = trip.clients[clientIndex];
-
-        if (clientEntry.status !== 'PICKUP_INCOMING' && clientEntry.status !== 'READY' && clientEntry.status !== 'WAITING') {
-            throw new Error(`Invalid Client Transition: Cannot confirm pickup for client in state ${clientEntry.status}`);
-        }
-
-        if (driverLocation && clientEntry.routeId && clientEntry.routeId.startPoint) {
-            const pickupCoords = clientEntry.routeId.startPoint.coordinates; // [lng, lat]
-            const distance = this.calculateDistance(driverLocation.lat, driverLocation.lng, pickupCoords[1], pickupCoords[0]);
-            if (distance > 200) { // 200 meters radius
-                throw new Error(`Location validation failed: You are ${Math.round(distance)}m away from pickup`);
-            }
-        }
-
-        clientEntry.status = 'IN_CAR';
-        trip.status = 'IN_PROGRESS';
-
-        let price = clientEntry.price;
-        if (!price) {
-            const driverRoute = await Route.findById(trip.routeId);
-            price = driverRoute.price.amount;
-        }
+        const session = await tripRepository.model.startSession();
+        session.startTransaction();
 
         try {
-            const transactionResult = await transactionService.processTripPayment(trip._id, clientId, driverId, price);
-            clientEntry.paymentStatus = 'paid';
-        } catch (paymentError) {
-            console.error('Payment failed:', paymentError);
-            clientEntry.paymentStatus = 'failed';
-            throw new Error(`Payment failed: ${paymentError.message}`);
-        }
+            const trip = await tripRepository.findById(tripId).populate('clients.routeId').populate('routeId').session(session);
+            if (!trip) throw new Error('Trip not found');
 
-        await trip.save();
-        return trip;
+            if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
+
+            if (trip.status !== 'ARRIVED_PICKUP' && trip.status !== 'IN_PROGRESS' && trip.status !== 'STARTED') {
+                throw new Error(`Invalid Transition: Cannot confirm pickup from state ${trip.status}`);
+            }
+
+            const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
+            if (clientIndex === -1) throw new Error('Client not found in trip');
+
+            const clientEntry = trip.clients[clientIndex];
+
+            if (clientEntry.status !== 'PICKUP_INCOMING' && clientEntry.status !== 'READY' && clientEntry.status !== 'WAITING') {
+                throw new Error(`Invalid Client Transition: Cannot confirm pickup for client in state ${clientEntry.status}`);
+            }
+
+            if (driverLocation && clientEntry.routeId && clientEntry.routeId.startPoint) {
+                const pickupCoords = clientEntry.routeId.startPoint.coordinates; // [lng, lat]
+                const distance = this.calculateDistance(driverLocation.lat, driverLocation.lng, pickupCoords[1], pickupCoords[0]);
+                if (distance > 200) { // 200 meters radius
+                    throw new Error(`Location validation failed: You are ${Math.round(distance)}m away from pickup`);
+                }
+            }
+
+            let price = clientEntry.price;
+            if (!price) {
+                const driverRoute = await Route.findById(trip.routeId).session(session);
+                price = driverRoute.price.amount;
+            }
+
+            try {
+                // Pass the session to ensure atomicity
+                await transactionService.processTripPayment(trip._id, clientId, driverId, price, session);
+                
+                // Atomic update to avoid race conditions when picking up multiple clients simultaneously
+                const updateResult = await tripRepository.model.updateOne(
+                    { 
+                        _id: trip._id, 
+                        'clients.userId': clientId,
+                        'clients.status': { $in: ['PICKUP_INCOMING', 'READY', 'WAITING'] }
+                    },
+                    { 
+                        $set: { 
+                            'clients.$.status': 'IN_CAR',
+                            'clients.$.paymentStatus': 'paid',
+                            status: 'IN_PROGRESS' 
+                        } 
+                    },
+                    { session }
+                );
+
+                if (updateResult.modifiedCount === 0) {
+                    throw new Error('Concurrent modification error or invalid client state during pickup');
+                }
+
+                // Update in-memory object to return to the caller
+                clientEntry.status = 'IN_CAR';
+                clientEntry.paymentStatus = 'paid';
+                trip.status = 'IN_PROGRESS';
+
+            } catch (paymentError) {
+                console.error('Payment failed:', paymentError);
+                throw new Error(`Payment failed: ${paymentError.message}`);
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+            return trip;
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
+        }
     }
 
     async confirmDropoff(driverId, { tripId, clientId, driverLocation }) {
-        const trip = await Trip.findById(tripId).populate('clients.routeId');
+        const trip = await tripRepository.findById(tripId).populate('clients.routeId');
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
@@ -601,14 +643,29 @@ class TripService {
             }
         }
 
-        clientEntry.status = 'DROPPED_OFF';
+        const updateResult = await tripRepository.model.updateOne(
+            { 
+                _id: tripId, 
+                'clients.userId': clientId,
+                'clients.status': 'IN_CAR'
+            },
+            { 
+                $set: { 
+                    'clients.$.status': 'DROPPED_OFF'
+                } 
+            }
+        );
 
-        await trip.save();
+        if (updateResult.modifiedCount === 0) {
+            throw new Error('Concurrent modification error or invalid client state during dropoff');
+        }
+
+        clientEntry.status = 'DROPPED_OFF';
         return trip;
     }
 
     async clientConfirmWaiting(clientId, tripId) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         const clientIndex = trip.clients.findIndex(c => c.userId.toString() === clientId);
@@ -626,7 +683,7 @@ class TripService {
     }
 
     async driverArrivedAtPickup(driverId, { tripId, clientId, driverLocation }) {
-        const trip = await Trip.findById(tripId).populate('clients.routeId');
+        const trip = await tripRepository.findById(tripId).populate('clients.routeId');
         if (!trip) throw new Error('Trip not found');
 
         if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
@@ -662,7 +719,7 @@ class TripService {
     // ============================================
 
     async cancelPickup(driverId, { tripId, clientId, reason }) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
         if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
 
@@ -687,7 +744,7 @@ class TripService {
     }
 
     async cancelDropoff(driverId, { tripId, clientId, reason }) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
         if (trip.driverId.toString() !== driverId) throw new Error('Not authorized');
 
@@ -712,7 +769,7 @@ class TripService {
     }
 
     async clientConfirmPickedUp(clientId, { tripId, isConfirmed, rating, reason }) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         const clientEntry = trip.clients.find(c => c.userId.toString() === clientId);
@@ -742,7 +799,7 @@ class TripService {
     }
 
     async clientConfirmDroppedOff(clientId, { tripId, isConfirmed, rating, reason }) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
         const clientEntry = trip.clients.find(c => c.userId.toString() === clientId);
@@ -773,7 +830,7 @@ class TripService {
     }
 
     async finishTrip(driverId, tripId) {
-        const trip = await Trip.findById(tripId);
+        const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
         if (trip.driverId.toString() !== driverId.toString()) throw new Error('Not authorized');
         if (trip.status !== 'STARTED' && trip.status !== 'IN_PROGRESS') {

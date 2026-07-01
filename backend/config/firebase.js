@@ -10,7 +10,7 @@ try {
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "detour-ma.firebasestorage.app"
     });
     bucket = admin.storage().bucket();
-    /* /* console.log('Firebase Admin initialized successfully'); */ */
+    /* console.log('Firebase Admin initialized successfully'); */
 } catch (error) {
     console.error('Firebase Admin initialization failed:', error.message);
     console.error('Please ensure backend/config/firebase-service-account.json is a valid SERVICE ACCOUNT key, not google-services.json.');

@@ -49,12 +49,12 @@ router.post('/', auth, async (req, res) => {
         // Emit socket event
         const io = req.app.get('socketio');
         if (io) {
-            /* /* console.log(`Emitting 'new_reclamation' for ticket ${saved._id}`); */ */
+            /* console.log(`Emitting 'new_reclamation' for ticket ${saved._id}`); */
             io.emit('new_reclamation', populated);
 
             // Emit notification if created
             if (notification) {
-                /* /* console.log(`Emitting 'new_notification' for ticket ${saved._id}`); */ */
+                /* console.log(`Emitting 'new_notification' for ticket ${saved._id}`); */
                 io.emit('new_notification', notification);
             }
         } else {
@@ -136,7 +136,7 @@ router.post('/:id/messages', auth, async (req, res) => {
         // Emit socket event to the reclamation room (for chat updates)
         const io = req.app.get('socketio');
         if (io) {
-            /* /* console.log(`Emitting 'new_message' to room ${req.params.id}`); */ */
+            /* console.log(`Emitting 'new_message' to room ${req.params.id}`); */
             io.to(req.params.id).emit('new_message', updated.messages[updated.messages.length - 1]);
 
             // Broadcast update to admin list and others
@@ -168,7 +168,7 @@ router.post('/:id/messages', auth, async (req, res) => {
                     });
 
                     // Emit notification event
-                    /* /* console.log(`Emitting 'new_notification' for message in ${updated._id}`); */ */
+                    /* console.log(`Emitting 'new_notification' for message in ${updated._id}`); */
                     io.emit('new_notification', notification);
 
                 } catch (notifErr) {
@@ -194,14 +194,14 @@ router.put('/:id/read', auth, async (req, res) => {
         }
 
         const currentUserId = req.user.id;
-        /* /* console.log(`[DEBUG] Mark as read: currentUser=${currentUserId}, reclamation=${req.params.id}`); */ */
+        /* console.log(`[DEBUG] Mark as read: currentUser=${currentUserId}, reclamation=${req.params.id}`); */
 
         // Mark all messages NOT sent by current user as read
         let updated = false;
         reclamation.messages.forEach(msg => {
             const msgSenderId = msg.senderId._id ? msg.senderId._id.toString() : msg.senderId.toString();
             if (msgSenderId !== currentUserId && !msg.read) {
-                /* /* console.log(`[DEBUG] Marking message ${msg._id} as read (sender: ${msgSenderId}) */ */`);
+                /* console.log(`[DEBUG] Marking message ${msg._id} as read (sender: ${msgSenderId})`); */
                 msg.read = true;
                 updated = true;
             }
@@ -209,9 +209,9 @@ router.put('/:id/read', auth, async (req, res) => {
 
         if (updated) {
             await reclamation.save();
-            /* /* console.log(`[DEBUG] Saved ${req.params.id} with updated read status`); */ */
+            /* console.log(`[DEBUG] Saved ${req.params.id} with updated read status`); */
         } else {
-            /* /* console.log(`[DEBUG] No messages to mark as read`); */ */
+            /* console.log(`[DEBUG] No messages to mark as read`); */
         }
 
         // Populate senderId before responding so frontend gets full data

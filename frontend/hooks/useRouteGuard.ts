@@ -40,22 +40,35 @@ export const useRouteGuard = () => {
             // Define currentGroup for role checking
             const currentGroup = segmentsArray[0];
 
-            // Whitelist of routes allowed during onboarding
-            const onboardingWhitelist = [
+            // Role-specific whitelists of routes allowed during onboarding
+            const sharedWhitelist = [
                 'tasks',
-                '(client)/add-route',
-                '(client)/places',
-                '(driver)/verification', // documents
-                '(driver)/add-car',
                 'modal',
-                'chat', // Maybe allow support?
+                'chat',
                 'reclamations',
-                '(client)/profile',
-                '(driver)/profile',
                 'edit-profile'
             ];
 
-            const isWhitelisted = onboardingWhitelist.some(route => currentRoute.includes(route));
+            const clientWhitelist = [
+                '(client)/add-route',
+                '(client)/places',
+                '(client)/profile'
+            ];
+
+            const driverWhitelist = [
+                '(driver)/verification',
+                '(driver)/add-car',
+                '(driver)/profile'
+            ];
+
+            let activeWhitelist = [...sharedWhitelist];
+            if (role === 'client') {
+                activeWhitelist = activeWhitelist.concat(clientWhitelist);
+            } else if (role === 'driver') {
+                activeWhitelist = activeWhitelist.concat(driverWhitelist);
+            }
+
+            const isWhitelisted = activeWhitelist.some(route => currentRoute.includes(route));
 
             if (!isCompleted) {
                 // If not completed and not on a whitelisted page, force to tasks

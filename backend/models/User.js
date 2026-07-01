@@ -25,6 +25,17 @@ const UserSchema = new mongoose.Schema({
         enum: ['pending', 'verified', 'rejected', 'unverified'],
         default: 'unverified'
     },
+    phone: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    phoneVerified: {
+        type: Boolean,
+        default: false
+    },
+    otpCode: String,
+    otpExpiresAt: Date,
     documents: [{
         cinFront: String,
         cinBack: String,
@@ -42,6 +53,7 @@ const UserSchema = new mongoose.Schema({
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date,
+    refreshToken: String,
     location: {
         latitude: Number,
         longitude: Number,
@@ -49,6 +61,7 @@ const UserSchema = new mongoose.Schema({
         speed: Number,
         timestamp: Number,
         updatedAt: { type: Date, default: Date.now }
+    },
     currentLocation: {
         type: {
             type: String,

@@ -1,16 +1,33 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
 
 import { Role, User } from '../types';
+
+const secureStorage: StateStorage = {
+    getItem: async (name: string): Promise<string | null> => {
+        if (Platform.OS === 'web') return localStorage.getItem(name);
+        return (await SecureStore.getItemAsync(name)) || null;
+    },
+    setItem: async (name: string, value: string): Promise<void> => {
+        if (Platform.OS === 'web') return localStorage.setItem(name, value);
+        await SecureStore.setItemAsync(name, value);
+    },
+    removeItem: async (name: string): Promise<void> => {
+        if (Platform.OS === 'web') return localStorage.removeItem(name);
+        await SecureStore.deleteItemAsync(name);
+    },
+};
 
 interface AuthState {
     user: User | null;
     token: string | null;
+    refreshToken: string | null;
     isLoading: boolean;
 
     // Actions (Synchronous setters only)
-    setSession: (user: User, token: string) => void;
+    setSession: (user: User, token: string, refreshToken?: string) => void;
     logout: () => void;
     updateUser: (user: Partial<User>) => void;
     setLoading: (loading: boolean) => void;
@@ -22,17 +39,20 @@ export const useAuthStore = create<AuthState>()(
         (set) => ({
             user: null,
             token: null,
+            refreshToken: null,
             isLoading: true, // Initial load state
 
-            setSession: (user, token) => set({
+            setSession: (user, token, refreshToken) => set({
                 user,
                 token,
+                refreshToken: refreshToken || null,
                 isLoading: false
             }),
 
             logout: () => set({
                 user: null,
                 token: null,
+                refreshToken: null,
                 isLoading: false
             }),
 
@@ -57,6 +77,7 @@ export const useAuthStore = create<AuthState>()(
                         set({
                             user: null,
                             token: null,
+                            refreshToken: null,
                             isLoading: false
                         });
                     }
@@ -65,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
                     set({
                         user: null,
                         token: null,
+                        refreshToken: null,
                         isLoading: false
                     });
                 }
@@ -72,8 +94,8 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'auth-storage',
-            storage: createJSONStorage(() => AsyncStorage),
-            partialize: (state) => ({ token: state.token }), // Only persist token. Fetch user on boot.
+            storage: createJSONStorage(() => secureStorage),
+            partialize: (state) => ({ token: state.token, refreshToken: state.refreshToken }), // Persist tokens. Fetch user on boot.
         }
     )
 );

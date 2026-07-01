@@ -6,6 +6,7 @@ const signupSchema = z.object({
     fullName: z.string().min(2, 'Name must be at least 2 characters'),
     role: z.enum(['client', 'driver']).optional(),
     photoURL: z.string().optional(),
+    phone: z.string().optional(),
 });
 
 const loginSchema = z.object({

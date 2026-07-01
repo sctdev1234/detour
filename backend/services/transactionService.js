@@ -14,9 +14,9 @@ class TransactionService {
     /**
      * Process a trip payment from Client to Driver + Company Commission
      */
-    async processTripPayment(tripId, clientId, driverId, amount) {
-        const session = await User.startSession();
-        session.startTransaction();
+    async processTripPayment(tripId, clientId, driverId, amount, existingSession = null) {
+        const session = existingSession || await User.startSession();
+        if (!existingSession) session.startTransaction();
 
         try {
             const client = await User.findById(clientId).session(session);
@@ -89,14 +89,18 @@ class TransactionService {
             // If we want to show "Gross: 50, Fee: 5, Net: 45", we do it differently.
             // Current approach: Driver Balance += 45. Simple.
 
-            await session.commitTransaction();
-            session.endSession();
+            if (!existingSession) {
+                await session.commitTransaction();
+                session.endSession();
+            }
 
             return { success: true, clientBalance: client.balance, driverBalance: driver.balance };
 
         } catch (error) {
-            await session.abortTransaction();
-            session.endSession();
+            if (!existingSession) {
+                await session.abortTransaction();
+                session.endSession();
+            }
             throw error;
         }
     }
@@ -182,9 +186,80 @@ class TransactionService {
     /**
      * Process cashout request
      */
-    async cashout(userId, amount) {
-        const session = await User.startSession();
-        session.startTransaction();
+    async processRecharge(userId, amount, reference, existingSession = null) {
+        if (amount <= 0) throw new Error('Invalid amount');
+
+        const session = existingSession || await User.startSession();
+        if (!existingSession) session.startTransaction();
+
+        try {
+            const user = await User.findById(userId).session(session);
+            if (!user) throw new Error('User not found');
+
+            user.balance += amount;
+            await user.save({ session });
+
+            await Transaction.create([{
+                userId,
+                amount,
+                type: 'credit',
+                category: 'recharge',
+                description: `Recharge: ${reference}`
+            }], { session });
+
+            if (!existingSession) {
+                await session.commitTransaction();
+                session.endSession();
+            }
+
+            return { success: true, newBalance: user.balance };
+        } catch (error) {
+            if (!existingSession) {
+                await session.abortTransaction();
+                session.endSession();
+            }
+            throw error;
+        }
+    }
+
+    async processRefund(userId, amount, tripId, existingSession = null) {
+        const session = existingSession || await User.startSession();
+        if (!existingSession) session.startTransaction();
+
+        try {
+            const user = await User.findById(userId).session(session);
+            if (!user) throw new Error('User not found');
+
+            user.balance += amount;
+            await user.save({ session });
+
+            await Transaction.create([{
+                userId,
+                amount,
+                type: 'credit',
+                category: 'refund',
+                tripId,
+                description: 'Refund for trip'
+            }], { session });
+
+            if (!existingSession) {
+                await session.commitTransaction();
+                session.endSession();
+            }
+
+            return { success: true, newBalance: user.balance };
+        } catch (error) {
+            if (!existingSession) {
+                await session.abortTransaction();
+                session.endSession();
+            }
+            throw error;
+        }
+    }
+
+    async cashout(userId, amount, existingSession = null) {
+        const session = existingSession || await User.startSession();
+        if (!existingSession) session.startTransaction();
 
         try {
             const user = await User.findById(userId).session(session);
@@ -212,14 +287,18 @@ class TransactionService {
                 status: 'pending' // pending until admin approves? or completed if simulated?
             }], { session });
 
-            await session.commitTransaction();
-            session.endSession();
+            if (!existingSession) {
+                await session.commitTransaction();
+                session.endSession();
+            }
 
-            return { balance: user.balance };
+            return { success: true, newBalance: user.balance };
 
         } catch (error) {
-            await session.abortTransaction();
-            session.endSession();
+            if (!existingSession) {
+                await session.abortTransaction();
+                session.endSession();
+            }
             throw error;
         }
     }

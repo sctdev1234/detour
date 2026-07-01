@@ -5,6 +5,7 @@ import { Linking, ScrollView, Share, StyleSheet, Text, TouchableOpacity, useColo
 import DetourMap from '../../components/Map';
 import { Colors } from '../../constants/theme';
 import { useClientRequests } from '../../hooks/api/useTripQueries';
+import SocketService from '../../services/socket';
 import { useTrackingStore } from '../../store/useTrackingStore';
 import { useUIStore } from '../../store/useUIStore';
 import { calculateDistance, estimateDuration, formatDuration, normalizeRoute } from '../../utils/location';
@@ -17,7 +18,7 @@ export default function TripDetailsScreen() {
 
     const { showToast } = useUIStore();
 
-    const { data: clientRequests } = useClientRequests();
+    const { data: clientRequests, refetch: refetchRequests } = useClientRequests();
 
     const request = clientRequests?.find((r: any) => r.id === requestId);
     const driverTrip = request?.tripId;
@@ -26,6 +27,17 @@ export default function TripDetailsScreen() {
     const { subscribeToDriver, unsubscribe, driverLocation } = useTrackingStore();
     const [alerted, setAlerted] = useState(false);
     const [isExpandedMap, setIsExpandedMap] = useState(false);
+
+    // Re-fetch trip state upon socket reconnection to recover dropped events
+    useEffect(() => {
+        const socket = SocketService.getSocket();
+        if (!socket) return;
+        const onConnect = () => refetchRequests();
+        socket.on('connect', onConnect);
+        return () => {
+            socket.off('connect', onConnect);
+        };
+    }, [refetchRequests]);
 
     useEffect(() => {
         if (driverTrip?.driverId?._id) {

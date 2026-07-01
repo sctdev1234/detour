@@ -8,7 +8,7 @@ const API_URL = 'http://localhost:5001/api';
 const testLifecycle = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        /* /* console.log('Connected to MongoDB'); */ */
+        /* console.log('Connected to MongoDB'); */
 
         // 1. Login Driver
         const driverLogin = await fetch(`${API_URL}/auth/login`, {
@@ -18,7 +18,7 @@ const testLifecycle = async () => {
         });
         const driverData = await driverLogin.json();
         const driverToken = driverData.token;
-        /* /* console.log('Driver logged in'); */ */
+        /* console.log('Driver logged in'); */
 
         // 2. Login Client
         const clientLogin = await fetch(`${API_URL}/auth/login`, {
@@ -29,7 +29,7 @@ const testLifecycle = async () => {
         let clientData = await clientLogin.json();
 
         if (clientData.msg === 'Invalid Credentials') {
-            /* /* console.log('Client not found, registering...'); */ */
+            /* console.log('Client not found, registering...'); */
             const registerRes = await fetch(`${API_URL}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -43,12 +43,12 @@ const testLifecycle = async () => {
             clientData = await registerRes.json();
         }
 
-        /* /* console.log('Client Login Response:', JSON.stringify(clientData, null, 2) */ */);
+        /* console.log('Client Login Response:', JSON.stringify(clientData, null, 2) */);
         const clientToken = clientData.token;
-        /* /* console.log('Client logged in'); */ */
+        /* console.log('Client logged in'); */
 
         // 3. Driver Creates Route
-        /* /* console.log('Creating Driver Route...'); */ */
+        /* console.log('Creating Driver Route...'); */
         const routeRes = await fetch(`${API_URL}/trip/route`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-auth-token': driverToken },
@@ -63,10 +63,10 @@ const testLifecycle = async () => {
             })
         });
         const driverRoute = await routeRes.json();
-        /* /* console.log('Driver Route Created:', driverRoute._id); */ */
+        /* console.log('Driver Route Created:', driverRoute._id); */
 
         // 4. Client Creates Route (Search Criteria)
-        /* /* console.log('Creating Client Route...'); */ */
+        /* console.log('Creating Client Route...'); */
         const clientRouteRes = await fetch(`${API_URL}/trip/route`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-auth-token': clientToken },
@@ -80,11 +80,11 @@ const testLifecycle = async () => {
             })
         });
         const clientRoute = await clientRouteRes.json();
-        /* /* console.log('Client Route Response:', JSON.stringify(clientRoute, null, 2) */ */);
-        /* /* console.log('Client Route Created:', clientRoute._id); */ */
+        /* console.log('Client Route Response:', JSON.stringify(clientRoute, null, 2) */);
+        /* console.log('Client Route Created:', clientRoute._id); */
 
         // 5. Search Matches
-        /* /* console.log('Searching matches...'); */ */
+        /* console.log('Searching matches...'); */
         const matchRes = await fetch(`${API_URL}/trip/matches/${clientRoute._id}`, {
             headers: { 'x-auth-token': clientToken }
         });
@@ -93,10 +93,10 @@ const testLifecycle = async () => {
         if (matches.length > 0) {
             const match = matches[0];
             const tripId = match.trip._id;
-            /* /* console.log('Match found, Trip ID:', tripId); */ */
+            /* console.log('Match found, Trip ID:', tripId); */
 
             // 6. Join Request
-            /* /* console.log('Sending Join Request...'); */ */
+            /* console.log('Sending Join Request...'); */
             const joinRes = await fetch(`${API_URL}/trip/request-join`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-auth-token': clientToken },
@@ -106,10 +106,10 @@ const testLifecycle = async () => {
                 })
             });
             const joinRequest = await joinRes.json();
-            /* /* console.log('Join Request Sent:', joinRequest._id); */ */
+            /* console.log('Join Request Sent:', joinRequest._id); */
 
             // 7. Driver Accepts
-            /* /* console.log('Driver Accepting Request...'); */ */
+            /* console.log('Driver Accepting Request...'); */
             await fetch(`${API_URL}/trip/handle-request`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-auth-token': driverToken },
@@ -118,34 +118,34 @@ const testLifecycle = async () => {
                     status: 'accepted'
                 })
             });
-            /* /* console.log('Request Accepted'); */ */
+            /* console.log('Request Accepted'); */
 
             // 8. Start Trip
-            /* /* console.log('Starting Trip...'); */ */
+            /* console.log('Starting Trip...'); */
             const startRes = await fetch(`${API_URL}/trip/${tripId}/start`, {
                 method: 'PATCH',
                 headers: { 'x-auth-token': driverToken }
             });
             const activeTrip = await startRes.json();
-            /* /* console.log('Trip Status (should be active) */ */:', activeTrip.status);
+            /* console.log('Trip Status (should be active) */:', activeTrip.status);
 
             if (activeTrip.status !== 'active') throw new Error('Trip failed to start');
 
             // 9. Complete Trip
-            /* /* console.log('Completing Trip...'); */ */
+            /* console.log('Completing Trip...'); */
             const completeRes = await fetch(`${API_URL}/trip/${tripId}/complete`, {
                 method: 'PATCH',
                 headers: { 'x-auth-token': driverToken }
             });
             const completedTrip = await completeRes.json();
-            /* /* console.log('Trip Status (should be completed) */ */:', completedTrip.status);
+            /* console.log('Trip Status (should be completed) */:', completedTrip.status);
 
             if (completedTrip.status !== 'completed') throw new Error('Trip failed to complete');
 
-            /* /* console.log('SUCCESS: Full Trip Lifecycle Verified!'); */ */
+            /* console.log('SUCCESS: Full Trip Lifecycle Verified!'); */
 
         } else {
-            /* /* console.log('No matches found.'); */ */
+            /* console.log('No matches found.'); */
         }
 
     } catch (err) {

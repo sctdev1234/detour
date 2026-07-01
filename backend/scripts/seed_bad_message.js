@@ -16,14 +16,14 @@ const Reclamation = require('../models/Reclamation');
 async function seedBadMessage() {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        /* /* console.log('Connected to MongoDB'); */ */
+        /* console.log('Connected to MongoDB'); */
 
         // Find a client and a driver
         const client = await User.findOne({ role: 'client' });
         const driver = await User.findOne({ role: 'driver' });
 
         if (!client || !driver) {
-            /* /* console.log("Could not find a client and driver."); */ */
+            /* console.log("Could not find a client and driver."); */
             process.exit(1);
         }
 
@@ -33,13 +33,13 @@ async function seedBadMessage() {
         if (!chat) {
             chat = await Chat.findOne(); // fallback to any chat
             if (!chat) {
-                /* /* console.log("No chats exist. Please run seed_chats.js first."); */ */
+                /* console.log("No chats exist. Please run seed_chats.js first."); */
                 process.exit(1);
             }
         }
 
         // Add a "bad" message
-        /* /* console.log("Adding a bad message to the chat..."); */ */
+        /* console.log("Adding a bad message to the chat..."); */
         const badText = "You are a terrible driver, I'm never using this awful service again! **** you!";
         chat.messages.push({
             senderId: client._id,
@@ -52,7 +52,7 @@ async function seedBadMessage() {
         const badMessage = chat.messages[chat.messages.length - 1];
 
         // Create a report for it from the driver's perspective
-        /* /* console.log(`Creating a ticket reporting message ID: ${badMessage._id}`); */ */
+        /* console.log(`Creating a ticket reporting message ID: ${badMessage._id}`); */
         const report = new Reclamation({
             reporterId: driver._id,
             chatId: chat._id,
@@ -65,7 +65,7 @@ async function seedBadMessage() {
 
         await report.save();
 
-        /* /* console.log(`Successfully added a bad message and created a reported ticket (Ticket ID: ${report._id}) */ */!`);
+        /* console.log(`Successfully added a bad message and created a reported ticket (Ticket ID: ${report._id}) */!`);
         process.exit(0);
     } catch (err) {
         console.error('Error seeding bad message:', err);

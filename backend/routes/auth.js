@@ -11,6 +11,10 @@ router.post('/signup', (req, res) => authController.signup(req, res));
 // @desc    Authenticate user & get token
 router.post('/login', (req, res) => authController.login(req, res));
 
+// @route   POST api/auth/refresh
+// @desc    Refresh session token
+router.post('/refresh', (req, res) => authController.refresh(req, res));
+
 // @route   POST api/auth/forgot-password
 // @desc    Generate password reset token
 router.post('/forgot-password', (req, res) => authController.forgotPassword(req, res));
@@ -18,6 +22,14 @@ router.post('/forgot-password', (req, res) => authController.forgotPassword(req,
 // @route   POST api/auth/reset-password
 // @desc    Reset password
 router.post('/reset-password', (req, res) => authController.resetPassword(req, res));
+
+// @route   POST api/auth/verify-otp
+// @desc    Verify phone OTP
+router.post('/verify-otp', (req, res) => authController.verifyOTP(req, res));
+
+// @route   POST api/auth/resend-otp
+// @desc    Resend phone OTP
+router.post('/resend-otp', (req, res) => authController.resendOTP(req, res));
 
 // @desc    Update user profile
 router.put('/update', auth, (req, res) => authController.update(req, res));

@@ -10,7 +10,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import AnimatedRN, { Extrapolate, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/theme';
-import { useCancelDropoff, useCancelPickup, useCancelTrip, useConfirmDropoff, useConfirmPickup, useDriverArrived, useDriverReady, useFinishTrip, useRemoveClient, useStartTrip } from '../hooks/api/useTripQueries';
+import { useCancelDropoff, useCancelPickup, useCancelTrip, useConfirmDropoff, useConfirmPickup, useDriverArrived, useDriverReady, useFinishTrip, useRemoveClient, useStartTrip, useTrips } from '../hooks/api/useTripQueries';
 import { useLateDuration } from '../hooks/useCountdown';
 import SocketService from '../services/socket';
 import { useLocationStore } from '../store/useLocationStore';
@@ -25,6 +25,7 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
     const insets = useSafeAreaInsets();
     const { height: SCREEN_HEIGHT } = useWindowDimensions();
 
+    const { refetch: refetchTrips } = useTrips();
     const { mutateAsync: startTrip } = useStartTrip();
     const { mutateAsync: finishTrip } = useFinishTrip();
     const { mutateAsync: removeClient } = useRemoveClient();
@@ -40,6 +41,16 @@ export default function DriverTripExecutionScreen({ trip }: { trip: any }) {
     const socket = SocketService.getSocket();
     const [actionLoading, setActionLoading] = useState(false);
     const [hasShownDestinationAlert, setHasShownDestinationAlert] = useState(false);
+
+    // Re-fetch trip state upon socket reconnection to recover dropped events
+    useEffect(() => {
+        if (!socket) return;
+        const onConnect = () => refetchTrips();
+        socket.on('connect', onConnect);
+        return () => {
+            socket.off('connect', onConnect);
+        };
+    }, [socket, refetchTrips]);
 
     // Cancel modal state
     const [cancelModal, setCancelModal] = useState<{

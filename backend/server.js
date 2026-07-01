@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 
 const env = require('./config/env');
+const logger = require('./utils/logger');
 
 const app = express();
 const PORT = env.PORT;
@@ -40,7 +41,7 @@ app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 
 app.use((req, res, next) => {
-    // console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    logger.info(`${req.method} ${req.url}`);
     next();
 });
 
@@ -49,28 +50,28 @@ const MONGODB_URI = env.MONGODB_URI;
 
 // Debug URI (hide password)
 const uriDebug = MONGODB_URI ? MONGODB_URI.replace(/:([^:@]+)@/, ':****@') : 'undefined';
-/* console.log('Attempting to connect to MongoDB with URI:', uriDebug);*/
+logger.info(`Attempting to connect to MongoDB with URI: ${uriDebug}`);
 
 mongoose.connect(MONGODB_URI)
     .then(() => {
-        /* console.log('MongoDB Connected');*/
-        /* console.log('Connected to Database:', mongoose.connection.name);*/
+        logger.info('MongoDB Connected');
+        logger.info(`Connected to Database: ${mongoose.connection.name}`);
     })
     .catch(err => {
-        console.error('MongoDB Initial Connection Error:', err);
+        logger.error('MongoDB Initial Connection Error:', err);
         process.exit(1);
     });
 
 mongoose.connection.on('error', err => {
-    console.error('MongoDB Runtime Connection Error:', err);
+    logger.error('MongoDB Runtime Connection Error:', err);
 });
 
 mongoose.connection.on('disconnected', () => {
-    /* console.log('MongoDB Disconnected');*/
+    logger.info('MongoDB Disconnected');
 });
 
 mongoose.connection.on('reconnected', () => {
-    /* console.log('MongoDB Reconnected');*/
+    logger.info('MongoDB Reconnected');
 });
 
 // Routes
@@ -88,13 +89,14 @@ app.use('/api/reclamations', require('./routes/reclamations'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/pages', require('./routes/pages'));
+app.use('/api/wallet', require('./routes/wallet'));
 
 // Serve Static Folder if needed (currently cloud-only)
 // app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 // Error Handling Middleware
-const { errorHandler } = require('./middleware/errorMiddleware');
+const errorHandler = require('./middleware/errorHandler');
 app.use(errorHandler);
 
 // Base route
@@ -113,11 +115,7 @@ app.set('socketio', io);
 const scheduleTripNotifications = require('./cron/tripNotifications');
 scheduleTripNotifications(io);
 
-const errorHandler = require('./middleware/errorHandler');
-
-// Global Error Handler Middleware
-app.use(errorHandler);
-
 server.listen(PORT, '0.0.0.0', () => {
-    /* console.log(`Server running on port ${PORT}`);*/
+    logger.info(`Server started on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+    logger.info(`Listening on http://0.0.0.0:${PORT}`);
 });

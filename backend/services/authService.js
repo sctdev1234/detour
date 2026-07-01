@@ -1,45 +1,114 @@
-const User = require('../models/User');
+const userRepository = require('../repositories/UserRepository');
+const placeRepository = require('../repositories/PlaceRepository');
+const routeRepository = require('../repositories/RouteRepository');
+const carRepository = require('../repositories/CarRepository');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const SavedPlace = require('../models/SavedPlace');
-const Route = require('../models/Route');
-const Car = require('../models/Car');
 
 const fs = require('fs');
 
 class AuthService {
-    async signup({ email, password, fullName, role, photoURL }) {
-        let user = await User.findOne({ email });
+    async signup({ email, password, fullName, role, photoURL, phone }) {
+        let user = await userRepository.findByEmail(email);
         if (user) {
             throw new Error('User already exists');
         }
+        if (phone) {
+            let userByPhone = await userRepository.findOne({ phone });
+            if (userByPhone) throw new Error('Phone number already in use');
+        }
 
-        user = new User({
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        user = await userRepository.create({
             email,
-            password,
+            password: hashedPassword,
             fullName,
             role: role || 'client',
-            photoURL
+            photoURL,
+            phone,
+            phoneVerified: false
         });
 
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(password, salt);
+        const { accessToken, refreshToken } = this.generateTokens(user);
+        user.refreshToken = refreshToken;
 
-        await user.save();
+        // Generate OTP if phone is provided
+        if (phone) {
+            await this.sendOTP(user);
+        } else {
+            await user.save();
+        }
 
-        const token = this.generateToken(user);
         const onboardingStatus = await this.calculateOnboardingStatus(user);
         const userObj = user.toObject();
         userObj.onboardingStatus = onboardingStatus;
 
-
-        return { user: userObj, token };
+        return { user: userObj, token: accessToken, refreshToken };
 
     }
 
+    async sendOTP(user) {
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otpCode = otpCode;
+        user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+        await user.save();
+
+        if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && user.phone) {
+            const twilio = require('twilio');
+            const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+            try {
+                await client.messages.create({
+                    body: `Your Detour verification code is: ${otpCode}`,
+                    from: process.env.TWILIO_PHONE_NUMBER,
+                    to: user.phone
+                });
+                console.log(`[Twilio] Sent OTP ${otpCode} to ${user.phone}`);
+            } catch (err) {
+                console.error('[Twilio] Failed to send OTP:', err.message);
+            }
+        } else {
+            console.log(`[Mock SMS] OTP for ${user.phone || user.email} is: ${otpCode}`);
+        }
+    }
+
+    async verifyOTP(userId, code) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new Error('User not found');
+        if (user.phoneVerified) throw new Error('Phone already verified');
+        
+        if (!user.otpCode || user.otpCode !== code) {
+            throw new Error('Invalid OTP code');
+        }
+        if (user.otpExpiresAt < new Date()) {
+            throw new Error('OTP code expired');
+        }
+
+        user.phoneVerified = true;
+        user.otpCode = undefined;
+        user.otpExpiresAt = undefined;
+        
+        // If client, mark them verified immediately. Drivers still need manual verification.
+        if (user.role === 'client') {
+            user.verificationStatus = 'verified';
+        }
+
+        await user.save();
+        return user;
+    }
+
+    async resendOTP(userId) {
+        const user = await userRepository.findById(userId);
+        if (!user) throw new Error('User not found');
+        if (user.phoneVerified) throw new Error('Phone already verified');
+        
+        await this.sendOTP(user);
+        return { msg: 'OTP resent successfully' };
+    }
+
     async login({ email, password }) {
-        const user = await User.findOne({ email });
+        const user = await userRepository.findOne({ email });
         if (!user) {
             throw new Error('Invalid Credentials');
         }
@@ -50,23 +119,28 @@ class AuthService {
         }
 
         // Fetch saved places
-        const savedPlaces = await SavedPlace.find({ user: user.id });
+        const savedPlaces = await placeRepository.find({ user: user.id });
         const userObj = user.toObject();
         userObj.savedPlaces = savedPlaces;
         userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
 
+        const { accessToken, refreshToken } = this.generateTokens(user);
+        user.refreshToken = refreshToken;
+        await user.save();
+
         return {
-            token: this.generateToken(user),
+            token: accessToken,
+            refreshToken,
             user: userObj
         };
 
     }
 
     async getUser(userId) {
-        const user = await User.findById(userId).select('-password');
+        const user = await userRepository.findById(userId).select('-password');
         if (!user) return null;
 
-        const savedPlaces = await SavedPlace.find({ user: userId });
+        const savedPlaces = await placeRepository.find({ user: userId });
         const userObj = user.toObject();
         userObj.id = user._id.toString(); // Ensure id is always present for frontend
         userObj.savedPlaces = savedPlaces;
@@ -77,7 +151,7 @@ class AuthService {
     }
 
     async forgotPassword({ email }) {
-        const user = await User.findOne({ email });
+        const user = await userRepository.findOne({ email });
         if (!user) {
             throw new Error('User not found');
         }
@@ -93,7 +167,7 @@ class AuthService {
     }
 
     async resetPassword({ token, newPassword }) {
-        const user = await User.findOne({
+        const user = await userRepository.findOne({
             resetPasswordToken: token,
             resetPasswordExpires: { $gt: Date.now() }
         });
@@ -116,7 +190,7 @@ class AuthService {
         if (fullName) updateFields.fullName = fullName;
         if (photoURL) updateFields.photoURL = photoURL;
 
-        const user = await User.findByIdAndUpdate(
+        const user = await userRepository.update(
             userId,
             { $set: updateFields },
             { new: true }
@@ -133,7 +207,7 @@ class AuthService {
     }
 
     async verifyDriver(userId, documents) {
-        const user = await User.findById(userId);
+        const user = await userRepository.findById(userId);
         if (!user) throw new Error('User not found');
 
         user.documents.push(documents);
@@ -149,13 +223,13 @@ class AuthService {
     }
 
     async deleteAccount(userId) {
-        const user = await User.findByIdAndDelete(userId);
+        const user = await userRepository.hardDelete(userId);
         if (!user) throw new Error('User not found');
         return true;
     }
 
     async changePassword(userId, { oldPassword, newPassword }) {
-        const user = await User.findById(userId);
+        const user = await userRepository.findById(userId);
         if (!user) {
             throw new Error('User not found');
         }
@@ -175,7 +249,7 @@ class AuthService {
     // ...
 
     async addSavedPlace(userId, placeData) {
-        const user = await User.findById(userId);
+        const user = await userRepository.findById(userId);
         if (!user) throw new Error('User not found');
 
         const newPlace = new SavedPlace({
@@ -185,7 +259,7 @@ class AuthService {
         await newPlace.save();
 
         // Return all saved places for the user to keep frontend state consistent
-        return SavedPlace.find({ user: userId });
+        return placeRepository.find({ user: userId });
     }
 
     async removeSavedPlace(userId, placeId) {
@@ -194,14 +268,14 @@ class AuthService {
         if (!result) throw new Error('Place not found or not authorized');
 
         // Return updated list
-        return SavedPlace.find({ user: userId });
+        return placeRepository.find({ user: userId });
     }
 
     async getSavedPlaces(userId) {
-        return SavedPlace.find({ user: userId });
+        return placeRepository.find({ user: userId });
     }
 
-    generateToken(user) {
+    generateTokens(user) {
         const payload = {
             user: {
                 id: user.id,
@@ -209,11 +283,40 @@ class AuthService {
             }
         };
 
-        return jwt.sign(
+        const accessToken = jwt.sign(
             payload,
             process.env.JWT_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '15m' }
         );
+
+        const refreshToken = jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        return { accessToken, refreshToken };
+    }
+
+    async refreshSession(refreshToken) {
+        if (!refreshToken) throw new Error('No refresh token provided');
+
+        try {
+            const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+            const user = await userRepository.findById(decoded.user.id);
+            
+            if (!user || user.refreshToken !== refreshToken) {
+                throw new Error('Invalid refresh token');
+            }
+
+            const tokens = this.generateTokens(user);
+            user.refreshToken = tokens.refreshToken;
+            await user.save();
+
+            return tokens;
+        } catch (err) {
+            throw new Error('Invalid or expired refresh token');
+        }
     }
     async calculateOnboardingStatus(user) {
         const status = {

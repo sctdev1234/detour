@@ -1,7 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { API_URL } from './apiConfig';
-import { useAuthStore } from '../store/useAuthStore'; // Will be created/refactored
+import { useAuthStore } from '../store/useAuthStore';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -15,21 +14,8 @@ const api = axios.create({
 // Request Interceptor
 api.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-        // Try getting token from zustand store directly if available (avoids async storage hit if already loaded)
-        // Since this might run outside React context, we read from AsyncStorage as fallback
-        const storageData = await AsyncStorage.getItem('auth-storage');
-        let token = null;
-
-        if (storageData) {
-            try {
-                const parsed = JSON.parse(storageData);
-                if (parsed?.state?.token) {
-                    token = parsed.state.token;
-                }
-            } catch (e) {
-                console.error('[API] Failed to parse auth-storage', e);
-            }
-        }
+        // Read directly from Zustand store
+        const { token } = useAuthStore.getState();
 
         if (token) {
             config.headers['x-auth-token'] = token;
@@ -57,17 +43,28 @@ api.interceptors.response.use(
             // Server responded with a status other than 2xx
             if (error.response.status === 401) {
                 // Token expired or unauthorized
-                console.warn('[API] 401 Unauthorized. Triggering logout or token refresh.');
-                // Placeholder: If we had a refresh route:
-                // if (!originalRequest._retry) {
-                //     originalRequest._retry = true;
-                //     const newToken = await refreshToken();
-                //     originalRequest.headers['x-auth-token'] = newToken;
-                //     return api(originalRequest);
-                // }
-
-                // For now, clear token and redirect (handled by store/auth listeners)
-                // useAuthStore.getState().logout();
+                const originalRequestConfig = originalRequest as InternalAxiosRequestConfig & { _retry?: boolean };
+                if (!originalRequestConfig._retry) {
+                    originalRequestConfig._retry = true;
+                    
+                    const { refreshToken, setSession, logout, user } = useAuthStore.getState();
+                    
+                    if (refreshToken && user) {
+                        try {
+                            const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+                            if (res.data && res.data.token) {
+                                setSession(user, res.data.token, res.data.refreshToken);
+                                originalRequestConfig.headers['x-auth-token'] = res.data.token;
+                                return api(originalRequestConfig);
+                            }
+                        } catch (refreshError) {
+                            console.error('[API] Token refresh failed', refreshError);
+                            logout();
+                        }
+                    } else {
+                        logout();
+                    }
+                }
             } else if (error.response.status === 500) {
                 console.error('[API] Server error:', error.response.data);
             }

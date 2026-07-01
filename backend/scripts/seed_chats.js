@@ -16,19 +16,19 @@ const JoinRequest = require('../models/JoinRequest');
 async function seedChats() {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
-        /* /* console.log('Connected to MongoDB'); */ */
+        /* console.log('Connected to MongoDB'); */
 
         // Find some users to use as mock participants
         const clients = await User.find({ role: 'client' }).limit(2);
         const drivers = await User.find({ role: 'driver' }).limit(2);
 
         if (clients.length === 0 || drivers.length === 0) {
-            /* /* console.log('Not enough clients or drivers found in the database. Please ensure you have at least 1 client and 1 driver.'); */ */
+            /* console.log('Not enough clients or drivers found in the database. Please ensure you have at least 1 client and 1 driver.'); */
             process.exit(1);
         }
 
-        /* /* console.log(`Found clients: ${clients.map(c => c.fullName || c.email) */ */.join(', ')}`);
-        /* /* console.log(`Found drivers: ${drivers.map(d => d.fullName || d.email) */ */.join(', ')}`);
+        /* console.log(`Found clients: ${clients.map(c => c.fullName || c.email) */.join(', ')}`);
+        /* console.log(`Found drivers: ${drivers.map(d => d.fullName || d.email) */.join(', ')}`);
 
         // We need a JoinRequest since Chat requires a requestId
         // We'll just create a mock one or find an existing one
@@ -38,7 +38,7 @@ async function seedChats() {
             // JoinRequest requires user, car, date... we'll just mock basic fields if model allows,
             // or we bypass validation. For safety, let's create a minimal valid one if possible,
             // or just create a new ObjectId if it's only a ref.
-            /* /* console.log("No JoinRequest found. Creating a dummy one just for reference."); */ */
+            /* console.log("No JoinRequest found. Creating a dummy one just for reference."); */
             request1 = new JoinRequest({
                 user: clients[0]._id,
                 // Some models require strict fields, let's see if we can get away with just creating it.
@@ -52,7 +52,7 @@ async function seedChats() {
         const mockRequestId1 = request1 ? request1._id : new mongoose.Types.ObjectId();
         const mockRequestId2 = new mongoose.Types.ObjectId();
 
-        /* /* console.log("Seeding chat 1..."); */ */
+        /* console.log("Seeding chat 1..."); */
         // Chat 1: Client 0 and Driver 0
         const chat1 = new Chat({
             requestId: mockRequestId1,
@@ -66,7 +66,7 @@ async function seedChats() {
         });
         await chat1.save();
 
-        /* /* console.log("Seeding chat 2..."); */ */
+        /* console.log("Seeding chat 2..."); */
         // Chat 2: Client 1 (or 0 if only 1 exists) and Driver 1 (or 0)
         const chat2 = new Chat({
             requestId: mockRequestId2,
@@ -79,7 +79,7 @@ async function seedChats() {
         });
         await chat2.save();
 
-        /* /* console.log('Successfully seeded 2 mock chats!'); */ */
+        /* console.log('Successfully seeded 2 mock chats!'); */
         process.exit(0);
 
     } catch (err) {

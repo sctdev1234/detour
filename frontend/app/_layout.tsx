@@ -120,10 +120,22 @@ function AppContent() {
         queryClient.invalidateQueries({ queryKey: ['trips'] });
       });
 
+      socket?.on('verification_status_changed', (data: { status: string }) => {
+        console.log('Received verification_status_changed socket event:', data);
+        const authStore = useAuthStore.getState();
+        if (authStore.user) {
+           authStore.updateUser({ verificationStatus: data.status });
+        }
+        const { useUIStore } = require('../store/useUIStore');
+        const uiStore = useUIStore.getState();
+        uiStore.showToast(`Your account has been ${data.status}!`, 'info');
+      });
+
       return () => {
         socket?.off('notification', handleNotification);
         socket?.off('trip_updated');
         socket?.off('trip_notification');
+        socket?.off('verification_status_changed');
       };
     }
   }, [user]);

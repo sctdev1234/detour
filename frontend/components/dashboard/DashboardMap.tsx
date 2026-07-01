@@ -1,6 +1,7 @@
 import React, { forwardRef, useMemo } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import { Marker, Polyline } from 'react-native-maps';
+import MapView from 'react-native-map-clustering';
 import Animated from 'react-native-reanimated';
 import { MapPin, Car } from 'lucide-react-native';
 import { optimizeRoute, getAllPointsFromTrip } from '../../utils/mapUtils';
@@ -92,6 +93,9 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
             showsCompass={false}
             showsScale={false}
             mapPadding={{ top: 100, right: 0, bottom: 160, left: 0 }}
+            clusterColor={theme.colors.primary}
+            clusterTextColor={theme.colors.background}
+            radius={40}
         >
             {/* ===== USER LOCATION (Blue Pulsing Dot) ===== */}
             {userCoords && (

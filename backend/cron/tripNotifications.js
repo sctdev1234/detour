@@ -5,7 +5,7 @@ const Notification = require('../models/Notification');
 
 // Runs every minute
 const scheduleTripNotifications = (io) => {
-    /* /* console.log('Starting Trip Notifications Cron Job'); */ */
+    /* console.log('Starting Trip Notifications Cron Job'); */
 
     cron.schedule('* * * * *', async () => {
         try {
@@ -44,7 +44,7 @@ const scheduleTripNotifications = (io) => {
                 const diffMinutes = tripMinutes - nowMinutes;
 
                 if (diffMinutes === 10) {
-                    /* /* console.log(`Sending 10-minute warning for trip ${trip._id}`); */ */
+                    /* console.log(`Sending 10-minute warning for trip ${trip._id}`); */
 
                     // Transition State to STARTING_SOON
                     trip.status = 'STARTING_SOON';

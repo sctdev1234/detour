@@ -22,14 +22,7 @@ class AuthController {
                 }
             });
         } catch (err) {
-            console.error(err.message);
-            if (err.name === 'ZodError') {
-                return res.status(400).json({ msg: err.errors[0].message });
-            }
-            if (err.message === 'User already exists') {
-                return res.status(400).json({ msg: err.message });
-            }
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
@@ -52,14 +45,7 @@ class AuthController {
                 }
             });
         } catch (err) {
-            console.error(err.message);
-            if (err.name === 'ZodError') {
-                return res.status(400).json({ msg: err.errors[0].message });
-            }
-            if (err.message === 'Invalid Credentials') {
-                return res.status(400).json({ msg: err.message });
-            }
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
@@ -71,14 +57,7 @@ class AuthController {
             const { token } = await authService.forgotPassword({ email });
             res.json({ msg: 'Reset link sent (simulated)', token });
         } catch (err) {
-            console.error(err.message);
-            if (err.name === 'ZodError') {
-                return res.status(400).json({ msg: err.errors[0].message });
-            }
-            if (err.message === 'User not found') {
-                return res.status(404).json({ msg: err.message });
-            }
-            res.status(500).send('Server Error');
+            next(err);
         }
     }
 
@@ -90,14 +69,31 @@ class AuthController {
             await authService.resetPassword({ token, newPassword });
             res.json({ msg: 'Password has been updated' });
         } catch (err) {
-            console.error(err.message);
-            if (err.name === 'ZodError') {
-                return res.status(400).json({ msg: err.errors[0].message });
-            }
-            if (err.message === 'Password reset token is invalid or has expired') {
-                return res.status(400).json({ msg: err.message });
-            }
-            res.status(500).send('Server Error');
+            next(err);
+        }
+    }
+
+    async verifyOTP(req, res, next) {
+        try {
+            const { userId, code } = req.body;
+            if (!userId || !code) return res.status(400).json({ msg: 'userId and code are required' });
+
+            const user = await authService.verifyOTP(userId, code);
+            res.json({ msg: 'Phone verified successfully', user });
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async resendOTP(req, res, next) {
+        try {
+            const { userId } = req.body;
+            if (!userId) return res.status(400).json({ msg: 'userId is required' });
+
+            const result = await authService.resendOTP(userId);
+            res.json(result);
+        } catch (err) {
+            next(err);
         }
     }
 

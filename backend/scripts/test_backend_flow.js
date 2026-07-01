@@ -8,9 +8,9 @@ const API_URL = `http://localhost:${PORT}/api`;
 
 const reproduce = async () => {
     try {
-        /* /* console.log('Connecting to MongoDB...'); */ */
+        /* console.log('Connecting to MongoDB...'); */
         await mongoose.connect(process.env.MONGODB_URI);
-        /* /* console.log('Connected.'); */ */
+        /* console.log('Connected.'); */
 
         const driver = await User.findOne({ email: 'driver_test@example.com' });
 
@@ -20,7 +20,7 @@ const reproduce = async () => {
         }
 
         const token = jwt.sign({ user: { id: driver.id, role: driver.role } }, process.env.JWT_SECRET, { expiresIn: 360000 });
-        /* /* console.log('Generated Token for driver:', driver.email); */ */
+        /* console.log('Generated Token for driver:', driver.email); */
 
         const routeData = {
             role: 'driver',
@@ -38,7 +38,7 @@ const reproduce = async () => {
             routeGeometry: 'encoded_polyline'
         };
 
-        /* /* console.log('Sending request to', `${API_URL}/trip/route`); */ */
+        /* console.log('Sending request to', `${API_URL}/trip/route`); */
 
         const response = await fetch(`${API_URL}/trip/route`, {
             method: 'POST',
@@ -50,11 +50,11 @@ const reproduce = async () => {
         });
 
         const data = await response.json();
-        /* /* console.log('Response Data:', data); */ */
+        /* console.log('Response Data:', data); */
 
         if (response.ok) {
             const createdRoute = data;
-            /* /* console.log('Driver Route Created:', createdRoute._id); */ */
+            /* console.log('Driver Route Created:', createdRoute._id); */
 
             // Now simulate Client Search
             // 1. Create a dummy client route (search criteria)
@@ -75,34 +75,34 @@ const reproduce = async () => {
             let clientToken = token;
             if (client) {
                 clientToken = jwt.sign({ user: { id: client.id, role: client.role } }, process.env.JWT_SECRET, { expiresIn: 360000 });
-                /* /* console.log('Using Client Token for:', client.email); */ */
+                /* console.log('Using Client Token for:', client.email); */
             } else {
-                /* /* console.log('No client found, using driver token (might fail if role restricted) */ */');
+                /* console.log('No client found, using driver token (might fail if role restricted) */');
             }
 
             // Create client route to trigger matching
-            /* /* console.log('Creating Client Route for Search...'); */ */
+            /* console.log('Creating Client Route for Search...'); */
             const clientRes = await fetch(`${API_URL}/trip/route`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-auth-token': clientToken },
                 body: JSON.stringify(clientRouteData)
             });
             const clientRoute = await clientRes.json();
-            /* /* console.log('Client Route Created:', clientRoute._id); */ */
+            /* console.log('Client Route Created:', clientRoute._id); */
 
             // Search Matches
-            /* /* console.log('Searching Matches for Client Route:', clientRoute._id); */ */
+            /* console.log('Searching Matches for Client Route:', clientRoute._id); */
             const matchRes = await fetch(`${API_URL}/trip/matches/${clientRoute._id}`, {
                 headers: { 'x-auth-token': clientToken }
             });
             const matches = await matchRes.json();
-            /* /* console.log('Matches Found:', matches.length); */ */
+            /* console.log('Matches Found:', matches.length); */
             if (matches.length > 0) {
-                /* /* console.log('First Match:', JSON.stringify(matches[0], null, 2) */ */);
+                /* console.log('First Match:', JSON.stringify(matches[0], null, 2) */);
 
                 const match = matches[0];
                 const tripId = match.trip._id;
-                /* /* console.log('Client sending Join Request for Trip:', tripId); */ */
+                /* console.log('Client sending Join Request for Trip:', tripId); */
 
                 // Send Join Request
                 const joinRes = await fetch(`${API_URL}/trip/request-join`, {
@@ -114,10 +114,10 @@ const reproduce = async () => {
                     })
                 });
                 const joinRequest = await joinRes.json();
-                /* /* console.log('Join Request Created:', joinRequest); */ */
+                /* console.log('Join Request Created:', joinRequest); */
 
                 // Driver Accepts Request
-                /* /* console.log('Driver accepting request...'); */ */
+                /* console.log('Driver accepting request...'); */
                 const actionRes = await fetch(`${API_URL}/trip/handle-request`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'x-auth-token': token }, // Driver token
@@ -127,7 +127,7 @@ const reproduce = async () => {
                     })
                 });
                 const updatedRequest = await actionRes.json();
-                /* /* console.log('Request Status after Accept:', updatedRequest.status); */ */
+                /* console.log('Request Status after Accept:', updatedRequest.status); */
 
                 // Verify Trip Status
                 // We need to fetch the trip again or check DB
@@ -138,10 +138,10 @@ const reproduce = async () => {
                 // Actually getTrips returns trips where user is driver OR client. 
                 const allTrips = await tripRes.json();
                 const myTrip = allTrips.find(t => t._id === tripId);
-                /* /* console.log('Trip Status Final:', myTrip ? myTrip.status : 'Trip not found in list'); */ */
-                /* /* console.log('Trip Clients:', myTrip ? JSON.stringify(myTrip.clients) */ */ : 'N/A');
+                /* console.log('Trip Status Final:', myTrip ? myTrip.status : 'Trip not found in list'); */
+                /* console.log('Trip Clients:', myTrip ? JSON.stringify(myTrip.clients) */ : 'N/A');
             } else {
-                /* /* console.log('No matches found. Check geospatial query or schedule.'); */ */
+                /* console.log('No matches found. Check geospatial query or schedule.'); */
             }
         }
 

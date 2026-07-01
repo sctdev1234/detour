@@ -2,7 +2,8 @@ import * as Location from 'expo-location';
 import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Trash2, User } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Easing, Image, Animated as RNAnimated, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
-import MapView, { Callout, Marker, Polyline } from 'react-native-maps';
+import { Callout, Marker, Polyline } from 'react-native-maps';
+import MapView from 'react-native-map-clustering';
 import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuthStore } from '../store/useAuthStore';
 import { LatLng, Trip } from '../types';
@@ -534,22 +535,22 @@ const Map = React.memo(({
             }
         ]}>
             <MapView
-                ref={mapRef}
-                style={StyleSheet.absoluteFillObject}
-                initialRegion={{
-                    latitude: 33.5731,
-                    longitude: -7.5898,
-                    latitudeDelta: 0.0922,
-                    longitudeDelta: 0.0421,
-                }}
-                onPress={handlePress}
-                showsUserLocation={mode === 'picker'}
-                provider={undefined} // Use default provider (Google mostly)
-                scrollEnabled={interactive}
-                zoomEnabled={interactive}
-                rotateEnabled={interactive}
-                pitchEnabled={interactive}
-            >
+            ref={mapRef as any}
+            style={[styles.map, style, { height }]}
+            initialRegion={initialRegion}
+            showsUserLocation
+            showsMyLocationButton={false}
+            customMapStyle={mapStyle}
+            showsCompass={false}
+            scrollEnabled={!readOnly && interactive}
+            zoomEnabled={!readOnly && interactive}
+            pitchEnabled={!readOnly && interactive}
+            rotateEnabled={!readOnly && interactive}
+            onPress={handleMapPress}
+            clusterColor={theme.colors.primary}
+            clusterTextColor={theme.colors.background}
+            radius={40}
+        >
                 {/* Saved Places — visible in all modes EXCEPT trip */}
                 {mode !== 'trip' && (
                     <SavedPlaceMarkers
