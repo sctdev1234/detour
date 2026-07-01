@@ -53,6 +53,12 @@ export interface MapProps {
     boundsPoints?: LatLng[];
     fullScreen?: boolean;
     routePolylines?: any[];
+    initialRegion?: {
+        latitude: number;
+        longitude: number;
+        latitudeDelta: number;
+        longitudeDelta: number;
+    };
 }
 
 // --- Helper: get icon for saved place ---
@@ -295,6 +301,168 @@ const RouteMarkers = React.memo(({ startPoint, endPoint, waypoints }: any) => {
 
 // --- Main Component ---
 
+const darkMapStyle = [
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#242f3e"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#746855"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#242f3e"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.locality",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#263c3f"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#6b9a76"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#38414e"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#212a37"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9ca5b3"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#746855"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#1f2835"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#f3d19c"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#2f3948"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#d59563"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#17263c"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#515c6d"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#17263c"
+      }
+    ]
+  }
+];
+
 const Map = React.memo(({
     mode = 'view',
     theme,
@@ -318,12 +486,20 @@ const Map = React.memo(({
     onMapPress,
     edgePadding,
     boundsPoints,
-    fullScreen = false
+    fullScreen = false,
+    initialRegion = {
+        latitude: 33.5731,
+        longitude: -7.5898,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+    }
 }: MapProps) => {
+    const mapStyle = theme?.dark || theme?.text === '#FFFFFF' ? darkMapStyle : undefined;
+
     // Fallback: use saved places from auth store if not passed as prop
     const storeUser = useAuthStore(s => s.user);
     const savedPlaces = propSavedPlaces ?? storeUser?.savedPlaces ?? [];
-    const mapRef = useRef<MapView>(null);
+    const mapRef = useRef<any>(null);
     const hasFitPickerRef = useRef(false);
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -546,9 +722,9 @@ const Map = React.memo(({
                 zoomEnabled={!readOnly && interactive}
                 pitchEnabled={!readOnly && interactive}
                 rotateEnabled={!readOnly && interactive}
-                onPress={handleMapPress}
-                clusterColor={theme.colors.primary}
-                clusterTextColor={theme.colors.background}
+                onPress={handlePress}
+                clusterColor={theme.colors?.primary || theme.primary}
+                clusterTextColor={theme.colors?.background || theme.background}
                 radius={40}
             >
                 {/* Saved Places — visible in all modes EXCEPT trip */}
@@ -700,6 +876,10 @@ const styles = StyleSheet.create({
     container: {
         borderWidth: 1,
         borderColor: '#ccc',
+    },
+    map: {
+        width: '100%',
+        height: '100%',
     },
     markerBadge: {
         width: 24,

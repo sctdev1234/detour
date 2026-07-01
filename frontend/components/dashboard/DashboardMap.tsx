@@ -64,7 +64,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
         );
 
         if (validMarkers.length >= 2) {
-            const map = (ref as any).current as MapView;
+            const map = (ref as any).current as any;
             setTimeout(() => {
                 map.fitToCoordinates(validMarkers, {
                     edgePadding: { top: 120, right: 60, bottom: 250, left: 60 }, // Extra bottom padding for bottom sheet
@@ -73,7 +73,7 @@ const DashboardMap = forwardRef<MapView, DashboardMapProps>((props, ref) => {
             }, 700);
         } else if (validMarkers.length === 1 && !hasCenteredRef.current) {
             hasCenteredRef.current = true;
-            const map = (ref as any).current as MapView;
+            const map = (ref as any).current as any;
             map.animateToRegion({
                 latitude: validMarkers[0].latitude,
                 longitude: validMarkers[0].longitude,

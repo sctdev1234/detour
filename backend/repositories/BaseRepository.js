@@ -8,23 +8,23 @@ class BaseRepository {
         return await entity.save();
     }
 
-    async findById(id, includeDeleted = false) {
+    findById(id, includeDeleted = false) {
         const query = { _id: id };
         if (!includeDeleted) {
             query.isDeleted = false;
         }
-        return await this.model.findOne(query);
+        return this.model.findOne(query);
     }
 
-    async findOne(filter = {}, includeDeleted = false) {
+    findOne(filter = {}, includeDeleted = false) {
         const query = { ...filter };
         if (!includeDeleted) {
             query.isDeleted = false;
         }
-        return await this.model.findOne(query);
+        return this.model.findOne(query);
     }
 
-    async find(filter = {}, options = {}, includeDeleted = false) {
+    find(filter = {}, options = {}, includeDeleted = false) {
         const query = { ...filter };
         if (!includeDeleted) {
             query.isDeleted = false;
@@ -37,7 +37,7 @@ class BaseRepository {
         if (options.limit) queryBuilder = queryBuilder.limit(options.limit);
         if (options.skip) queryBuilder = queryBuilder.skip(options.skip);
 
-        return await queryBuilder.exec();
+        return queryBuilder;
     }
 
     async update(id, data) {

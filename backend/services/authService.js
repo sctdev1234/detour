@@ -1,6 +1,6 @@
 const { AppError } = require('../utils/errors');
 const userRepository = require('../repositories/UserRepository');
-const placeRepository = require('../repositories/PlaceRepository');
+const { SavedPlaceRepository } = require('../repositories/PlaceRepository');
 const routeRepository = require('../repositories/RouteRepository');
 const carRepository = require('../repositories/CarRepository');
 const bcrypt = require('bcryptjs');
@@ -120,7 +120,7 @@ class AuthService {
         }
 
         // Fetch saved places
-        const savedPlaces = await placeRepository.SavedPlaceRepository.find({ user: user.id });
+        const savedPlaces = await SavedPlaceRepository.find({ user: user.id });
         const userObj = user.toObject();
         userObj.savedPlaces = savedPlaces;
         userObj.onboardingStatus = await this.calculateOnboardingStatus(user);
@@ -141,7 +141,7 @@ class AuthService {
         const user = await userRepository.findById(userId).select('-password');
         if (!user) return null;
 
-        const savedPlaces = await placeRepository.find({ user: userId });
+        const savedPlaces = await SavedPlaceRepository.find({ user: userId });
         const userObj = user.toObject();
         userObj.id = user._id.toString(); // Ensure id is always present for frontend
         userObj.savedPlaces = savedPlaces;
@@ -257,27 +257,26 @@ class AuthService {
         const user = await userRepository.findById(userId);
         if (!user) throw new AppError('User not found', 404);
 
-        const newPlace = new SavedPlace({
+        await SavedPlaceRepository.create({
             user: userId,
             ...placeData
         });
-        await newPlace.save();
 
         // Return all saved places for the user to keep frontend state consistent
-        return placeRepository.find({ user: userId });
+        return SavedPlaceRepository.find({ user: userId });
     }
 
     async removeSavedPlace(userId, placeId) {
         // Ensure the place belongs to the user
-        const result = await SavedPlace.findOneAndDelete({ _id: placeId, user: userId });
+        const result = await SavedPlaceRepository.model.findOneAndDelete({ _id: placeId, user: userId });
         if (!result) throw new Error('Place not found or not authorized');
 
         // Return updated list
-        return placeRepository.find({ user: userId });
+        return SavedPlaceRepository.find({ user: userId });
     }
 
     async getSavedPlaces(userId) {
-        return placeRepository.find({ user: userId });
+        return SavedPlaceRepository.find({ user: userId });
     }
 
     
@@ -423,7 +422,7 @@ class AuthService {
             const routeCount = await routeRepository.count({ userId: user._id, role: 'client' });
             const hasRoute = routeCount > 0;
 
-            const placesCount = await placeRepository.SavedPlaceRepository.count({ user: user._id });
+            const placesCount = await SavedPlaceRepository.count({ user: user._id });
             const hasPlaces = placesCount >= 2;
 
             status.steps.push({

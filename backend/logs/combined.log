@@ -220,3 +220,76 @@
 {"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 02:54:12"}
 {"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 02:54:12"}
 {"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: userRepository.findById(...).select is not a function","service":"detour-backend","stack":"TypeError: userRepository.findById(...).select is not a function\n    at AuthService.getUser (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\services\\authService.js:141:60)\n    at AuthController.getMe (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\controllers\\authController.js:124:44)\n    at C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\routes\\auth.js:44:60\n    at Layer.handleRequest (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at auth (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\middleware\\auth.js:19:9)\n    at Layer.handleRequest (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\node_modules\\router\\index.js:435:11)","timestamp":"2026-07-01 02:54:12"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-01 12:06:55"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-01 12:07:10"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-01 12:07:10"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-01 12:07:12"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-01 12:07:12"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 12:43:55"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 12:43:55"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:43:55"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:43:55"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 12:43:55"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:43:55"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:44:14"}
+{"level":"warn","message":"⚠️ Warning: Invalid Credentials","service":"detour-backend","timestamp":"2026-07-01 12:44:14"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:44:38"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:44:39"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:44:39"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:44:39"}
+{"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: userRepository.findById(...).select is not a function","service":"detour-backend","stack":"TypeError: userRepository.findById(...).select is not a function\n    at AuthService.getUser (D:\\detour\\backend\\services\\authService.js:141:60)\n    at AuthController.getMe (D:\\detour\\backend\\controllers\\authController.js:124:44)\n    at D:\\detour\\backend\\routes\\auth.js:44:60\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at auth (D:\\detour\\backend\\middleware\\auth.js:19:9)\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (D:\\detour\\backend\\node_modules\\router\\index.js:435:11)","timestamp":"2026-07-01 12:44:39"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:49:48"}
+{"level":"warn","message":"⚠️ Warning: Invalid Credentials","service":"detour-backend","timestamp":"2026-07-01 12:49:48"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:50:03"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:50:04"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:50:04"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:50:04"}
+{"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: userRepository.findById(...).select is not a function","service":"detour-backend","stack":"TypeError: userRepository.findById(...).select is not a function\n    at AuthService.getUser (D:\\detour\\backend\\services\\authService.js:141:60)\n    at AuthController.getMe (D:\\detour\\backend\\controllers\\authController.js:124:44)\n    at D:\\detour\\backend\\routes\\auth.js:44:60\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at auth (D:\\detour\\backend\\middleware\\auth.js:19:9)\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (D:\\detour\\backend\\node_modules\\router\\index.js:435:11)","timestamp":"2026-07-01 12:50:04"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:52:45"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:52:46"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:52:46"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:52:46"}
+{"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: userRepository.findById(...).select is not a function","service":"detour-backend","stack":"TypeError: userRepository.findById(...).select is not a function\n    at AuthService.getUser (D:\\detour\\backend\\services\\authService.js:141:60)\n    at AuthController.getMe (D:\\detour\\backend\\controllers\\authController.js:124:44)\n    at D:\\detour\\backend\\routes\\auth.js:44:60\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at auth (D:\\detour\\backend\\middleware\\auth.js:19:9)\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (D:\\detour\\backend\\node_modules\\router\\index.js:435:11)","timestamp":"2026-07-01 12:52:46"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:53:35"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:53:35"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:53:51"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:53:51"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:54:12"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:54:12"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:54:18"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:54:18"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:54:27"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:54:27"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:54:28"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:54:28"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 12:54:48"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 12:54:48"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:54:48"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:54:48"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 12:54:48"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:54:48"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:55:08"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:55:08"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:55:21"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:55:21"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:58:06"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:58:06"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 12:58:26"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 12:58:26"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:58:26"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:58:26"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 12:58:26"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:58:26"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:58:44"}
+{"level":"warn","message":"⚠️ Warning: Too many authentication attempts. Please try again later.","service":"detour-backend","timestamp":"2026-07-01 12:58:44"}
+{"level":"info","message":"GET /api/trip/route","service":"detour-backend","timestamp":"2026-07-01 12:59:31"}
+{"level":"info","message":"GET /api/trip/all","service":"detour-backend","timestamp":"2026-07-01 12:59:31"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:59:31"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:59:31"}
+{"level":"info","message":"GET /api/reclamations","service":"detour-backend","timestamp":"2026-07-01 12:59:31"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:59:31"}
+{"level":"info","message":"POST /api/auth/login","service":"detour-backend","timestamp":"2026-07-01 12:59:54"}
+{"level":"info","message":"GET /api/trip/requests/driver","service":"detour-backend","timestamp":"2026-07-01 12:59:55"}
+{"level":"info","message":"GET /api/trip/requests/client","service":"detour-backend","timestamp":"2026-07-01 12:59:55"}
+{"level":"info","message":"GET /api/auth/me","service":"detour-backend","timestamp":"2026-07-01 12:59:55"}
+{"error":{"status":"error","statusCode":500},"level":"error","message":"💥 ERROR: userRepository.findById(...).select is not a function","service":"detour-backend","stack":"TypeError: userRepository.findById(...).select is not a function\n    at AuthService.getUser (D:\\detour\\backend\\services\\authService.js:141:60)\n    at AuthController.getMe (D:\\detour\\backend\\controllers\\authController.js:124:44)\n    at D:\\detour\\backend\\routes\\auth.js:44:60\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at auth (D:\\detour\\backend\\middleware\\auth.js:19:9)\n    at Layer.handleRequest (D:\\detour\\backend\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:157:13)\n    at Route.dispatch (D:\\detour\\backend\\node_modules\\router\\lib\\route.js:117:3)\n    at handle (D:\\detour\\backend\\node_modules\\router\\index.js:435:11)","timestamp":"2026-07-01 12:59:55"}
