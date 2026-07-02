@@ -25,7 +25,7 @@ export default function WalletScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
-            <Header title="My Wallet" showBack />
+            <Header />
             
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {isLoading && !wallet ? (

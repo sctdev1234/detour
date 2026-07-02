@@ -3,6 +3,7 @@ const tripRepository = require('../repositories/TripRepository');
 const JoinRequest = require('../models/JoinRequest');
 const userRepository = require('../repositories/UserRepository');
 const transactionService = require('./transactionService');
+const ShadowValidator = require('../utils/ShadowValidator');
 
 class TripService {
     constructor() {
@@ -430,6 +431,9 @@ class TripService {
 
                 await trip.save({ session });
                 
+                // [Phase 5: Parallel Validation]
+                ShadowValidator.validateStateTransition(trip, 'CANCELLED');
+                
                 const analyticsService = require('./analyticsService');
                 await analyticsService.logTripCompletion(userId, true); // true for cancelled
 
@@ -482,6 +486,9 @@ class TripService {
         trip.stateTimestamps.startedAt = new Date();
         await trip.save();
 
+        // [Phase 5: Parallel Validation]
+        ShadowValidator.validateStateTransition(trip, 'STARTED');
+
         if (this.io) {
             this.io.to(`trip:${tripId}`).emit('trip_started', { tripId, startedAt: trip.stateTimestamps.startedAt });
             this.io.to(`user:${userId}`).emit('trip_updated', { tripId });
@@ -504,6 +511,9 @@ class TripService {
         trip.stateTimestamps = trip.stateTimestamps || {};
         trip.stateTimestamps.completedAt = new Date();
         await trip.save();
+
+        // [Phase 5: Parallel Validation]
+        ShadowValidator.validateStateTransition(trip, 'COMPLETED');
 
         return trip;
     }
@@ -610,6 +620,9 @@ class TripService {
                 clientEntry.status = 'IN_CAR';
                 clientEntry.paymentStatus = 'paid';
                 trip.status = 'IN_PROGRESS';
+                
+                // [Phase 5: Parallel Validation]
+                ShadowValidator.validateStateTransition(trip, 'IN_PROGRESS');
 
             } catch (paymentError) {
                 console.error('Payment failed:', paymentError);
@@ -722,6 +735,9 @@ class TripService {
         trip.status = 'ARRIVED_PICKUP';
         clientEntry.status = 'PICKUP_INCOMING';
         await trip.save();
+        
+        // [Phase 5: Parallel Validation]
+        ShadowValidator.validateStateTransition(trip, 'ARRIVED_PICKUP');
         return trip;
     }
     // ============================================

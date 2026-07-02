@@ -23,7 +23,7 @@ export const useRideFlow = () => {
         updateSearchRadius, 
         setStatus, 
         reset,
-        rideRequestId,
+        tripInstanceId,
         offers
     } = useRideStore();
     
@@ -43,7 +43,7 @@ export const useRideFlow = () => {
         };
 
         const handleRideUpdated = (data: { id: string, searchRadius: number }) => {
-            if (rideRequestId === data.id) {
+            if (tripInstanceId === data.id) {
                 showToast(`Search radius expanded to ${data.searchRadius / 1000}km`);
                 updateSearchRadius(data.searchRadius);
             }
@@ -61,7 +61,7 @@ export const useRideFlow = () => {
             activeSocket.off('offer:expired', handleOfferExpired);
             activeSocket.off('ride:updated', handleRideUpdated);
         };
-    }, [socket, rideRequestId, addOffer, removeOffer, updateSearchRadius]);
+    }, [socket, tripInstanceId, addOffer, removeOffer, updateSearchRadius]);
 
     const requestRide = async (pickup: LatLng, destination: LatLng, pAddr: string, dAddr: string, basePrice: number, distance: number, duration: number) => {
         setIsLoading(true);
@@ -91,17 +91,17 @@ export const useRideFlow = () => {
             
         } catch (error: any) {
             showToast(error.response?.data?.message || 'Failed to request ride');
-            setStatus('FAILED');
+            setStatus('CANCELLED_BY_SYSTEM');
         } finally {
             setIsLoading(false);
         }
     };
 
     const cancelSearch = async () => {
-        if (!rideRequestId) return;
+        if (!tripInstanceId) return;
         setIsLoading(true);
         try {
-            await api.delete(`/rides/requests/${rideRequestId}`);
+            await api.delete(`/rides/requests/${tripInstanceId}`);
             reset();
             // posthog.capture('ride_cancelled');
         } catch (error) {
@@ -115,7 +115,7 @@ export const useRideFlow = () => {
         setIsLoading(true);
         try {
             const res = await api.post(`/rides/offers/${offerId}/accept`);
-            setStatus('ACCEPTED');
+            setStatus('OFFER_ACCEPTED');
             // Store the active trip ID in the global trip store
             // useTripStore.getState().setActiveTrip(res.data.data);
             showToast('Ride confirmed! Driver is on the way.');

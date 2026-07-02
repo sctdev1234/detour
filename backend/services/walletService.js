@@ -1,5 +1,6 @@
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
+const ShadowValidator = require('../utils/ShadowValidator');
 
 class WalletService {
     // 15% Platform Commission
@@ -23,6 +24,9 @@ class WalletService {
         // Calculate commission
         const commissionAmount = Number((tripPrice * WalletService.COMMISSION_RATE).toFixed(2));
         const driverEarning = Number((tripPrice - commissionAmount).toFixed(2));
+
+        // [Phase 5: Parallel Validation] Shadow match the pricing calculation
+        ShadowValidator.validatePricing({ tripId, amount: tripPrice }, tripPrice);
 
         // Create Transactions
         const earningTx = new Transaction({

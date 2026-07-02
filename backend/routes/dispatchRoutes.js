@@ -1,9 +1,9 @@
-const express = require('require');
+const express = require('express');
 const router = express.Router();
 const dispatchController = require('../controllers/dispatchController');
-const { protect } = require('../middleware/auth'); // Ensure auth middleware exists and is used
+const { auth } = require('../middleware/auth');
 
-router.post('/template', protect, dispatchController.createTemplate);
-router.post('/offer/:id/accept', protect, dispatchController.acceptOffer);
+router.post('/template', auth, dispatchController.createTemplate);
+router.post('/offer/:id/accept', auth, dispatchController.acceptOffer);
 
 module.exports = router;

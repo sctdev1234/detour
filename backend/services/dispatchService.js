@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Offer = require('../models/Offer');
 const Trip = require('../models/Trip');
 const { transitionState } = require('../utils/stateMachine');
+const ShadowValidator = require('../utils/ShadowValidator');
 
 class DispatchService {
     /**
@@ -53,6 +54,9 @@ class DispatchService {
         if (tripInstance.searchRadius >= MAX_RADIUS) {
             console.log(`[Dispatch] Max radius reached for TripInstance ${tripInstanceId}. Failing.`);
             await transitionState(tripInstance, 'CANCELLED_BY_SYSTEM', 'No drivers found within max radius');
+            
+            // [Phase 5: Parallel Validation] Shadow match the state transition
+            ShadowValidator.validateStateTransition(tripInstance, 'CANCELLED_BY_SYSTEM');
             return null;
         }
 
@@ -119,6 +123,9 @@ class DispatchService {
         // 5. Update TripInstance to DRIVER_ASSIGNED
         tripInstance.executionTripId = newTrip._id;
         await transitionState(tripInstance, 'DRIVER_ASSIGNED');
+        
+        // [Phase 5: Parallel Validation] Shadow match the state transition
+        ShadowValidator.validateStateTransition(tripInstance, 'DRIVER_ASSIGNED');
 
         // 6. Update Driver Status to BUSY
         await User.findByIdAndUpdate(offer.driverId, { driverStatus: 'BUSY' });

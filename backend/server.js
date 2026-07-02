@@ -114,6 +114,8 @@ app.use('/api/analytics', require('./routes/analytics'));
 
 // V2 Pipeline Endpoints
 app.use('/api/v2/dispatch', require('./routes/dispatchRoutes'));
+app.use('/api/v2/dispatch/driver', require('./routes/driverDispatchRoutes'));
+app.use('/api/shadow', require('./routes/shadowRoutes'));
 
 // Error Handling Middleware
 const errorHandler = require('./middleware/errorHandler');

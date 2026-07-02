@@ -29,6 +29,10 @@ import { useRideStore } from '../../store/useRideStore';
 import { useRideFlow } from '../../hooks/useRideFlow';
 import OfferList from '../../components/trips/OfferList';
 
+// V2 Imports
+import { useDispatchFlow } from '../../hooks/useDispatchFlow';
+import TripExperience from '../../components/dispatch/passenger/TripExperience';
+
 type HomeState = 'zero_trips' | 'has_trips' | 'active_trip';
 
 export default function ClientDashboard() {
@@ -39,7 +43,7 @@ export default function ClientDashboard() {
 
     const { user } = useAuthStore();
     const { status: rideStatus, offers } = useRideStore();
-    const { showToast, setHideGlobalHeader, setHideGlobalFooter } = useUIStore();
+    const { showToast, setHideGlobalHeader, setHideGlobalFooter, featureFlags } = useUIStore();
     const { driverLocation } = useTrackingStore();
 
     // Data hooks
@@ -157,6 +161,7 @@ export default function ClientDashboard() {
     }, []);
 
     const { requestRide, acceptOffer, rejectOffer } = useRideFlow();
+    const v2Flow = useDispatchFlow();
 
     const handleCreateTrip = useCallback(async (data: {
         startPoint: LatLng;
@@ -168,8 +173,24 @@ export default function ClientDashboard() {
     }) => {
         try {
             if (data.rideType === 'immediate') {
-                await requestRide(data.startPoint, data.endPoint, 'Pickup', 'Destination', data.price, 5000, 600); // Approximate distance/duration for now
-                showToast('Looking for drivers...', 'success');
+                if (featureFlags.enableV2Dispatch) {
+                    await v2Flow.requestRide({
+                        pickup: {
+                            type: 'Point',
+                            coordinates: [data.startPoint.longitude, data.startPoint.latitude],
+                            address: 'Current Location'
+                        },
+                        dropoff: {
+                            type: 'Point',
+                            coordinates: [data.endPoint.longitude, data.endPoint.latitude],
+                            address: 'Destination'
+                        }
+                    });
+                    showToast('Looking for drivers (V2)...', 'success');
+                } else {
+                    await requestRide(data.startPoint, data.endPoint, 'Pickup', 'Destination', data.price, 5000, 600); // Approximate distance/duration for now
+                    showToast('Looking for drivers...', 'success');
+                }
                 setIsCreatingTrip(false);
                 setMapPoints([]);
             } else {
@@ -340,16 +361,26 @@ export default function ClientDashboard() {
             {/* ========================================== */}
             {/* STATE 4: Searching / Offers Incoming         */}
             {/* ========================================== */}
-            {(rideStatus === 'SEARCHING' || rideStatus === 'OFFERS_INCOMING') && (
-                <View style={[styles.whereToContainer, { bottom: 0 }]}>
-                    <OfferList
-                        offers={offers}
-                        theme={theme}
-                        isDark={colorScheme === 'dark'}
-                        onAccept={acceptOffer}
-                        onReject={rejectOffer}
-                    />
-                </View>
+            {featureFlags.enableV2Dispatch ? (
+                // V2 Dispatch Flow
+                (v2Flow.isSearching || v2Flow.hasOffers || v2Flow.isAssigned) && (
+                    <View style={[styles.whereToContainer, { bottom: 0 }]}>
+                        <TripExperience onClose={() => v2Flow.cancelSearch()} />
+                    </View>
+                )
+            ) : (
+                // V1 Dispatch Flow
+                (rideStatus === 'SEARCHING' || rideStatus === 'OFFERS_OPEN') && (
+                    <View style={[styles.whereToContainer, { bottom: 0 }]}>
+                        <OfferList
+                            offers={offers}
+                            theme={theme}
+                            isDark={colorScheme === 'dark'}
+                            onAccept={acceptOffer}
+                            onReject={rejectOffer}
+                        />
+                    </View>
+                )
             )}
         </View>
     );

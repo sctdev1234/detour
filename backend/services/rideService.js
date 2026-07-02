@@ -5,6 +5,7 @@ const Trip = require('../models/Trip');
 const AppError = require('../utils/AppError');
 const DispatchService = require('./dispatchService');
 const { transitionState } = require('../utils/stateMachine');
+const ShadowValidator = require('../utils/ShadowValidator');
 
 class RideService {
     constructor() {
@@ -72,6 +73,9 @@ class RideService {
         
         // State machine validation via utility
         await transitionState(instance, 'SEARCHING');
+        
+        // [Phase 5: Parallel Validation] Shadow match the state transition
+        ShadowValidator.validateStateTransition(instance, 'SEARCHING');
 
         if (this.io) {
             // Find eligible drivers via Dispatch Engine and ping them
@@ -95,8 +99,10 @@ class RideService {
     async cancelRideRequest(instanceId, passengerId) {
         const instance = await TripInstance.findOne({ _id: instanceId, userId: passengerId });
         if (!instance) throw new AppError('Trip instance not found', 404);
-        
         await transitionState(instance, 'CANCELLED_BY_PASSENGER');
+
+        // [Phase 5: Parallel Validation] Shadow match the state transition
+        ShadowValidator.validateStateTransition(instance, 'CANCELLED_BY_PASSENGER');
 
         if (this.io) {
             this.io.emit('ride:cancelled', { id: instanceId });
@@ -131,6 +137,9 @@ class RideService {
 
         if (instance.status === 'SEARCHING') {
             await transitionState(instance, 'OFFERS_OPEN');
+            
+            // [Phase 5: Parallel Validation] Shadow match the state transition
+            ShadowValidator.validateStateTransition(instance, 'OFFERS_OPEN');
         }
 
         const offer = new Offer({

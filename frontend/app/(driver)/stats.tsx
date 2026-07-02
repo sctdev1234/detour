@@ -20,7 +20,7 @@ export default function StatsScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
-            <Header title="My Performance" showBack />
+            <Header />
             
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {isLoading && !stats ? (

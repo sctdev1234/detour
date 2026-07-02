@@ -46,7 +46,15 @@ interface ConfirmSlice {
     setHideGlobalFooter: (hide: boolean) => void;
 }
 
-export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
+interface FeatureFlagSlice {
+    featureFlags: {
+        enableV2Dispatch: boolean;
+        enableV2DriverDispatch: boolean;
+    };
+    setFeatureFlag: (flag: keyof FeatureFlagSlice['featureFlags'], value: boolean) => void;
+}
+
+export const useUIStore = create<ToastSlice & ConfirmSlice & FeatureFlagSlice>((set) => ({
     // Toast Initial State
     toastMessage: '',
     toastType: 'info',
@@ -97,4 +105,16 @@ export const useUIStore = create<ToastSlice & ConfirmSlice>((set) => ({
     // Footer Visibility Initial State
     hideGlobalFooter: false,
     setHideGlobalFooter: (hide) => set({ hideGlobalFooter: hide }),
+
+    // Feature Flags Initial State
+    featureFlags: {
+        enableV2Dispatch: false,
+        enableV2DriverDispatch: false,
+    },
+    setFeatureFlag: (flag, value) => set((state) => ({
+        featureFlags: {
+            ...state.featureFlags,
+            [flag]: value
+        }
+    }))
 }));

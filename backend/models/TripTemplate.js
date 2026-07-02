@@ -37,6 +37,12 @@ const tripTemplateSchema = new mongoose.Schema(
             required: true,
             index: true // Index: Optmizes finding all templates owned by a specific passenger.
         },
+        creatorRole: {
+            type: String,
+            enum: ['passenger', 'driver', 'admin'],
+            default: 'passenger',
+            required: true
+        },
         schedulingStrategy: {
             type: String,
             enum: ['IMMEDIATE', 'SCHEDULED', 'RECURRING'],

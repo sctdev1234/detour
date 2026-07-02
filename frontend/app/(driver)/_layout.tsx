@@ -1,16 +1,21 @@
 import { useColorScheme } from 'react-native';
 import DrawerContent from '../../components/DrawerContent';
 import DriverTripExecutionScreen from '../../components/DriverTripExecutionScreen';
+import DriverTripExperienceV2 from '../../components/dispatch/driver/DriverTripExperienceV2';
 import { Drawer } from '../../components/DrawerLayout';
 import { Colors } from '../../constants/theme';
 import { useTrips } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useUIStore } from '../../store/useUIStore';
 import { getNextTripOccurrence } from '../../utils/timeUtils';
+import { useDriverDispatchStore } from '../../store/useDriverDispatchStore';
 
 export default function DriverLayout() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
+    const { featureFlags } = useUIStore();
+    const driverV2Status = useDriverDispatchStore((s) => s.status);
 
     const { data: trips } = useTrips();
     const activeTrip = trips?.find((t: any) => {
@@ -30,7 +35,16 @@ export default function DriverLayout() {
         return false;
     });
 
-    // Hard Lock: Active trip takes over
+    // V2 takes precedence when feature flag is ON and driver is in an active V2 dispatch state
+    const isV2Active = featureFlags.enableV2DriverDispatch &&
+        ['EN_ROUTE', 'ARRIVED', 'TRIP_ACTIVE', 'TRIP_COMPLETED'].includes(driverV2Status);
+
+    // Hard Lock: V2 active trip takes over
+    if (isV2Active) {
+        return <DriverTripExperienceV2 />;
+    }
+
+    // Hard Lock: V1 active trip takes over (backward compatibility)
     if (activeTrip) {
         return <DriverTripExecutionScreen trip={activeTrip} />;
     }

@@ -27,6 +27,9 @@ import { IN_PROGRESS_STATUSES } from '../../utils/timeUtils';
 import DashboardBottomSheet from './DashboardBottomSheet';
 import FloatingTopBar from './FloatingTopBar';
 import QuickActions from './QuickActions';
+import DriverTripExperienceV2 from '../dispatch/driver/DriverTripExperienceV2';
+import { useUIStore } from '../../store/useUIStore';
+import { useDriverDispatchStore } from '../../store/useDriverDispatchStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -52,6 +55,12 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     const { location: trackedLocation } = useLocationStore();
     const { places, fetchPlaces } = usePlacesStore();
     const { showSavedPlaces, showSavedRoutes, driverStatus } = useDashboardStore();
+    const { featureFlags } = useUIStore();
+    const driverV2Status = useDriverDispatchStore((s) => s.status);
+
+    // Show V2 overlay for statuses that appear within the dashboard (not full-screen takeover)
+    const showV2Overlay = featureFlags.enableV2DriverDispatch &&
+        ['OFFLINE', 'ONLINE', 'BREAK', 'OFFER_INCOMING', 'ERROR'].includes(driverV2Status);
 
     const { data: allTrips } = useTrips();
 
@@ -238,8 +247,14 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                 onCreateRoute={() => router.push('/(driver)/add-route')}
             />
 
-            {/* Bottom Sheet */}
-            <DashboardBottomSheet />
+            {/* Bottom Sheet (V1) or V2 Dispatch Overlay */}
+            {showV2Overlay ? (
+                <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 50 }}>
+                    <DriverTripExperienceV2 />
+                </View>
+            ) : (
+                <DashboardBottomSheet />
+            )}
         </View>
     );
 }

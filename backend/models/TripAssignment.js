@@ -45,7 +45,7 @@ const tripAssignmentSchema = new mongoose.Schema(
         vehicleId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Vehicle', // Assumes a future Vehicle collection exists
-            required: true
+            required: false // Made optional for V1->V2 migration
         },
         status: {
             type: String,
