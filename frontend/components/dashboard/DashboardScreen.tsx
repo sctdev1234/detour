@@ -30,6 +30,7 @@ import QuickActions from './QuickActions';
 import DriverTripExperienceV2 from '../dispatch/driver/DriverTripExperienceV2';
 import { useUIStore } from '../../store/useUIStore';
 import { useDriverDispatchStore } from '../../store/useDriverDispatchStore';
+import { useDispatchStore } from '../../store/useDispatchStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -56,11 +57,13 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     const { places, fetchPlaces } = usePlacesStore();
     const { showSavedPlaces, showSavedRoutes, driverStatus } = useDashboardStore();
     const { featureFlags } = useUIStore();
-    const driverV2Status = useDriverDispatchStore((s) => s.status);
+    const driverV2Status = useDriverDispatchStore((s) => s.presence === 'ONLINE' ? 'ONLINE' : 'OFFLINE'); // Temporary simplify for Dashboard logic
+    const driverV2ActiveTrip = useDriverDispatchStore((s) => s.activeTrip);
+    const passengerV2ActiveTrip = useDispatchStore((s) => s.assignment || s.tripInstance);
 
     // Show V2 overlay for statuses that appear within the dashboard (not full-screen takeover)
-    const showV2Overlay = featureFlags.enableV2DriverDispatch &&
-        ['OFFLINE', 'ONLINE', 'BREAK', 'OFFER_INCOMING', 'ERROR'].includes(driverV2Status);
+    const presence = useDriverDispatchStore((s) => s.presence);
+    const showV2Overlay = featureFlags.enableV2DriverDispatch && presence === 'ONLINE';
 
     const { data: allTrips } = useTrips();
 
@@ -73,10 +76,15 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
         t.driverId === user?.id
     ) || [];
 
-    // Active trip
-    const activeTrip = trips.find((t: any) =>
+    // V1 Active trip
+    const v1ActiveTrip = trips.find((t: any) =>
         IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active'
     );
+
+    // Resolved Active Trip (V2 takes precedence)
+    const activeTrip = featureFlags.enableV2DriverDispatch && driverV2ActiveTrip ? driverV2ActiveTrip :
+                       featureFlags.enableV2Dispatch && passengerV2ActiveTrip ? passengerV2ActiveTrip :
+                       v1ActiveTrip;
 
     // Find the primary trip to show on map (active or next scheduled)
     const tripToDisplay = React.useMemo(() => {

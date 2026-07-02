@@ -2,6 +2,7 @@ import { driverDispatchApi } from '../services/driverDispatchApi';
 import { driverDispatchSocket } from '../services/driverDispatchSocket';
 import { useDriverDispatchStore, DriverOffer } from './useDriverDispatchStore';
 import driverService from '../services/driverService';
+import { socketLifecycleManager, ConnectionStatus } from '../services/SocketLifecycleManager';
 
 /**
  * Driver Dispatch Actions — business logic module.
@@ -14,6 +15,8 @@ let unsubExpired: (() => void) | null = null;
 let unsubAssigned: (() => void) | null = null;
 let unsubCancelled: (() => void) | null = null;
 let unsubCounter: (() => void) | null = null;
+let unsubConnectionStatus: (() => void) | null = null;
+let unsubResume: (() => void) | null = null;
 
 export const driverDispatchActions = {
     /**
@@ -24,7 +27,8 @@ export const driverDispatchActions = {
         store.setError(null);
         try {
             await driverService.updateStatus('ONLINE');
-            store.setStatus('ONLINE');
+            store.setPresence('ONLINE');
+            store.setAvailability('AVAILABLE');
             driverDispatchActions._bindSockets();
         } catch (error: any) {
             store.setError(error.message || 'Failed to go online');
@@ -52,7 +56,8 @@ export const driverDispatchActions = {
         const store = useDriverDispatchStore.getState();
         try {
             await driverService.updateStatus('BREAK');
-            store.setStatus('BREAK');
+            store.setAvailability('BREAK');
+            // Depending on requirements, we might want to unbind sockets or stay connected to see updates
             driverDispatchActions._unbindSockets();
         } catch (error: any) {
             store.setError(error.message || 'Failed to set break');
@@ -82,7 +87,7 @@ export const driverDispatchActions = {
         try {
             await driverDispatchApi.rejectOffer(offerId, reason);
             store.setCurrentOffer(null);
-            store.setStatus('ONLINE');
+            store.setAvailability('AVAILABLE');
         } catch (error: any) {
             store.setError(error.message || 'Failed to reject offer');
         }
@@ -96,7 +101,7 @@ export const driverDispatchActions = {
         store.setError(null);
         try {
             await driverDispatchApi.counterOffer(offerId, counterPrice);
-            // Status stays as OFFER_INCOMING until passenger responds
+            // Status stays as BUSY with OFFER_INCOMING until passenger responds
         } catch (error: any) {
             store.setError(error.message || 'Failed to submit counter-offer');
         }
@@ -111,16 +116,21 @@ export const driverDispatchActions = {
         try {
             await driverDispatchApi.updateTripStatus(tripInstanceId, status);
 
-            // Map API status to driver dispatch status
+            // Update the architectural tripStatus dimension
             const statusMap: Record<string, any> = {
-                'EN_ROUTE': 'EN_ROUTE',
-                'ARRIVED': 'ARRIVED',
-                'STARTED': 'TRIP_ACTIVE',
-                'COMPLETED': 'TRIP_COMPLETED'
+                'EN_ROUTE': 'TO_PICKUP',
+                'ARRIVED': 'TO_PICKUP', // Arrived at pickup
+                'STARTED': 'ACTIVE',
+                'COMPLETED': 'COMPLETED'
             };
-            const driverStatus = statusMap[status];
-            if (driverStatus) {
-                store.setStatus(driverStatus);
+            const tripStatus = statusMap[status];
+            if (tripStatus) {
+                store.setTripStatus(tripStatus);
+            }
+            
+            // Also locally patch the activeTrip status so the view knows if it's Arrived vs En_Route
+            if (store.activeTrip) {
+                store.setActiveTrip({ ...store.activeTrip, status: status === 'ARRIVED' ? 'ARRIVED_PICKUP' : status });
             }
         } catch (error: any) {
             store.setError(error.message || 'Failed to update trip status');
@@ -135,7 +145,8 @@ export const driverDispatchActions = {
         store.setTripSummary(null);
         store.setActiveTrip(null);
         store.setCurrentOffer(null);
-        store.setStatus('ONLINE');
+        store.setTripStatus('NONE');
+        store.setAvailability('AVAILABLE');
     },
 
     // ──────────────────────────────────────────────
@@ -145,17 +156,29 @@ export const driverDispatchActions = {
     _bindSockets: () => {
         driverDispatchActions._unbindSockets(); // Clean slate
 
+        socketLifecycleManager.start();
+
+        unsubConnectionStatus = socketLifecycleManager.addStatusListener((status: ConnectionStatus) => {
+            const store = useDriverDispatchStore.getState();
+            store.setConnectionStatus(status);
+        });
+
+        unsubResume = socketLifecycleManager.addResumeListener(() => {
+            // When app comes to foreground, we could poll for missed offers or active trip state here
+            // e.g. driverDispatchApi.fetchCurrentState().then(...)
+        });
+
         unsubOffer = driverDispatchSocket.onOfferDispatched((offer: DriverOffer) => {
             const store = useDriverDispatchStore.getState();
             store.setCurrentOffer(offer);
-            store.setStatus('OFFER_INCOMING');
+            store.setAvailability('BUSY');
         });
 
         unsubExpired = driverDispatchSocket.onOfferExpired(({ offerId }) => {
             const store = useDriverDispatchStore.getState();
             if (store.currentOffer?._id === offerId) {
                 store.setCurrentOffer(null);
-                store.setStatus('ONLINE');
+                store.setAvailability('AVAILABLE');
             }
         });
 
@@ -163,14 +186,16 @@ export const driverDispatchActions = {
             const store = useDriverDispatchStore.getState();
             store.setActiveTrip(assignment);
             store.setCurrentOffer(null);
-            store.setStatus('EN_ROUTE');
+            store.setAvailability('BUSY');
+            store.setTripStatus('TO_PICKUP');
         });
 
         unsubCancelled = driverDispatchSocket.onTripCancelled(() => {
             const store = useDriverDispatchStore.getState();
             store.setActiveTrip(null);
             store.setCurrentOffer(null);
-            store.setStatus('ONLINE');
+            store.setTripStatus('NONE');
+            store.setAvailability('AVAILABLE');
         });
 
         unsubCounter = driverDispatchSocket.onCounterResponse(({ offerId, accepted, finalPrice }) => {
@@ -180,12 +205,15 @@ export const driverDispatchActions = {
             } else {
                 // Passenger rejected counter — return to online
                 store.setCurrentOffer(null);
-                store.setStatus('ONLINE');
+                store.setAvailability('AVAILABLE');
             }
         });
     },
 
     _unbindSockets: () => {
+        socketLifecycleManager.stop();
+        if (unsubConnectionStatus) { unsubConnectionStatus(); unsubConnectionStatus = null; }
+        if (unsubResume) { unsubResume(); unsubResume = null; }
         if (unsubOffer) { unsubOffer(); unsubOffer = null; }
         if (unsubExpired) { unsubExpired(); unsubExpired = null; }
         if (unsubAssigned) { unsubAssigned(); unsubAssigned = null; }

@@ -15,7 +15,7 @@ export default function DriverLayout() {
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
     const { featureFlags } = useUIStore();
-    const driverV2Status = useDriverDispatchStore((s) => s.status);
+    const tripStatus = useDriverDispatchStore((s) => s.tripStatus);
 
     const { data: trips } = useTrips();
     const activeTrip = trips?.find((t: any) => {
@@ -37,7 +37,7 @@ export default function DriverLayout() {
 
     // V2 takes precedence when feature flag is ON and driver is in an active V2 dispatch state
     const isV2Active = featureFlags.enableV2DriverDispatch &&
-        ['EN_ROUTE', 'ARRIVED', 'TRIP_ACTIVE', 'TRIP_COMPLETED'].includes(driverV2Status);
+        ['TO_PICKUP', 'ACTIVE', 'COMPLETED'].includes(tripStatus);
 
     // Hard Lock: V2 active trip takes over
     if (isV2Active) {

@@ -7,15 +7,51 @@ import { driverDispatchActions } from '../store/driverDispatchActions';
  * No business logic lives here.
  */
 export const useDriverDispatchFlow = () => {
-    const status = useDriverDispatchStore((s) => s.status);
+    const presence = useDriverDispatchStore((s) => s.presence);
+    const availability = useDriverDispatchStore((s) => s.availability);
+    const tripStatus = useDriverDispatchStore((s) => s.tripStatus);
+    const connectionStatus = useDriverDispatchStore((s) => s.connectionStatus);
+
     const currentOffer = useDriverDispatchStore((s) => s.currentOffer);
     const activeTrip = useDriverDispatchStore((s) => s.activeTrip);
     const tripSummary = useDriverDispatchStore((s) => s.tripSummary);
     const error = useDriverDispatchStore((s) => s.error);
 
+    // Derive unified View Status for backwards compatibility with legacy layout
+    let status = 'OFFLINE';
+    if (error) {
+        status = 'ERROR';
+    } else if (presence === 'OFFLINE') {
+        status = 'OFFLINE';
+    } else if (availability === 'BREAK') {
+        status = 'BREAK';
+    } else if (tripStatus === 'COMPLETED') {
+        status = 'TRIP_COMPLETED';
+    } else if (tripStatus === 'ACTIVE') {
+        status = 'TRIP_ACTIVE';
+    } else if (tripStatus === 'TO_PICKUP') {
+        // Distinguish between en-route to pickup and arrived at pickup
+        if (activeTrip?.status === 'ARRIVED_PICKUP' || activeTrip?.status === 'ARRIVED') {
+            status = 'ARRIVED';
+        } else {
+            status = 'EN_ROUTE';
+        }
+    } else if (currentOffer) {
+        status = 'OFFER_INCOMING';
+    } else if (presence === 'ONLINE' && availability === 'AVAILABLE') {
+        status = 'ONLINE';
+    } else {
+        // Fallback for edge states
+        status = 'ONLINE';
+    }
+
     return {
         // State
         status,
+        presence,
+        availability,
+        tripStatus,
+        connectionStatus,
         currentOffer,
         activeTrip,
         tripSummary,

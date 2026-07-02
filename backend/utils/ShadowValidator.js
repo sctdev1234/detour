@@ -11,8 +11,11 @@
  */
 
 const { EventEmitter } = require('events');
-const PricingServiceV2 = require('../services/v2/PricingServiceV2'); // Assumed V2 service
-const DispatchStateMachine = require('../stateMachines/DispatchStateMachine'); // Assumed V2 SM
+let PricingServiceV2 = null;
+let DispatchStateMachine = null;
+try { PricingServiceV2 = require('../services/v2/PricingServiceV2'); } catch(e) {}
+try { DispatchStateMachine = require('../stateMachines/DispatchStateMachine'); } catch(e) {}
+
 const ShadowValidationResult = require('../models/ShadowValidationResult');
 const { v4: uuidv4 } = require('uuid');
 
