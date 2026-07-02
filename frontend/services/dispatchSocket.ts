@@ -32,5 +32,16 @@ export const dispatchSocket = {
         return () => {
             socket.off('dispatch:trip_searching', callback);
         };
+    },
+
+    /**
+     * Subscribes to trip status updates (e.g. ARRIVED, STARTED, COMPLETED).
+     */
+    onTripStatusUpdated: (callback: (data: any) => void) => {
+        const socket = SocketService.connect();
+        socket.on('dispatch:trip_status_updated', callback);
+        return () => {
+            socket.off('dispatch:trip_status_updated', callback);
+        };
     }
 };

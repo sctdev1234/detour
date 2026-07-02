@@ -861,3 +861,8 @@
 {"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-02 01:49:28"}
 {"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-02 01:49:28"}
 {"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-02 01:49:28"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb+srv://sct:****@lamp.add7ofy.mongodb.net/detour?retryWrites=true&w=majority&appName=lamp","service":"detour-backend","timestamp":"2026-07-02 02:18:25"}
+{"level":"info","message":"Server started on port 5000 in development mode","service":"detour-backend","timestamp":"2026-07-02 02:18:25"}
+{"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-02 02:18:25"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-02 02:18:26"}
+{"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-02 02:18:26"}

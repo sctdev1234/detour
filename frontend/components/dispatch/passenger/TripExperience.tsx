@@ -20,8 +20,10 @@ export default function TripExperience({ onClose }: Props) {
         offers, 
         assignment, 
         error, 
+        tripSummary,
         acceptOffer, 
-        cancelSearch 
+        cancelSearch,
+        finishTripSession
     } = useDispatchFlow();
 
     const handleCancel = () => {
@@ -53,13 +55,40 @@ export default function TripExperience({ onClose }: Props) {
                     />
                 );
             case 'ASSIGNED':
-                // Note: For further lifecycle states (Arrival, Ride, Completed),
-                // we would normally check tripInstance.status here.
-                // For now, ASSIGNED will just show AssignedView.
                 return (
                     <AssignedView 
                         driverId={assignment?.driverId || 'Unknown'} 
                         onCancel={handleCancel} 
+                    />
+                );
+            case 'EN_ROUTE':
+                return (
+                    <ArrivalView 
+                        status="EN_ROUTE"
+                        driverId={assignment?.driverId || 'Unknown'}
+                        onCancel={handleCancel}
+                    />
+                );
+            case 'ARRIVED':
+                return (
+                    <ArrivalView 
+                        status="ARRIVED"
+                        driverId={assignment?.driverId || 'Unknown'}
+                        onCancel={handleCancel}
+                    />
+                );
+            case 'IN_PROGRESS':
+                return (
+                    <RideView />
+                );
+            case 'COMPLETED':
+                return (
+                    <CompletedView 
+                        summary={tripSummary}
+                        onDone={() => {
+                            finishTripSession();
+                            onClose();
+                        }}
                     />
                 );
             case 'IDLE':

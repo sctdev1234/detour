@@ -4,22 +4,29 @@ import { Colors } from '../../../constants/theme';
 
 interface Props {
     driverId: string;
-    onBoarded: () => void;
+    status: 'EN_ROUTE' | 'ARRIVED';
+    onCancel?: () => void;
 }
 
-export default function ArrivalView({ driverId, onBoarded }: Props) {
+export default function ArrivalView({ driverId, status, onCancel }: Props) {
+    const isArrived = status === 'ARRIVED';
+
     return (
         <View style={styles.container}>
-            <View style={styles.badge}>
-                <Text style={styles.badgeText}>Arrived</Text>
+            <View style={[styles.badge, isArrived ? styles.badgeArrived : styles.badgeEnRoute]}>
+                <Text style={[styles.badgeText, isArrived ? styles.badgeTextArrived : styles.badgeTextEnRoute]}>
+                    {isArrived ? 'Arrived' : 'On The Way'}
+                </Text>
             </View>
-            <Text style={styles.title}>Your Driver is Here</Text>
+            <Text style={styles.title}>{isArrived ? 'Your Driver is Here' : 'Driver is approaching'}</Text>
             <Text style={styles.subtitle}>Driver ID: {driverId.slice(-6)}</Text>
-            <Text style={styles.instruction}>Please locate your driver and board the vehicle.</Text>
+            <Text style={styles.instruction}>
+                {isArrived ? 'Please locate your driver and board the vehicle.' : 'Your driver will arrive shortly.'}
+            </Text>
             
             <View style={styles.actions}>
-                <TouchableOpacity style={styles.primaryButton} onPress={onBoarded}>
-                    <Text style={styles.primaryButtonText}>I'm in the car</Text>
+                <TouchableOpacity style={styles.secondaryButton} onPress={onCancel}>
+                    <Text style={styles.secondaryButtonText}>Cancel Ride</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -35,16 +42,26 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     badge: {
-        backgroundColor: '#e6ffed',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
         marginBottom: 16
     },
+    badgeArrived: {
+        backgroundColor: '#e6ffed',
+    },
+    badgeEnRoute: {
+        backgroundColor: '#e6f2ff',
+    },
     badgeText: {
-        color: '#28a745',
         fontWeight: 'bold',
         fontSize: 12
+    },
+    badgeTextArrived: {
+        color: '#28a745',
+    },
+    badgeTextEnRoute: {
+        color: '#007bff',
     },
     title: {
         fontSize: 22,
@@ -66,14 +83,14 @@ const styles = StyleSheet.create({
     actions: {
         width: '100%'
     },
-    primaryButton: {
-        backgroundColor: Colors.light.primary,
+    secondaryButton: {
+        backgroundColor: '#f1f5f9',
         paddingVertical: 14,
         borderRadius: 8,
         alignItems: 'center'
     },
-    primaryButtonText: {
-        color: '#fff',
+    secondaryButtonText: {
+        color: '#64748b',
         fontWeight: 'bold',
         fontSize: 16
     }

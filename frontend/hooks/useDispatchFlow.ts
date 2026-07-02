@@ -12,6 +12,7 @@ export const useDispatchFlow = () => {
     const status = useDispatchStore((state) => state.status);
     const offers = useDispatchStore((state) => state.offers);
     const assignment = useDispatchStore((state) => state.assignment);
+    const tripSummary = useDispatchStore((state) => state.tripSummary);
     const error = useDispatchStore((state) => state.error);
 
     // Bind actions
@@ -27,26 +28,40 @@ export const useDispatchFlow = () => {
         dispatchActions.cancelSearch();
     };
 
+    const finishTripSession = () => {
+        dispatchActions.finishTripSession();
+    };
+
     // Derived State
     const isSearching = status === 'SEARCHING';
     const hasOffers = offers.length > 0;
     const isAssigned = status === 'ASSIGNED';
+    const isEnRoute = status === 'EN_ROUTE';
+    const isArrived = status === 'ARRIVED';
+    const isStarted = status === 'IN_PROGRESS';
+    const isCompleted = status === 'COMPLETED';
 
     return {
         // State
         status,
         offers,
         assignment,
+        tripSummary,
         error,
         
         // Derived state
         isSearching,
         hasOffers,
         isAssigned,
+        isEnRoute,
+        isArrived,
+        isStarted,
+        isCompleted,
 
         // Actions
         requestRide,
         acceptOffer,
-        cancelSearch
+        cancelSearch,
+        finishTripSession
     };
 };

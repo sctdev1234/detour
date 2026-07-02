@@ -5,6 +5,7 @@ import { useDispatchStore } from './useDispatchStore';
 // Keep track of active socket subscriptions so we can clean them up
 let unsubscribeOffers: (() => void) | null = null;
 let unsubscribeAssignment: (() => void) | null = null;
+let unsubscribeTripStatus: (() => void) | null = null;
 
 export const dispatchActions = {
     /**
@@ -49,7 +50,7 @@ export const dispatchActions = {
             if (data.assignment) {
                 store.setAssignment(data.assignment);
                 store.setStatus('ASSIGNED');
-                dispatchActions._unbindSockets();
+                // Do not unbind sockets yet, we need to track trip progress
             }
         } catch (error: any) {
             console.error('[dispatchActions] acceptOffer failed:', error);
@@ -62,6 +63,15 @@ export const dispatchActions = {
      * Cancel the ride search and clean up.
      */
     cancelSearch: () => {
+        const store = useDispatchStore.getState();
+        store.reset();
+        dispatchActions._unbindSockets();
+    },
+
+    /**
+     * Finish the completed trip session and return to IDLE.
+     */
+    finishTripSession: () => {
         const store = useDispatchStore.getState();
         store.reset();
         dispatchActions._unbindSockets();
@@ -82,7 +92,18 @@ export const dispatchActions = {
             // Update Zustand Store
             useDispatchStore.getState().setAssignment(assignment);
             useDispatchStore.getState().setStatus('ASSIGNED');
-            dispatchActions._unbindSockets();
+        });
+
+        unsubscribeTripStatus = dispatchSocket.onTripStatusUpdated((update) => {
+            const store = useDispatchStore.getState();
+            if (update.status === 'STARTED') {
+                store.setStatus('IN_PROGRESS');
+            } else if (update.status === 'EN_ROUTE' || update.status === 'ARRIVED' || update.status === 'COMPLETED' || update.status === 'CANCELLED') {
+                store.setStatus(update.status as any);
+            }
+            if (update.status === 'COMPLETED' && update.tripSummary) {
+                store.setTripSummary(update.tripSummary);
+            }
         });
     },
 
@@ -94,6 +115,10 @@ export const dispatchActions = {
         if (unsubscribeAssignment) {
             unsubscribeAssignment();
             unsubscribeAssignment = null;
+        }
+        if (unsubscribeTripStatus) {
+            unsubscribeTripStatus();
+            unsubscribeTripStatus = null;
         }
     }
 };

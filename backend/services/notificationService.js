@@ -34,6 +34,7 @@ class NotificationService {
         DomainEventBus.on('DriverCounteredOffer', (event) => this.handleCounterOffer(event));
         DomainEventBus.on('DriverAcceptedOffer', (event) => this.handleDriverAcceptedOffer(event));
         DomainEventBus.on('DriverRejectedOffer', (event) => this.handleDriverRejectedOffer(event));
+        DomainEventBus.on('TripStatusUpdated', (event) => this.handleTripStatusUpdated(event));
         
         console.log('[NotificationService] Subscribed to DomainEventBus');
     }
@@ -90,6 +91,14 @@ class NotificationService {
     static handleDriverRejectedOffer(event) {
         const payload = event.payload;
         // Optional passenger notification
+    }
+
+    static handleTripStatusUpdated(event) {
+        const payload = event.payload;
+        // Broadcast trip status updates (EN_ROUTE, ARRIVED, STARTED, COMPLETED) to passenger
+        if (payload.tripInstanceId) {
+            this.io.to(`trip:${payload.tripInstanceId.toString()}`).emit('dispatch:trip_status_updated', payload);
+        }
     }
 
     /**
