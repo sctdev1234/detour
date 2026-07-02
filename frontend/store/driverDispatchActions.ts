@@ -149,6 +149,28 @@ export const driverDispatchActions = {
         store.setAvailability('AVAILABLE');
     },
 
+    /**
+     * Recover missed state from the unified Recovery API.
+     * Useful on resume or when a sequence gap is detected.
+     */
+    recoverState: async () => {
+        const store = useDriverDispatchStore.getState();
+        try {
+            const data = await driverDispatchApi.getRecoveryState();
+            store.setPresence(data.presence);
+            store.setAvailability(data.availability);
+            store.setTripStatus(data.tripStatus);
+            store.setActiveTrip(data.activeTrip);
+            store.setCurrentOffer(data.currentOffer);
+            store.setLastSequenceNumber(data.lastSequenceNumber || 0);
+
+            // Once recovered, re-bind sockets with the latest sequence number
+            driverDispatchActions._bindSockets();
+        } catch (error: any) {
+            console.error('[DriverDispatchActions] Recovery failed', error);
+        }
+    },
+
     // ──────────────────────────────────────────────
     // Socket Lifecycle (Internal)
     // ──────────────────────────────────────────────
@@ -158,31 +180,52 @@ export const driverDispatchActions = {
 
         socketLifecycleManager.start();
 
+        const currentSeq = useDriverDispatchStore.getState().lastSequenceNumber;
+
         unsubConnectionStatus = socketLifecycleManager.addStatusListener((status: ConnectionStatus) => {
             const store = useDriverDispatchStore.getState();
             store.setConnectionStatus(status);
+            
+            // If we just reconnected, trigger a recovery
+            if (status === 'CONNECTED') {
+                driverDispatchActions.recoverState();
+            }
         });
 
         unsubResume = socketLifecycleManager.addResumeListener(() => {
-            // When app comes to foreground, we could poll for missed offers or active trip state here
-            // e.g. driverDispatchApi.fetchCurrentState().then(...)
+            driverDispatchActions.recoverState();
         });
 
-        unsubOffer = driverDispatchSocket.onOfferDispatched((offer: DriverOffer) => {
+        const updateSeq = (data: any) => {
+            if (data && typeof data.seq === 'number') {
+                useDriverDispatchStore.getState().setLastSequenceNumber(data.seq);
+            }
+        };
+
+        const handleGap = () => {
+            driverDispatchActions.recoverState();
+        };
+
+        unsubOffer = driverDispatchSocket.onSequenceGap(handleGap);
+
+        const offerUnsub = driverDispatchSocket.onOfferDispatched(currentSeq, (offer: any) => {
+            updateSeq(offer);
             const store = useDriverDispatchStore.getState();
             store.setCurrentOffer(offer);
             store.setAvailability('BUSY');
         });
 
-        unsubExpired = driverDispatchSocket.onOfferExpired(({ offerId }) => {
+        const expiredUnsub = driverDispatchSocket.onOfferExpired(currentSeq, (data: { offerId: string, seq?: number }) => {
+            updateSeq(data);
             const store = useDriverDispatchStore.getState();
-            if (store.currentOffer?._id === offerId) {
+            if (store.currentOffer?._id === data.offerId) {
                 store.setCurrentOffer(null);
                 store.setAvailability('AVAILABLE');
             }
         });
 
-        unsubAssigned = driverDispatchSocket.onTripAssigned((assignment) => {
+        const assignedUnsub = driverDispatchSocket.onTripAssigned(currentSeq, (assignment: any) => {
+            updateSeq(assignment);
             const store = useDriverDispatchStore.getState();
             store.setActiveTrip(assignment);
             store.setCurrentOffer(null);
@@ -190,7 +233,8 @@ export const driverDispatchActions = {
             store.setTripStatus('TO_PICKUP');
         });
 
-        unsubCancelled = driverDispatchSocket.onTripCancelled(() => {
+        const cancelledUnsub = driverDispatchSocket.onTripCancelled(currentSeq, (data: any) => {
+            updateSeq(data);
             const store = useDriverDispatchStore.getState();
             store.setActiveTrip(null);
             store.setCurrentOffer(null);
@@ -198,9 +242,10 @@ export const driverDispatchActions = {
             store.setAvailability('AVAILABLE');
         });
 
-        unsubCounter = driverDispatchSocket.onCounterResponse(({ offerId, accepted, finalPrice }) => {
+        const counterUnsub = driverDispatchSocket.onCounterResponse(currentSeq, (data: any) => {
+            updateSeq(data);
             const store = useDriverDispatchStore.getState();
-            if (accepted) {
+            if (data.accepted) {
                 // Passenger accepted — wait for assignment
             } else {
                 // Passenger rejected counter — return to online
@@ -208,6 +253,16 @@ export const driverDispatchActions = {
                 store.setAvailability('AVAILABLE');
             }
         });
+
+        // We wrap the unsubs so we can clear them easily
+        unsubOffer = () => {
+            driverDispatchSocket.onSequenceGap(() => {})();
+            offerUnsub();
+            expiredUnsub();
+            assignedUnsub();
+            cancelledUnsub();
+            counterUnsub();
+        };
     },
 
     _unbindSockets: () => {
@@ -215,9 +270,5 @@ export const driverDispatchActions = {
         if (unsubConnectionStatus) { unsubConnectionStatus(); unsubConnectionStatus = null; }
         if (unsubResume) { unsubResume(); unsubResume = null; }
         if (unsubOffer) { unsubOffer(); unsubOffer = null; }
-        if (unsubExpired) { unsubExpired(); unsubExpired = null; }
-        if (unsubAssigned) { unsubAssigned(); unsubAssigned = null; }
-        if (unsubCancelled) { unsubCancelled(); unsubCancelled = null; }
-        if (unsubCounter) { unsubCounter(); unsubCounter = null; }
     }
 };

@@ -248,3 +248,88 @@ exports.updateTripStatus = async (req, res) => {
         res.status(400).json({ success: false, error: error.message });
     }
 };
+
+/**
+ * GET /v2/dispatch/driver/recovery
+ * Unified endpoint returning the complete dispatch state to recover after reconnection.
+ */
+exports.getRecoveryState = async (req, res) => {
+    try {
+        const driverId = req.user.id;
+        const User = require('../models/User');
+        const NotificationService = require('../services/notificationService');
+
+        // 1. Fetch User status
+        const user = await User.findById(driverId).select('driverStatus').lean();
+        const driverStatus = user?.driverStatus || 'OFFLINE';
+        
+        let presence = 'OFFLINE';
+        let availability = 'BUSY';
+
+        if (driverStatus === 'ONLINE') {
+            presence = 'ONLINE';
+            availability = 'AVAILABLE';
+        } else if (driverStatus === 'BREAK') {
+            presence = 'ONLINE';
+            availability = 'BREAK';
+        } else if (driverStatus === 'OFFLINE') {
+            presence = 'OFFLINE';
+            availability = 'BUSY';
+        }
+
+        // 2. Fetch Active Trip Assignment
+        const activeTrip = await TripAssignment.findOne({ driverId })
+            .sort({ createdAt: -1 })
+            .populate({
+                path: 'tripInstanceId',
+                match: { status: { $nin: ['COMPLETED', 'CANCELLED'] } }
+            })
+            .lean();
+
+        // 3. Fetch Pending Offer
+        const currentOffer = await Offer.findOne({
+            driverId,
+            status: { $in: [OfferStateMachine.STATES.PENDING, 'COUNTERED'] },
+            expiresAt: { $gt: new Date() }
+        })
+        .populate('tripInstanceId', 'pickup destination scheduledTime passengerIds')
+        .sort({ createdAt: -1 })
+        .lean();
+
+        // 4. Determine dimensional tripStatus
+        let tripStatus = 'NONE';
+        if (activeTrip && activeTrip.tripInstanceId) {
+            const instanceStatus = activeTrip.tripInstanceId.status;
+            availability = 'BUSY';
+            if (['ASSIGNED', 'EN_ROUTE', 'ARRIVED'].includes(instanceStatus)) {
+                tripStatus = 'TO_PICKUP';
+            } else if (['STARTED', 'IN_PROGRESS'].includes(instanceStatus)) {
+                tripStatus = 'ACTIVE';
+            } else if (instanceStatus === 'COMPLETED') {
+                tripStatus = 'COMPLETED';
+            }
+        }
+
+        if (currentOffer) {
+            availability = 'BUSY';
+        }
+
+        // 5. Get current Socket Sequence Number
+        const lastSequenceNumber = NotificationService.getCurrentSequence(driverId);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                presence,
+                availability,
+                tripStatus,
+                activeTrip: activeTrip?.tripInstanceId ? activeTrip : null,
+                currentOffer,
+                lastSequenceNumber
+            }
+        });
+    } catch (error) {
+        console.error('[DriverDispatchController] getRecoveryState error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};

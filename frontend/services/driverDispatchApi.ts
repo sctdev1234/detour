@@ -39,5 +39,11 @@ export const driverDispatchApi = {
     updateTripStatus: async (tripInstanceId: string, status: string) => {
         const response = await api.patch(`/v2/dispatch/driver/trip/${tripInstanceId}/status`, { status });
         return response.data;
+    },
+
+    /** Fetch the unified recovery state for reconnect/resume. */
+    getRecoveryState: async () => {
+        const response = await api.get('/v2/dispatch/driver/recovery');
+        return response.data;
     }
 };

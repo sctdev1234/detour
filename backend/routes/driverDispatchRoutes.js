@@ -14,5 +14,7 @@ router.get('/active', auth, controller.getActiveTrip);
 
 // Driver Trip Status Updates
 router.patch('/trip/:id/status', auth, controller.updateTripStatus);
+// Driver Recovery
+router.get('/recovery', auth, controller.getRecoveryState);
 
 module.exports = router;

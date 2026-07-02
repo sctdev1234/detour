@@ -36,6 +36,7 @@ interface DriverDispatchState {
     activeTrip: any | null;
     tripSummary: DriverTripSummary | null;
     error: string | null;
+    lastSequenceNumber: number;
 
     // Mutators
     setPresence: (presence: DriverPresence) => void;
@@ -47,6 +48,7 @@ interface DriverDispatchState {
     setActiveTrip: (trip: any | null) => void;
     setTripSummary: (summary: DriverTripSummary | null) => void;
     setError: (error: string | null) => void;
+    setLastSequenceNumber: (seq: number) => void;
     reset: () => void;
 }
 
@@ -59,6 +61,7 @@ export const useDriverDispatchStore = create<DriverDispatchState>((set) => ({
     activeTrip: null,
     tripSummary: null,
     error: null,
+    lastSequenceNumber: 0,
 
     setPresence: (presence) => set({ presence }),
     setAvailability: (availability) => set({ availability }),
@@ -69,6 +72,7 @@ export const useDriverDispatchStore = create<DriverDispatchState>((set) => ({
     setActiveTrip: (trip) => set({ activeTrip: trip }),
     setTripSummary: (summary) => set({ tripSummary: summary }),
     setError: (error) => set({ error }),
+    setLastSequenceNumber: (seq) => set({ lastSequenceNumber: seq }),
     reset: () => set({
         presence: 'OFFLINE',
         availability: 'BUSY',
@@ -78,5 +82,6 @@ export const useDriverDispatchStore = create<DriverDispatchState>((set) => ({
         activeTrip: null,
         tripSummary: null,
         error: null,
+        lastSequenceNumber: 0
     })
 }));
