@@ -35,6 +35,7 @@ class NotificationService {
         DomainEventBus.on('DriverAcceptedOffer', (event) => this.handleDriverAcceptedOffer(event));
         DomainEventBus.on('DriverRejectedOffer', (event) => this.handleDriverRejectedOffer(event));
         DomainEventBus.on('TripStatusUpdated', (event) => this.handleTripStatusUpdated(event));
+        DomainEventBus.on('RecurringTemplatesLinked', (event) => this.handleRecurringTemplatesLinked(event));
         
         console.log('[NotificationService] Subscribed to DomainEventBus');
     }
@@ -98,6 +99,17 @@ class NotificationService {
         // Broadcast trip status updates (EN_ROUTE, ARRIVED, STARTED, COMPLETED) to passenger
         if (payload.tripInstanceId) {
             this.io.to(`trip:${payload.tripInstanceId.toString()}`).emit('dispatch:trip_status_updated', payload);
+        }
+    }
+
+    static handleRecurringTemplatesLinked(event) {
+        const payload = event.payload;
+        // Notify both passenger and driver that a recurring link was established
+        if (payload.passengerId) {
+            this.emitToPassenger(payload.passengerId, 'recurring:templates_linked', payload);
+        }
+        if (payload.driverId) {
+            this.emitToDriver(payload.driverId, 'recurring:templates_linked', payload);
         }
     }
 

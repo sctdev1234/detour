@@ -866,3 +866,4 @@
 {"level":"info","message":"Listening on http://0.0.0.0:5000","service":"detour-backend","timestamp":"2026-07-02 02:18:25"}
 {"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-02 02:18:26"}
 {"level":"info","message":"Connected to Database: detour","service":"detour-backend","timestamp":"2026-07-02 02:18:26"}
+{"level":"info","message":"POST /api/orders/69d798013cfe0c1f7b47cd14/send-delivery","service":"detour-backend","timestamp":"2026-07-02 21:03:31"}

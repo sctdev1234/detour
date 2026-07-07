@@ -115,6 +115,38 @@ const tripInstanceSchema = new mongoose.Schema(
         legacyReferenceId: {
             type: String,
             default: null
+        },
+        // SPRINT: Recurring Mobility
+        driverTemplateId: { 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'TripTemplate', 
+            default: null 
+        },
+        candidateDriverIds: [{ 
+            type: mongoose.Schema.Types.ObjectId, 
+            ref: 'User'
+        }],
+        /**
+         * @future Note: Reservation as an independent aggregate model will replace this embedded 
+         * seatReservations array when payments, refunds, no-shows, and audit history become 
+         * first-class concerns.
+         */
+        seatReservations: [{
+            passengerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            passengerTemplateId: { type: mongoose.Schema.Types.ObjectId, ref: 'TripTemplate' },
+            seatsReserved: { type: Number, default: 1 },
+            status: { type: String, enum: ['CONFIRMED','PENDING','CANCELLED'], default: 'CONFIRMED' },
+            reservedAt: { type: Date, default: Date.now }
+        }],
+        generatedBy: { 
+            type: String, 
+            enum: ['MANUAL','SCHEDULER','SYSTEM'], 
+            default: 'MANUAL' 
+        },
+        schedulerMetadata: {
+            schedulerVersion: { type: String },
+            generationRunId: { type: String },
+            generatedAt: { type: Date }
         }
     },
     {

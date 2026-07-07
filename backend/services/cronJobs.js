@@ -8,49 +8,13 @@ const { transitionState } = require('../utils/stateMachine');
 class CronServices {
     static init() {
         // 1. Recurring Instance Generator
-        // Runs daily at midnight UTC to generate instances for the next 48 hours
-        cron.schedule('0 0 * * *', async () => {
+        // Runs configurable via env var, defaults to 20:00 (evening before)
+        const recurringCron = process.env.RECURRING_GENERATION_CRON || '0 20 * * *';
+        cron.schedule(recurringCron, async () => {
             console.log('[Cron] Running Recurring Instance Generator');
             try {
-                // Determine days covering next 48h (simplified logic)
-                const now = new Date();
-                const daysMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                const today = daysMap[now.getDay()];
-                
-                const nextDate = new Date(now);
-                nextDate.setDate(now.getDate() + 1);
-                const tomorrow = daysMap[nextDate.getDay()];
-
-                const templates = await TripTemplate.find({
-                    status: 'ACTIVE',
-                    recurrenceType: 'RECURRING',
-                    'schedule.days': { $in: [today, tomorrow] }
-                });
-
-                for (const template of templates) {
-                    // Logic to calculate exact departure time based on timezone and time string
-                    const [hours, minutes] = template.schedule.time.split(':');
-                    const instanceDeparture = new Date(now);
-                    instanceDeparture.setHours(parseInt(hours, 10));
-                    instanceDeparture.setMinutes(parseInt(minutes, 10));
-                    
-                    // Create instances...
-                    await TripInstance.create({
-                        templateId: template._id,
-                        userId: template.userId,
-                        role: template.role,
-                        departureTime: instanceDeparture,
-                        startPoint: template.startPoint,
-                        endPoint: template.endPoint,
-                        distanceKm: template.distanceKm,
-                        estimatedDurationMin: template.estimatedDurationMin,
-                        pricing: {
-                            basePrice: template.pricing.amount,
-                            serviceFee: template.pricing.amount * 0.15 // Example 15%
-                        },
-                        status: template.role === 'passenger' ? 'DRAFT' : 'PUBLISHED'
-                    });
-                }
+                const RecurringScheduler = require('./recurringScheduler');
+                await RecurringScheduler.generateDailyInstances();
             } catch (err) {
                 console.error('[Cron] Recurring Generator Error:', err);
             }

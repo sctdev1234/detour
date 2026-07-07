@@ -73,9 +73,37 @@ const tripTemplateSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['ACTIVE', 'PAUSED', 'ARCHIVED'],
-            default: 'ACTIVE'
+            enum: ['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED'],
+            default: 'DRAFT'
         },
+        recurringConfig: {
+            days: [{ type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] }],
+            departureTime: { type: String },     // 'HH:mm' format
+            arrivalTime: { type: String },       // estimated arrival
+            seatCapacity: { type: Number, default: 4 },
+            pricePerSeat: { type: Number },
+            currency: { type: String, default: 'MAD' },
+            distanceKm: { type: Number },
+            estimatedDurationMin: { type: Number },
+            vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Car' }
+        },
+        routeGeometry: {
+            type: { type: String, default: 'LineString' },
+            coordinates: [[Number]] // Array of [lng, lat]
+        },
+        polylineCache: { type: String }, // Encoded polyline for frontend rendering
+        vacationMode: {
+            active: { type: Boolean, default: false },
+            startDate: { type: Date },
+            endDate: { type: Date } // Automatically resumes after this date
+        },
+        linkedTemplates: [{
+            templateId: { type: mongoose.Schema.Types.ObjectId, ref: 'TripTemplate' },
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            role: { type: String, enum: ['driver', 'passenger'] },
+            seatsReserved: { type: Number, default: 1 },
+            matchedAt: { type: Date, default: Date.now }
+        }],
         metadata: {
             type: Map,
             of: mongoose.Schema.Types.Mixed,
