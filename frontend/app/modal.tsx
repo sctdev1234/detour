@@ -653,6 +653,26 @@ export default function ModalScreen() {
             ))
           )}
 
+          {/* Receipt Section */}
+          {trip.status === 'COMPLETED' && trip.receiptSnapshot && (
+            <View style={[styles.card, { backgroundColor: theme.surfaceHighlight, borderColor: theme.border, marginTop: 16 }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 0 }]}>Receipt</Text>
+              <View style={styles.divider} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
+                <Text style={{ color: theme.textSecondary }}>Receipt ID</Text>
+                <Text style={{ color: theme.text, fontWeight: '600' }}>{trip.receiptSnapshot.receiptId}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
+                <Text style={{ color: theme.textSecondary }}>Date</Text>
+                <Text style={{ color: theme.text, fontWeight: '600' }}>{new Date(trip.receiptSnapshot.date).toLocaleString()}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
+                <Text style={{ color: theme.textSecondary }}>Total Amount</Text>
+                <Text style={{ color: theme.text, fontWeight: '800' }}>{trip.receiptSnapshot.amountTotal} {trip.receiptSnapshot.currency}</Text>
+              </View>
+            </View>
+          )}
+
           <View style={{ height: 100 }} />
         </ScrollView>
 

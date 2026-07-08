@@ -1,0 +1,206 @@
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:58792/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:22:25"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:22:27"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:22:27"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:22:27"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:22:27"}
+{"level":"info","message":"POST /api/auth/register","service":"detour-backend","timestamp":"2026-07-07 23:22:46"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:24:15"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:24:15"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:24:15"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:24:58"}
+{"error":{"error":{"correlationId":"68674c19-d521-421b-be95-ef859481a774","message":"","timestamp":"2026-07-07T22:24:58.035Z"}},"level":"error","message":"💥 ERROR: ","service":"detour-backend","stack":"AppError\n    at AuthService.signup (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\services\\authService.js:15:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async AuthController.signup (C:\\Users\\sibar\\Desktop\\detour.ma\\detour\\backend\\controllers\\authController.js:10:37)","timestamp":"2026-07-07 23:24:58"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:25:25"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:25:25"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:25:25"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:58863/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:27:14"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:27:14"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:27:14"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:27:14"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:27:14"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:27:21"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:27:21"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:27:21"}
+{"level":"info","message":"GET /api/wallet/driver","service":"detour-backend","timestamp":"2026-07-07 23:27:22"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:28:09"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:28:09"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:28:09"}
+{"level":"info","message":"POST /api/v2/dispatch/request","service":"detour-backend","timestamp":"2026-07-07 23:28:10"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:29:21"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:29:21"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:29:21"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:29:22"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:29:53"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:29:53"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:29:53"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:29:54"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:56913/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:31:43"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:31:43"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:31:43"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:31:43"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:31:43"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:31:51"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:31:51"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:31:52"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:31:52"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:31:53"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:32:54"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:32:54"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:32:54"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:32:55"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:32:55"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:56959/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:34:18"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:34:19"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:34:19"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:34:19"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:34:19"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:34:27"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:34:27"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:34:28"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:34:28"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:34:28"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:56997/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:35:46"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:35:47"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:35:47"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:35:47"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:35:47"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:35:54"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:35:55"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:35:55"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:35:56"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:35:56"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:57039/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:36:58"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:36:58"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:36:58"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:36:58"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:36:58"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:37:05"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:37:06"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:37:06"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:37:07"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:37:07"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:37:08"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:38:20"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:38:20"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:38:20"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:38:21"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:38:21"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:38:22"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d7fdda6486c9f890b874d/accept","service":"detour-backend","timestamp":"2026-07-07 23:38:22"}
+{"level":"info","message":"PUT /api/trip/6a4d7fdda6486c9f890b8746/status","service":"detour-backend","timestamp":"2026-07-07 23:38:22"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:39:03"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:39:04"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:39:04"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:39:04"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:39:04"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:39:05"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d8008a6486c9f890b8778/accept","service":"detour-backend","timestamp":"2026-07-07 23:39:05"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/[object%20Object]/status","service":"detour-backend","timestamp":"2026-07-07 23:39:05"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:40:12"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:40:12"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:40:12"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:40:13"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:40:13"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:40:14"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d804da6486c9f890b87a7/accept","service":"detour-backend","timestamp":"2026-07-07 23:40:14"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d804da6486c9f890b879a/status","service":"detour-backend","timestamp":"2026-07-07 23:40:14"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:57115/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:42:40"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:42:41"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:42:41"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:42:41"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:42:41"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:42:49"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:42:49"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:42:49"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:42:50"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:42:50"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:42:51"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d80ead8ea6c29524aec36/accept","service":"detour-backend","timestamp":"2026-07-07 23:42:51"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:57162/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:44:22"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:44:23"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:44:23"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:44:23"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:44:23"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:44:41"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:44:41"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:44:42"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:44:42"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:44:42"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:44:43"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d815a2279c7838d5a10d1/accept","service":"detour-backend","timestamp":"2026-07-07 23:44:43"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d815a2279c7838d5a10cd/status","service":"detour-backend","timestamp":"2026-07-07 23:44:43"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d815a2279c7838d5a10cd/status","service":"detour-backend","timestamp":"2026-07-07 23:44:43"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d815a2279c7838d5a10cd/status","service":"detour-backend","timestamp":"2026-07-07 23:44:43"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d815a2279c7838d5a10cd/status","service":"detour-backend","timestamp":"2026-07-07 23:44:43"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:44:44"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:50585/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:46:46"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:46:47"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:46:47"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:46:47"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:46:47"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:50621/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:48:24"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:48:25"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:48:25"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:48:25"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:48:25"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:48:32"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:48:32"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:48:32"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:48:33"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:48:33"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d8241525b518e8e34ce8f/accept","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8241525b518e8e34ce8b/status","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8241525b518e8e34ce8b/status","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8241525b518e8e34ce8b/status","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8241525b518e8e34ce8b/status","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:48:34"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:49:58"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:49:58"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:49:58"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:49:59"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:49:59"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:50:00"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d8297525b518e8e34ced7/accept","service":"detour-backend","timestamp":"2026-07-07 23:50:00"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8297525b518e8e34ced0/status","service":"detour-backend","timestamp":"2026-07-07 23:50:00"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8297525b518e8e34ced0/status","service":"detour-backend","timestamp":"2026-07-07 23:50:00"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8297525b518e8e34ced0/status","service":"detour-backend","timestamp":"2026-07-07 23:50:00"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d8297525b518e8e34ced0/status","service":"detour-backend","timestamp":"2026-07-07 23:50:00"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:50:01"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:50:01"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:50676/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:52:37"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:52:38"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:52:38"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:52:38"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:52:38"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:52:45"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:52:45"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:52:45"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:52:46"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:52:46"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:52:47"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d833efb47bcb2ea6b4811/accept","service":"detour-backend","timestamp":"2026-07-07 23:52:47"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d833efb47bcb2ea6b480d/status","service":"detour-backend","timestamp":"2026-07-07 23:52:47"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d833efb47bcb2ea6b480d/status","service":"detour-backend","timestamp":"2026-07-07 23:52:47"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d833efb47bcb2ea6b480d/status","service":"detour-backend","timestamp":"2026-07-07 23:52:47"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d833efb47bcb2ea6b480d/status","service":"detour-backend","timestamp":"2026-07-07 23:52:47"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:52:49"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:52:49"}
+{"level":"info","message":"Attempting to connect to MongoDB with URI: mongodb://127.0.0.1:56173/?replicaSet=testset","service":"detour-backend","timestamp":"2026-07-07 23:54:34"}
+{"level":"info","message":"Server started on port 5555 in development mode","service":"detour-backend","timestamp":"2026-07-07 23:54:34"}
+{"level":"info","message":"Listening on http://0.0.0.0:5555","service":"detour-backend","timestamp":"2026-07-07 23:54:34"}
+{"level":"info","message":"MongoDB Connected","service":"detour-backend","timestamp":"2026-07-07 23:54:34"}
+{"level":"info","message":"Connected to Database: test","service":"detour-backend","timestamp":"2026-07-07 23:54:34"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:54:41"}
+{"level":"info","message":"POST /api/auth/signup","service":"detour-backend","timestamp":"2026-07-07 23:54:42"}
+{"level":"info","message":"POST /api/wallet/topup","service":"detour-backend","timestamp":"2026-07-07 23:54:42"}
+{"level":"info","message":"POST /api/tracking/update","service":"detour-backend","timestamp":"2026-07-07 23:54:43"}
+{"level":"info","message":"POST /api/v2/dispatch/template","service":"detour-backend","timestamp":"2026-07-07 23:54:43"}
+{"level":"info","message":"GET /api/v2/dispatch/driver/offers","service":"detour-backend","timestamp":"2026-07-07 23:54:44"}
+{"level":"info","message":"POST /api/v2/dispatch/driver/offer/6a4d83b3e9ec16544bc0f55b/accept","service":"detour-backend","timestamp":"2026-07-07 23:54:44"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d83b3e9ec16544bc0f557/status","service":"detour-backend","timestamp":"2026-07-07 23:54:44"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d83b3e9ec16544bc0f557/status","service":"detour-backend","timestamp":"2026-07-07 23:54:44"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d83b3e9ec16544bc0f557/status","service":"detour-backend","timestamp":"2026-07-07 23:54:44"}
+{"level":"info","message":"PATCH /api/v2/dispatch/driver/trip/6a4d83b3e9ec16544bc0f557/status","service":"detour-backend","timestamp":"2026-07-07 23:54:44"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:54:45"}
+{"level":"info","message":"GET /api/wallet/balance","service":"detour-backend","timestamp":"2026-07-07 23:54:45"}

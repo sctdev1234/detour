@@ -147,6 +147,16 @@ const tripInstanceSchema = new mongoose.Schema(
             schedulerVersion: { type: String },
             generationRunId: { type: String },
             generatedAt: { type: Date }
+        },
+        // SPRINT: Finance Domain
+        financialStatus: {
+            type: String,
+            enum: ['UNSETTLED', 'SETTLING', 'SETTLED', 'PAYMENT_PENDING', 'REFUNDED'],
+            default: 'UNSETTLED'
+        },
+        receiptSnapshot: {
+            type: mongoose.Schema.Types.Mixed,
+            default: null
         }
     },
     {

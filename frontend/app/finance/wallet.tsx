@@ -72,11 +72,12 @@ export default function WalletScreen() {
     const handleDeposit = (amount: number) => {
         showConfirm({
             title: 'Top Up Balance',
-            message: `Add ${amount} MAD to your wallet? (Simulated payment gateway)`,
+            message: `Add ${amount} MAD to your wallet?`,
             confirmText: 'Top Up',
             cancelText: 'Cancel',
             onConfirm: () => {
-                depositMutation.mutate(amount, {
+                const idempotencyKey = `topup_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+                depositMutation.mutate({ amount, idempotencyKey }, {
                     onSuccess: () => {
                         showToast(`Successfully added ${amount} MAD!`, 'success');
                     },

@@ -37,6 +37,12 @@ class NotificationService {
         DomainEventBus.on('TripStatusUpdated', (event) => this.handleTripStatusUpdated(event));
         DomainEventBus.on('RecurringTemplatesLinked', (event) => this.handleRecurringTemplatesLinked(event));
         
+        // SPRINT: Finance
+        DomainEventBus.on('TripSettled', (event) => this.handleTripSettled(event));
+        DomainEventBus.on('TripRefunded', (event) => this.handleTripRefunded(event));
+        DomainEventBus.on('WithdrawalApproved', (event) => this.handleWithdrawalApproved(event));
+        DomainEventBus.on('WithdrawalRejected', (event) => this.handleWithdrawalRejected(event));
+
         console.log('[NotificationService] Subscribed to DomainEventBus');
     }
 
@@ -111,6 +117,33 @@ class NotificationService {
         if (payload.driverId) {
             this.emitToDriver(payload.driverId, 'recurring:templates_linked', payload);
         }
+    }
+
+    // SPRINT: Finance Handlers
+    static handleTripSettled(event) {
+        const { tripId, clientId, driverId, receipt } = event.payload;
+        this.emitToPassenger(clientId, 'finance:receipt_ready', { tripId, receipt });
+        if (driverId) {
+            this.emitToDriver(driverId, 'finance:earning_updated', { tripId, earning: receipt.driverEarning });
+        }
+    }
+
+    static handleTripRefunded(event) {
+        const { tripId, passengerId, driverId, amountTotal, reason } = event.payload;
+        this.emitToPassenger(passengerId, 'finance:refund_issued', { tripId, amountTotal, reason });
+        if (driverId) {
+            this.emitToDriver(driverId, 'finance:earning_reversed', { tripId, amountTotal, reason });
+        }
+    }
+
+    static handleWithdrawalApproved(event) {
+        const { driverId, amount } = event.payload;
+        this.emitToDriver(driverId, 'finance:withdrawal_approved', { amount });
+    }
+
+    static handleWithdrawalRejected(event) {
+        const { driverId, amount, reason } = event.payload;
+        this.emitToDriver(driverId, 'finance:withdrawal_rejected', { amount, reason });
     }
 
     /**

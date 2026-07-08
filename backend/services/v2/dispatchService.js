@@ -61,7 +61,7 @@ class DispatchServiceV2 {
                     driverId: candidate.driverId,
                     passengerId: tripInstance.passengerIds[0],
                     vehicleId: candidate.vehicleId || new mongoose.Types.ObjectId(), // Stub
-                    price: tripInstance.pricingSnapshot ? tripInstance.pricingSnapshot.baseFare : 10,
+                    price: (tripInstance.pricingSnapshot && tripInstance.pricingSnapshot.baseFare) ? tripInstance.pricingSnapshot.baseFare : 10,
                     estimatedArrival: candidate.etaSeconds,
                     estimatedDuration: 900,
                     expiresAt: new Date(Date.now() + 60000), // 60 seconds
@@ -70,7 +70,7 @@ class DispatchServiceV2 {
                 await offer.save({ session });
                 
                 // Outbox pattern: Queue event to fire strictly post-commit
-                pendingEvents.push({ type: 'OfferCreated', id: offer._id, payload: offer });
+                pendingEvents.push({ type: 'OfferCreated', id: offer._id, payload: offer.toJSON() });
                 generatedCount++;
             }
 
@@ -90,8 +90,8 @@ class DispatchServiceV2 {
             Metrics.count('offers_generated', generatedCount);
 
         } catch (error) {
-            await session.abortTransaction();
             console.error(`[DispatchPipeline] Failed for instance ${tripInstance._id}:`, error);
+            try { await session.abortTransaction(); } catch (e) { /* ignore */ }
             Metrics.count('matching_failure');
             throw error;
         } finally {
@@ -132,7 +132,8 @@ class DispatchServiceV2 {
             const assignment = new TripAssignment({
                 tripInstanceId: tripInstance._id,
                 driverId: offer.driverId,
-                vehicleId: offer.vehicleId || new mongoose.Types.ObjectId() // Stub
+                vehicleId: offer.vehicleId || new mongoose.Types.ObjectId(), // Stub
+                agreedPrice: offer.price
             });
             await assignment.save({ session });
 
@@ -153,7 +154,7 @@ class DispatchServiceV2 {
             ).session(session);
 
             // Queue Event post-commit
-            pendingEvents.push({ type: 'TripAssigned', id: assignment._id, payload: assignment });
+            pendingEvents.push({ type: 'TripAssigned', id: assignment._id, payload: assignment.toJSON() });
 
             await session.commitTransaction();
             
@@ -165,7 +166,8 @@ class DispatchServiceV2 {
 
             return assignment;
         } catch (error) {
-            await session.abortTransaction();
+            console.error(`[DispatchPipeline] Failed to accept offer ${offerId}:`, error);
+            try { await session.abortTransaction(); } catch (e) {}
             Metrics.count('assignment_failure');
             throw error;
         } finally {

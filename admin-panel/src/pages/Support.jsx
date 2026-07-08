@@ -24,7 +24,7 @@ export default function Support() {
         });
 
         // ... socket events ...
-        socket.on('connect', () => /* /* console.log('Connected to WebSocket server:', socket.id) */ */);
+        socket.on('connect', () => { /* console.log('Connected to WebSocket server:', socket.id) */ });
         socket.on('connect_error', (err) => console.error('WebSocket connection error:', err));
 
         socket.on('new_reclamation', (newTicket) => {

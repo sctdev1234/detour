@@ -78,12 +78,73 @@ class WalletService {
         });
         await withdrawTx.save();
 
+        const Withdrawal = require('../models/Withdrawal');
+        const withdrawalRequest = new Withdrawal({
+            user: userId,
+            amount,
+            status: 'pending',
+            paymentMethod: 'bank_transfer', // Default for now, can be passed as param
+            paymentDetails: 'Pending Details' // Needs to be passed from UI
+        });
+        await withdrawalRequest.save();
+
         // Deduct balance immediately
         await User.findByIdAndUpdate(userId, {
             $inc: { balance: -amount }
         });
 
-        return withdrawTx;
+        return withdrawalRequest;
+    }
+
+    async approveWithdrawal(withdrawalId, adminNote = '') {
+        const Withdrawal = require('../models/Withdrawal');
+        const withdrawal = await Withdrawal.findById(withdrawalId);
+        if (!withdrawal) throw new Error('Withdrawal not found');
+        if (withdrawal.status !== 'pending') throw new Error('Withdrawal is not pending');
+
+        withdrawal.status = 'approved';
+        withdrawal.adminNote = adminNote;
+        withdrawal.proccessedAt = new Date();
+        await withdrawal.save();
+
+        // Transaction is implicitly approved since balance was already deducted
+        // But we could update the transaction status if linked
+
+        const DomainEventBus = require('../events/DomainEventBus');
+        DomainEventBus.emit('WithdrawalApproved', { userId: withdrawal.user, amount: withdrawal.amount });
+
+        return withdrawal;
+    }
+
+    async rejectWithdrawal(withdrawalId, adminNote = '') {
+        const Withdrawal = require('../models/Withdrawal');
+        const withdrawal = await Withdrawal.findById(withdrawalId);
+        if (!withdrawal) throw new Error('Withdrawal not found');
+        if (withdrawal.status !== 'pending') throw new Error('Withdrawal is not pending');
+
+        withdrawal.status = 'rejected';
+        withdrawal.adminNote = adminNote;
+        withdrawal.proccessedAt = new Date();
+        await withdrawal.save();
+
+        // Refund the user's balance
+        await User.findByIdAndUpdate(withdrawal.user, {
+            $inc: { balance: withdrawal.amount }
+        });
+
+        // Add a refund transaction
+        await Transaction.create({
+            userId: withdrawal.user,
+            amount: withdrawal.amount,
+            type: 'credit',
+            category: 'refund',
+            description: 'Refund for rejected withdrawal'
+        });
+
+        const DomainEventBus = require('../events/DomainEventBus');
+        DomainEventBus.emit('WithdrawalRejected', { userId: withdrawal.user, amount: withdrawal.amount, reason: adminNote });
+
+        return withdrawal;
     }
 }
 

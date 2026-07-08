@@ -45,7 +45,7 @@ export default function Layout() {
         setSocket(newSocket);
 
         newSocket.on('new_notification', (notification) => {
-            /* /* console.log('Received new notification:', notification); */ */
+            /* console.log('Received new notification:', notification); */
             setNotifications(prev => [notification, ...prev]);
         });
 
@@ -114,7 +114,7 @@ export default function Layout() {
         { path: '/places', label: 'Places', icon: Map },
         { path: '/subscriptions', label: 'Abonnements', icon: CreditCard },
         { path: '/coupons', label: 'Coupons', icon: Tag },
-        { path: '/credits', label: 'Finance', icon: DollarSign },
+        { path: '/finance', label: 'Finance', icon: DollarSign },
         { path: '/users', label: 'Users', icon: Users },
         { path: '/reviews', label: 'Reviews', icon: Star },
         { path: '/chats', label: 'Chats', icon: MessageSquare },

@@ -39,6 +39,8 @@ exports.getDriverOffers = async (req, res) => {
     }
 };
 
+const DispatchServiceV2 = require('../services/v2/dispatchService');
+
 /**
  * POST /v2/dispatch/driver/offer/:id/accept
  * Driver accepts an incoming offer.
@@ -54,26 +56,8 @@ exports.acceptOffer = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Offer does not belong to this driver' });
         }
 
-        // Validate not expired
-        if (new Date() > offer.expiresAt) {
-            offer.status = OfferStateMachine.STATES.EXPIRED;
-            await offer.save();
-            return res.status(410).json({ success: false, error: 'Offer has expired' });
-        }
-
-        OfferStateMachine.validateTransition(offer.status, OfferStateMachine.STATES.ACCEPTED);
-        offer.status = OfferStateMachine.STATES.ACCEPTED;
-        offer.respondedAt = new Date();
-        await offer.save();
-
-        // Emit domain event for downstream processing
-        DomainEventBus.publish('DriverAcceptedOffer', offer._id, {
-            offerId: offer._id,
-            driverId,
-            tripInstanceId: offer.tripInstanceId
-        });
-
-        Metrics.count('driver_offer_accepted');
+        // Delegate to DispatchService to handle atomic assignment and eventing
+        await DispatchServiceV2.acceptOffer(id);
 
         res.status(200).json({ success: true, data: { offerId: offer._id, status: 'ACCEPTED' } });
     } catch (error) {
@@ -228,6 +212,7 @@ exports.updateTripStatus = async (req, res) => {
             });
         }
 
+        const oldStatus = instance.status;
         instance.status = status;
         if (!instance.stateTimestamps) instance.stateTimestamps = {};
         instance.stateTimestamps[`${status.toLowerCase()}At`] = new Date();
@@ -236,9 +221,17 @@ exports.updateTripStatus = async (req, res) => {
         DomainEventBus.publish('TripStatusUpdated', instance._id, {
             tripInstanceId: instance._id,
             driverId,
-            fromStatus: instance.status,
+            fromStatus: oldStatus,
             toStatus: status
         });
+
+        if (status === 'COMPLETED') {
+            DomainEventBus.publish('TripCompleted', instance._id, {
+                tripInstanceId: instance._id,
+                driverId,
+                completedAt: instance.stateTimestamps.completedAt
+            });
+        }
 
         Metrics.count(`trip_status_${status.toLowerCase()}`);
 

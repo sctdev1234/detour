@@ -46,7 +46,14 @@ const TransactionSchema = new mongoose.Schema({
     isDeleted: {
         type: Boolean,
         default: false
+    },
+    tripInstanceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TripInstance'
     }
 }, { timestamps: true });
+
+// Prevent duplicate transaction categories for the same trip instance
+TransactionSchema.index({ tripInstanceId: 1, category: 1, type: 1, userId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Transaction', TransactionSchema);

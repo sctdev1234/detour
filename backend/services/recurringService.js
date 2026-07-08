@@ -7,8 +7,8 @@
  * ---------------------------------------------------------------------------------
  */
 
-const TripTemplate = require('../../models/TripTemplate');
-const TripInstance = require('../../models/TripInstance');
+const TripTemplate = require('../models/TripTemplate');
+const TripInstance = require('../models/TripInstance');
 const RecurringScoringService = require('./pipeline/RecurringScoringService');
 const DomainEventBus = require('../events/DomainEventBus');
 

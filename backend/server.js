@@ -99,6 +99,7 @@ app.use('/api/places', require('./routes/places'));
 // app.use('/api/upload', require('./routes/upload')); // Logic moved to client (Base64)
 app.use('/api/rides', require('./routes/rides'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin/finance', require('./routes/adminFinance'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/transactions', require('./routes/transactionRoutes'));
 app.use('/api/reclamations', require('./routes/reclamations'));
@@ -146,6 +147,10 @@ rideService.setIO(io);
 // Initialize V2 Domain Notification Service
 const NotificationService = require('./services/notificationService');
 NotificationService.initialize(io);
+
+// Initialize Finance Domain Listeners
+const FinanceListeners = require('./events/financeListeners');
+FinanceListeners.init();
 
 // Initialize Pre-Trip Notifications Cron Job
 const scheduleTripNotifications = require('./cron/tripNotifications');

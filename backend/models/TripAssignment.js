@@ -47,6 +47,11 @@ const tripAssignmentSchema = new mongoose.Schema(
             ref: 'Vehicle', // Assumes a future Vehicle collection exists
             required: false // Made optional for V1->V2 migration
         },
+        agreedPrice: {
+            type: Number,
+            required: true,
+            default: 0
+        },
         status: {
             type: String,
             enum: ['ACTIVE', 'COMPLETED', 'CANCELLED', 'REASSIGNED'],

@@ -34,7 +34,7 @@ export const useCashout = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (amount: number) => {
-            const res = await api.post('/transactions/cashout', { amount });
+            const res = await api.post('/wallet/driver/withdraw', { amount });
             return res.data;
         },
         onSuccess: () => {
@@ -47,8 +47,8 @@ export const useCashout = () => {
 export const useDeposit = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (amount: number) => {
-            const res = await api.post('/transactions/deposit', { amount });
+        mutationFn: async (data: { amount: number; idempotencyKey: string }) => {
+            const res = await api.post('/wallet/topup', data);
             return res.data;
         },
         onSuccess: () => {

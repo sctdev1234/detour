@@ -12,89 +12,139 @@ class TransactionService {
     }
 
     /**
-     * Process a trip payment from Client to Driver + Company Commission
+     * Settle a trip payment (End-to-End Finance Journey)
+     * Lifecycle: UNSETTLED -> SETTLING -> SETTLED | PAYMENT_PENDING
      */
-    async processTripPayment(tripId, clientId, driverId, amount, existingSession = null) {
+    async settleTripPayment(tripInstanceId, existingSession = null) {
         const session = existingSession || await User.startSession();
         if (!existingSession) session.startTransaction();
 
         try {
+            const TripInstance = require('../models/TripInstance'); // dynamic to avoid circular ref
+            const CommissionService = require('./CommissionService');
+            
+            // 1. Fetch Instance with pessimistic lock (though optimisticConcurrency is on)
+            const trip = await TripInstance.findById(tripInstanceId).session(session);
+            if (!trip) throw new Error('Trip not found');
+
+            // 2. Idempotency Check
+            if (['SETTLED', 'PAYMENT_PENDING', 'REFUNDED'].includes(trip.financialStatus)) {
+                if (!existingSession) {
+                    await session.abortTransaction();
+                    session.endSession();
+                }
+                return { status: trip.financialStatus, message: 'Already processed or pending' };
+            }
+
+            // 3. Mark as SETTLING to prevent concurrent processing
+            trip.financialStatus = 'SETTLING';
+            await trip.save({ session });
+
+            // Ensure assignment exists
+            if (!trip.assignmentId) throw new Error('Trip has no assignment');
+            const TripAssignment = require('../models/TripAssignment');
+            const assignment = await TripAssignment.findById(trip.assignmentId).session(session);
+            if (!assignment) throw new Error('Assignment not found');
+
+            const clientId = trip.passengerIds[0]; // Assuming single passenger for now
+            const driverId = assignment.driverId;
+            const amount = assignment.agreedPrice || trip.pricingSnapshot?.baseFare || 0;
+
             const client = await User.findById(clientId).session(session);
             const driver = await User.findById(driverId).session(session);
 
-            if (!client || !driver) {
-                throw new Error('User not found');
-            }
-
-            // 1. Verify Client Balance
+            // 4. Verify Client Balance
             if (client.balance < amount) {
-                throw new Error('Insufficient balance');
+                trip.financialStatus = 'PAYMENT_PENDING';
+                await trip.save({ session });
+                
+                // We'll emit an event later, but for now we commit the PENDING status
+                if (!existingSession) {
+                    await session.commitTransaction();
+                    session.endSession();
+                }
+                
+                const DomainEventBus = require('../events/DomainEventBus');
+                DomainEventBus.emit('PaymentFailed', { tripId: trip._id, clientId, driverId, amount });
+                
+                return { status: 'PAYMENT_PENDING', message: 'Insufficient funds' };
             }
 
-            // 2. Calculate Commission (10%, Min 2 MAD)
-            let commission = amount * 0.10;
-            if (commission < 2) commission = 2; // Minimum commission
+            // 5. Calculate Commission
+            const { commissionAmount, driverEarning } = CommissionService.calculateCommission(amount);
 
-            // Ensure commission doesn't exceed total amount (edge case for very cheap trips)
-            if (commission > amount) commission = amount;
-
-            const driverEarnings = amount - commission;
-
-            // 3. Deduct from Client
+            // 6. Deduct from Client
             client.balance -= amount;
             client.spending.total += amount;
             client.spending.today += amount;
-            client.stats.tripsDone += 1; // Increment ride count
+            client.stats.tripsDone += 1;
             await client.save({ session });
 
-            // 4. Credit Driver
-            driver.balance += driverEarnings;
-            driver.earnings.total += driverEarnings;
-            driver.earnings.today += driverEarnings;
+            // 7. Credit Driver
+            driver.balance += driverEarning;
+            driver.earnings.total += driverEarning;
+            driver.earnings.today += driverEarning;
             driver.stats.clientsServed += 1;
             await driver.save({ session });
 
-            // 5. Create Transaction Records
+            // 8. Create Ledger Records (Append-Only)
+            const txRecords = [
+                {
+                    userId: clientId,
+                    amount: amount,
+                    type: 'debit',
+                    category: 'pickup_payment',
+                    relatedUserId: driverId,
+                    tripInstanceId: trip._id,
+                    description: `Payment for trip`,
+                    isIrreversible: true
+                },
+                {
+                    userId: driverId,
+                    amount: driverEarning,
+                    type: 'credit',
+                    category: 'earning', // Aligned with CommissionService
+                    relatedUserId: clientId,
+                    tripInstanceId: trip._id,
+                    description: `Earnings from trip`,
+                    isIrreversible: true
+                },
+                {
+                    userId: driverId, // Associate commission to driver account
+                    amount: commissionAmount,
+                    type: 'debit',
+                    category: 'commission',
+                    tripInstanceId: trip._id,
+                    description: `Platform Commission`,
+                    isIrreversible: true
+                }
+            ];
+            await Transaction.insertMany(txRecords, { session });
 
-            // Debit record for Client
-            await Transaction.create([{
-                userId: clientId,
-                amount: amount,
-                type: 'debit',
-                category: 'pickup_payment',
-                relatedUserId: driverId,
-                tripId: tripId,
-                description: `Payment for trip`,
-                isIrreversible: true
-            }], { session });
+            // 9. Generate Immutable Receipt Snapshot
+            trip.receiptSnapshot = {
+                receiptId: `RCPT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                date: new Date(),
+                amountTotal: amount,
+                commissionAmount,
+                driverEarning,
+                currency: trip.pricingSnapshot?.currency || 'MAD',
+                passengerId: clientId,
+                driverId: driverId
+            };
+            trip.financialStatus = 'SETTLED';
+            await trip.save({ session });
 
-            // Credit record for Driver
-            await Transaction.create([{
-                userId: driverId,
-                amount: driverEarnings,
-                type: 'credit',
-                category: 'pickup_payment',
-                relatedUserId: clientId,
-                tripId: tripId,
-                description: `Earnings from trip`,
-                isIrreversible: true
-            }], { session });
-
-            // Commission record (System/Company view - currently just stored as a transaction linked to driver/system)
-            // Ideally we have a 'Company' user or just track it. For now, let's just log it or assign to an admin if exists.
-            // We can also just tag it on the driver side as a 'fee' separate transaction if we wanted, 
-            // but effectively we just gave them net earnings. 
-            // Let's create a 'commission' record explicitly linked to driver for transparency if needed, 
-            // but currently the math: Driver get (Amount - Commission). 
-            // If we want to show "Gross: 50, Fee: 5, Net: 45", we do it differently.
-            // Current approach: Driver Balance += 45. Simple.
-
+            // 10. Commit Transaction
             if (!existingSession) {
                 await session.commitTransaction();
                 session.endSession();
             }
 
-            return { success: true, clientBalance: client.balance, driverBalance: driver.balance };
+            const DomainEventBus = require('../events/DomainEventBus');
+            DomainEventBus.publish('TripSettled', trip._id, { tripId: trip._id, clientId, driverId, amount, receipt: trip.receiptSnapshot });
+
+            return { status: 'SETTLED', receipt: trip.receiptSnapshot };
 
         } catch (error) {
             if (!existingSession) {
@@ -123,12 +173,16 @@ class TransactionService {
             description: 'Wallet deposit'
         });
 
+        // Trigger automatic settlement of any pending trips
+        await this.resolvePendingTrips(userId);
+
         return user.balance;
     }
     /**
      * Subscribe user to Pro plan
      */
     async subscribe(userId) {
+        // ... omitted to preserve space but need to keep original code
         const session = await User.startSession();
         session.startTransaction();
 
@@ -184,6 +238,240 @@ class TransactionService {
     }
 
     /**
+     * Find and attempt to settle all PAYMENT_PENDING trips for a user.
+     * To be called automatically after a successful deposit/recharge.
+     */
+    async resolvePendingTrips(userId) {
+        const TripInstance = require('../models/TripInstance');
+        const pendingTrips = await TripInstance.find({ 
+            passengerIds: userId, 
+            financialStatus: 'PAYMENT_PENDING' 
+        });
+
+        for (const trip of pendingTrips) {
+            await this.settleTripPayment(trip._id);
+        }
+    }
+
+    /**
+     * SPRINT: Admin Operations
+     * Request a withdrawal (Driver)
+     */
+    async processWithdrawalRequest(driverId, amount, paymentMethod, paymentDetails) {
+        const user = await User.findById(driverId);
+        if (!user) throw new Error('Driver not found');
+        if (user.balance < amount || amount <= 0) {
+            throw new Error('Insufficient balance or invalid amount');
+        }
+
+        const session = await User.startSession();
+        session.startTransaction();
+        try {
+            const Withdrawal = require('../models/Withdrawal');
+            const withdrawal = new Withdrawal({
+                user: driverId,
+                amount,
+                paymentMethod,
+                paymentDetails,
+                status: 'pending'
+            });
+            await withdrawal.save({ session });
+
+            // Deduct immediately, kept in escrow logically
+            user.balance -= amount;
+            await user.save({ session });
+
+            await Transaction.create([{
+                userId: driverId,
+                amount,
+                type: 'debit',
+                category: 'withdrawal',
+                description: 'Withdrawal request',
+                status: 'pending'
+            }], { session });
+
+            await session.commitTransaction();
+            session.endSession();
+            return withdrawal;
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
+        }
+    }
+
+    /**
+     * Approve a withdrawal (Admin)
+     */
+    async approveWithdrawal(withdrawalId, adminId) {
+        const Withdrawal = require('../models/Withdrawal');
+        const session = await Withdrawal.startSession();
+        session.startTransaction();
+
+        try {
+            const withdrawal = await Withdrawal.findById(withdrawalId).session(session);
+            if (!withdrawal || withdrawal.status !== 'pending') {
+                throw new Error('Withdrawal not found or not pending');
+            }
+
+            withdrawal.status = 'approved';
+            withdrawal.adminNote = `Approved by Admin ${adminId}`;
+            withdrawal.proccessedAt = new Date();
+            await withdrawal.save({ session });
+
+            const tx = await Transaction.findOne({ userId: withdrawal.user, category: 'withdrawal', status: 'pending', amount: withdrawal.amount }).session(session);
+            if (tx) {
+                tx.status = 'completed';
+                await tx.save({ session });
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+
+            const DomainEventBus = require('../events/DomainEventBus');
+            DomainEventBus.publish('WithdrawalApproved', withdrawal.user, { driverId: withdrawal.user, amount: withdrawal.amount });
+            return withdrawal;
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
+        }
+    }
+
+    /**
+     * Reject a withdrawal (Admin)
+     */
+    async rejectWithdrawal(withdrawalId, adminNote, adminId) {
+        const Withdrawal = require('../models/Withdrawal');
+        const session = await Withdrawal.startSession();
+        session.startTransaction();
+
+        try {
+            const withdrawal = await Withdrawal.findById(withdrawalId).session(session);
+            if (!withdrawal || withdrawal.status !== 'pending') {
+                throw new Error('Withdrawal not found or not pending');
+            }
+
+            withdrawal.status = 'rejected';
+            withdrawal.adminNote = adminNote || `Rejected by Admin ${adminId}`;
+            withdrawal.proccessedAt = new Date();
+            await withdrawal.save({ session });
+
+            // Refund the driver's balance
+            const user = await User.findById(withdrawal.user).session(session);
+            user.balance += withdrawal.amount;
+            await user.save({ session });
+
+            const tx = await Transaction.findOne({ userId: withdrawal.user, category: 'withdrawal', status: 'pending', amount: withdrawal.amount }).session(session);
+            if (tx) {
+                tx.status = 'failed';
+                await tx.save({ session });
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+
+            const DomainEventBus = require('../events/DomainEventBus');
+            DomainEventBus.publish('WithdrawalRejected', withdrawal.user, { driverId: withdrawal.user, amount: withdrawal.amount, reason: adminNote });
+            return withdrawal;
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
+        }
+    }
+
+    /**
+     * Process a forced refund (Admin)
+     * Follows append-only ledger rule. Reverses passenger debit, driver credit, and commission.
+     */
+    async processRefund(tripInstanceId, adminId, reason) {
+        const TripInstance = require('../models/TripInstance');
+        const session = await TripInstance.startSession();
+        session.startTransaction();
+
+        try {
+            const trip = await TripInstance.findById(tripInstanceId).session(session);
+            if (!trip) throw new Error('Trip not found');
+            if (trip.financialStatus !== 'SETTLED') {
+                throw new Error('Only SETTLED trips can be refunded');
+            }
+
+            const passengerId = trip.passengerIds[0];
+            const driverId = trip.receiptSnapshot?.driverId;
+            const amountTotal = trip.receiptSnapshot?.amountTotal || 0;
+            const driverEarning = trip.receiptSnapshot?.driverEarning || 0;
+            const commissionAmount = trip.receiptSnapshot?.commissionAmount || 0;
+
+            if (!driverId) throw new Error('No driver found in receipt snapshot');
+
+            const passenger = await User.findById(passengerId).session(session);
+            const driver = await User.findById(driverId).session(session);
+
+            // Create reversing ledger entries
+            const txRecords = [
+                {
+                    userId: passengerId,
+                    amount: amountTotal,
+                    type: 'credit',
+                    category: 'refund',
+                    relatedUserId: driverId,
+                    tripInstanceId: trip._id,
+                    description: `Refund for trip: ${reason}`,
+                    isIrreversible: true
+                },
+                {
+                    userId: driverId,
+                    amount: driverEarning,
+                    type: 'debit',
+                    category: 'refund', // or earning reversal
+                    relatedUserId: passengerId,
+                    tripInstanceId: trip._id,
+                    description: `Refund deduction for trip: ${reason}`,
+                    isIrreversible: true
+                },
+                {
+                    userId: driverId,
+                    amount: commissionAmount,
+                    type: 'credit',
+                    category: 'refund', // reversed commission
+                    tripInstanceId: trip._id,
+                    description: `Commission reversed: ${reason}`,
+                    isIrreversible: true
+                }
+            ];
+            await Transaction.insertMany(txRecords, { session });
+
+            // Restore Passenger Balance
+            passenger.balance += amountTotal;
+            passenger.spending.total -= amountTotal;
+            await passenger.save({ session });
+
+            // Deduct Driver Balance (Admin force-refund can result in negative balance)
+            driver.balance -= driverEarning;
+            driver.earnings.total -= driverEarning;
+            await driver.save({ session });
+
+            // Mark trip as refunded
+            trip.financialStatus = 'REFUNDED';
+            await trip.save({ session });
+
+            await session.commitTransaction();
+            session.endSession();
+
+            const DomainEventBus = require('../events/DomainEventBus');
+            DomainEventBus.publish('TripRefunded', trip._id, { tripId: trip._id, passengerId, driverId, amountTotal, reason });
+            
+            return { status: 'REFUNDED', amountTotal };
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            throw error;
+        }
+    }
+
+
+    /**
      * Process cashout request
      */
     async processRecharge(userId, amount, reference, existingSession = null) {
@@ -203,7 +491,7 @@ class TransactionService {
                 userId,
                 amount,
                 type: 'credit',
-                category: 'recharge',
+                category: 'deposit',
                 description: `Recharge: ${reference}`
             }], { session });
 
@@ -212,40 +500,9 @@ class TransactionService {
                 session.endSession();
             }
 
-            return { success: true, newBalance: user.balance };
-        } catch (error) {
-            if (!existingSession) {
-                await session.abortTransaction();
-                session.endSession();
-            }
-            throw error;
-        }
-    }
-
-    async processRefund(userId, amount, tripId, existingSession = null) {
-        const session = existingSession || await User.startSession();
-        if (!existingSession) session.startTransaction();
-
-        try {
-            const user = await User.findById(userId).session(session);
-            if (!user) throw new Error('User not found');
-
-            user.balance += amount;
-            await user.save({ session });
-
-            await Transaction.create([{
-                userId,
-                amount,
-                type: 'credit',
-                category: 'refund',
-                tripId,
-                description: 'Refund for trip'
-            }], { session });
-
-            if (!existingSession) {
-                await session.commitTransaction();
-                session.endSession();
-            }
+            // Trigger automatic settlement of any pending trips
+            // Run outside the recharge transaction to avoid tying their lifecycles
+            await this.resolvePendingTrips(userId);
 
             return { success: true, newBalance: user.balance };
         } catch (error) {
@@ -256,6 +513,7 @@ class TransactionService {
             throw error;
         }
     }
+
 
     async cashout(userId, amount, existingSession = null) {
         const session = existingSession || await User.startSession();

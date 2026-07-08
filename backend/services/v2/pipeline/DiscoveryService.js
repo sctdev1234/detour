@@ -21,7 +21,7 @@ class DiscoveryService {
         // This is a naive stub for the architectural pipeline.
         const candidates = await User.find({
             role: 'driver',
-            location: {
+            currentLocation: {
                 $nearSphere: {
                     $geometry: {
                         type: 'Point',

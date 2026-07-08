@@ -47,7 +47,7 @@ export default function ReclamationModal({ reclamation, onClose, onUpdate }) {
         socket.emit('join_reclamation', reclamation._id);
 
         socket.on('new_message', (newMessage) => {
-            /* /* console.log('New message received:', newMessage); */ */
+            /* console.log('New message received:', newMessage); */
             const currentRec = reclamationRef.current;
 
             // Check for duplicates

@@ -15,6 +15,7 @@ import Subscriptions from './pages/Subscriptions';
 import Support from './pages/Support';
 import Trips from './pages/Trips';
 import Users from './pages/Users';
+import Finance from './pages/Finance';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -43,6 +44,7 @@ function App() {
           <Route path="/support" element={<Support />} />
           <Route path="/chats" element={<Chats />} />
           <Route path="/pages" element={<PagesManagement />} />
+          <Route path="/finance" element={<Finance />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
