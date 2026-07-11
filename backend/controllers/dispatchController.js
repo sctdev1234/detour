@@ -31,6 +31,19 @@ exports.createTemplate = async (req, res) => {
 
         // If IMMEDIATE, kick off the dispatcher immediately
         if (schedulingStrategy === 'IMMEDIATE') {
+            // [Phase 3 Resilience Fix] Check for an existing active instance (Idempotency Guard)
+            const existingInstance = await TripInstance.findOne({
+                passengerIds: passengerId,
+                status: { $in: ['SEARCHING', 'OFFERS_OPEN', 'ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'BOARDED', 'STARTED'] }
+            });
+
+            if (existingInstance) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Passenger already has an active immediate trip. Please finish or cancel it first.',
+                    data: { instanceId: existingInstance._id }
+                });
+            }
             const instance = new TripInstance({
                 templateId: template._id,
                 passengerIds: [passengerId],

@@ -9,7 +9,7 @@ import {
     View,
 } from 'react-native';
 import { Colors } from '../../constants/theme';
-import DashboardMap from './DashboardMap';
+import DetourMap from '../Map';
 import Animated, {
     Easing as REasing,
     useAnimatedStyle,
@@ -24,10 +24,9 @@ import { useLocationStore } from '../../store/useLocationStore';
 import { usePlacesStore } from '../../store/usePlacesStore';
 import { decodePolyline } from '../../utils/location';
 import { IN_PROGRESS_STATUSES } from '../../utils/timeUtils';
-import DashboardBottomSheet from './DashboardBottomSheet';
 import FloatingTopBar from './FloatingTopBar';
 import QuickActions from './QuickActions';
-import DriverTripExperienceV2 from '../dispatch/driver/DriverTripExperienceV2';
+import DriverTripExperience from '../dispatch/driver/DriverTripExperience';
 import { useUIStore } from '../../store/useUIStore';
 import { useDriverDispatchStore } from '../../store/useDriverDispatchStore';
 import { useDispatchStore } from '../../store/useDispatchStore';
@@ -61,9 +60,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     const driverV2ActiveTrip = useDriverDispatchStore((s) => s.activeTrip);
     const passengerV2ActiveTrip = useDispatchStore((s) => s.assignment || s.tripInstance);
 
-    // Show V2 overlay for statuses that appear within the dashboard (not full-screen takeover)
     const presence = useDriverDispatchStore((s) => s.presence);
-    const showV2Overlay = featureFlags.enableV2DriverDispatch && presence === 'ONLINE';
 
     const { data: allTrips } = useTrips();
 
@@ -230,18 +227,14 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     return (
         <View style={styles.container}>
             {/* FULLSCREEN MAP */}
-            <DashboardMap
+            <DetourMap
                 ref={mapRef}
-                initialRegion={DEFAULT_REGION}
-                userCoords={userCoords}
-                pulseStyle={pulseStyle}
-                showSavedPlaces={showSavedPlaces}
-                places={places}
-                getSavedPlaceColor={getSavedPlaceColor}
-                routePolylines={routePolylines}
-                activeTrip={tripToDisplay}
-                styles={styles}
+                mode={driverStatus === 'ONLINE' ? 'driver-idle' : 'browse'}
                 theme={theme}
+                fullScreen={true}
+                initialRegion={DEFAULT_REGION}
+                trip={tripToDisplay}
+                routePolylines={routePolylines}
             />
 
             {/* ===== FLOATING UI LAYERS ===== */}
@@ -255,14 +248,10 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                 onCreateRoute={() => router.push('/(driver)/add-route')}
             />
 
-            {/* Bottom Sheet (V1) or V2 Dispatch Overlay */}
-            {showV2Overlay ? (
-                <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 50 }}>
-                    <DriverTripExperienceV2 />
-                </View>
-            ) : (
-                <DashboardBottomSheet />
-            )}
+            {/* Driver Dispatch Overlay (handles offline, online idle, and active states) */}
+            <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 50 }}>
+                <DriverTripExperience />
+            </View>
         </View>
     );
 }

@@ -47,28 +47,10 @@ module.exports = {
                     // Re-broadcast standard location for clients looking at map
                     socket.to(`trip:${tripId}`).emit('driver_location_changed', { latitude, longitude });
 
-                    // Check proximity
-                    const trip = await Trip.findById(tripId).populate('clients.routeId');
-                    if (!trip || trip.driverId.toString() !== driverId) return;
-
-                    trip.clients.forEach(client => {
-                        if (client.status === 'WAITING' || client.status === 'READY') {
-                            const pickupLat = client.routeId?.startPoint?.latitude;
-                            const pickupLng = client.routeId?.startPoint?.longitude;
-
-                            if (pickupLat && pickupLng) {
-                                const distMeters = tripService.calculateDistance(latitude, longitude, pickupLat, pickupLng);
-
-                                if (distMeters <= 1000) {
-                                    io.to(`user:${client.userId.toString()}`).emit('driver_approaching', {
-                                        tripId,
-                                        driverId,
-                                        distance: distMeters
-                                    });
-                                }
-                            }
-                        }
-                    });
+                    // Hand off to Business Logic Layer
+                    const DomainEventBus = require('../events/DomainEventBus');
+                    DomainEventBus.publish('DriverLocationUpdated', tripId, { tripId, driverId, latitude, longitude });
+                    
                 } catch (err) {
                     console.error('Socket driver_location_update Error:', err);
                 }

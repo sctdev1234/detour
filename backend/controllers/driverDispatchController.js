@@ -81,6 +81,12 @@ exports.rejectOffer = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Offer does not belong to this driver' });
         }
 
+        // [Phase 3 Resilience Fix] Idempotency Guard
+        // If a network timeout causes a mobile retry, we silently acknowledge success.
+        if (offer.status === OfferStateMachine.STATES.REJECTED) {
+            return res.status(200).json({ success: true, data: { offerId: offer._id, status: 'REJECTED' } });
+        }
+
         OfferStateMachine.validateTransition(offer.status, OfferStateMachine.STATES.REJECTED);
         offer.status = OfferStateMachine.STATES.REJECTED;
         offer.respondedAt = new Date();
@@ -126,6 +132,11 @@ exports.counterOffer = async (req, res) => {
             offer.status = OfferStateMachine.STATES.EXPIRED;
             await offer.save();
             return res.status(410).json({ success: false, error: 'Offer has expired' });
+        }
+
+        // [Phase 3 Resilience Fix] Idempotency Guard
+        if (offer.status === 'COUNTERED' && offer.counterPrice === counterPrice) {
+            return res.status(200).json({ success: true, data: { offerId: offer._id, status: 'COUNTERED', counterPrice } });
         }
 
         // Store counter-offer data
@@ -194,6 +205,12 @@ exports.updateTripStatus = async (req, res) => {
         const assignment = await TripAssignment.findOne({ tripInstanceId: id, driverId });
         if (!assignment) {
             return res.status(403).json({ success: false, error: 'Driver is not assigned to this trip' });
+        }
+
+        // [Phase 3 Resilience Fix] Idempotency Guard
+        // Prevents ghost failures when mobile client retries on timeout
+        if (instance.status === status) {
+            return res.status(200).json({ success: true, data: { tripInstanceId: id, status } });
         }
 
         // Validate allowed transitions for driver

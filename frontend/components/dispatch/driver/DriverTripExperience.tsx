@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useDriverDispatchFlow } from '../../../hooks/useDriverDispatchFlow';
+import { useDriverDashboardStats } from '../../../hooks/useDriverDashboardStats';
 
 // Import stateless lifecycle views
 import OfflineView from './OfflineView';
@@ -12,16 +13,16 @@ import TripActiveView from './TripActiveView';
 import TripCompletedView from './TripCompletedView';
 
 /**
- * DriverTripExperienceV2 — Lifecycle Controller
+ * DriverTripExperience — Lifecycle Controller
  * 
  * Renders the correct stateless view based on the current driver dispatch status.
  * All state is consumed from useDriverDispatchFlow (thin hook).
  * All business logic is delegated to driverDispatchActions (action module).
  * 
  * Architecture:
- * Presentation → DriverTripExperienceV2 → Lifecycle View → Store → Actions → Services → API/Socket
+ * Presentation → DriverTripExperience → Lifecycle View → Store → Actions → Services → API/Socket
  */
-export default function DriverTripExperienceV2() {
+export default function DriverTripExperience() {
     const {
         status,
         currentOffer,
@@ -38,6 +39,8 @@ export default function DriverTripExperienceV2() {
         dismissSummary
     } = useDriverDispatchFlow();
 
+    const stats = useDriverDashboardStats();
+
     const renderContent = () => {
         // Error overlay
         if (error) {
@@ -53,13 +56,14 @@ export default function DriverTripExperienceV2() {
 
         switch (status) {
             case 'OFFLINE':
-                return <OfflineView onGoOnline={goOnline} />;
+                return <OfflineView onGoOnline={goOnline} stats={stats} />;
 
             case 'ONLINE':
                 return (
                     <OnlineIdleView
                         onGoOffline={goOffline}
                         onTakeBreak={takeBreak}
+                        stats={stats}
                     />
                 );
 

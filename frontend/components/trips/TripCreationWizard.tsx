@@ -13,6 +13,7 @@ import {
     Modal,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import DetourMap from '../Map';
 import {
     MapPin,
     Clock,
@@ -39,6 +40,7 @@ import { LatLng } from '../../types';
 import { RouteService } from '../../services/RouteService';
 import { usePlacesStore } from '../../store/usePlacesStore';
 import { useNetInfo } from '@react-native-community/netinfo';
+import LocationSearchBottomSheet from './LocationSearchBottomSheet';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -102,10 +104,7 @@ export default function TripCreationWizard({
     const [isResolvingAddress, setIsResolvingAddress] = useState(false);
     const [mapCenter, setMapCenter] = useState<LatLng | null>(currentLocation);
 
-    // Search state
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<{ label: string; latitude: number; longitude: number; isSavedPlace?: boolean; icon?: string }[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
+    // Search state handled by LocationSearchBottomSheet
 
     // Schedule state
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -235,85 +234,24 @@ export default function TripCreationWizard({
     // SEARCH HANDLERS
     // =========================================
 
-    const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const { places } = usePlacesStore();
-
-    const handleSearch = useCallback((text: string) => {
-        setSearchQuery(text);
-        if (searchTimeout.current) clearTimeout(searchTimeout.current);
-
-        if (text.trim().length > 0) {
-            // Filter saved places locally first
-            const matchedPlaces = places
-                .filter(p => p.label.toLowerCase().includes(text.toLowerCase()) || p.address.toLowerCase().includes(text.toLowerCase()))
-                .map(p => ({ label: `${p.label} - ${p.address}`, latitude: p.latitude, longitude: p.longitude, isSavedPlace: true, icon: p.icon }));
-
-            if (text.trim().length > 2) {
-                searchTimeout.current = setTimeout(async () => {
-                    setIsSearching(true);
-                    try {
-                        const results = await RouteService.geocode(text);
-                        setSearchResults([...matchedPlaces, ...results]);
-                    } catch {
-                        setSearchResults(matchedPlaces);
-                    } finally {
-                        setIsSearching(false);
-                    }
-                }, 400);
-            } else {
-                setSearchResults(matchedPlaces);
-            }
-        } else {
-            // Show all saved places when query is empty
-            const savedResults = places.map(p => ({
-                label: `${p.label} - ${p.address}`,
-                latitude: p.latitude,
-                longitude: p.longitude,
-                isSavedPlace: true,
-                icon: p.icon
-            }));
-            setSearchResults(savedResults);
-        }
-    }, [places]);
-
-    // Initialize with saved places when search opens
-    useEffect(() => {
-        if (step === ('destination_search' as any) && searchQuery === '') {
-            const savedResults = places.map(p => ({
-                label: `${p.label} - ${p.address}`,
-                latitude: p.latitude,
-                longitude: p.longitude,
-                isSavedPlace: true,
-                icon: p.icon
-            }));
-            setSearchResults(savedResults);
-        }
-    }, [step, places]);
-
     const handleSelectDestination = useCallback((item: { label: string; latitude: number; longitude: number }) => {
         const point: LatLng = { latitude: item.latitude, longitude: item.longitude };
         setDestination(point);
         setDestAddress(item.label);
-        setSearchQuery('');
-        setSearchResults([]);
         if (pickup) {
-            onPointsChange([pickup, point]);
+            setStep('schedule');
+        } else {
+            setStep('pickup');
         }
-        setStep('schedule');
-    }, [pickup, onPointsChange]);
-
-    // =========================================
-    // STEP HANDLERS
-    // =========================================
+    }, [pickup]);
 
     const confirmPickup = useCallback(() => {
         if (mapCenter) {
             setPickup(mapCenter);
             setPickupAddress(centerAddress);
-            onPointsChange([mapCenter]);
             setStep('destination');
         }
-    }, [mapCenter, centerAddress, onPointsChange]);
+    }, [mapCenter, centerAddress]);
 
     const confirmDestinationOnMap = useCallback(() => {
         if (mapCenter) {
@@ -403,18 +341,16 @@ export default function TripCreationWizard({
 
         return (
             <View style={styles.fullScreen}>
-                <MapView
+                <DetourMap
                     ref={mapRef}
-                    style={StyleSheet.absoluteFillObject}
+                    mode="browse"
                     initialRegion={getInitialRegion(isDestination)}
                     onRegionChange={handleRegionChange}
                     onRegionChangeComplete={handleRegionChangeComplete}
-                    showsUserLocation={false}
-                    showsMyLocationButton={false}
-                    scrollEnabled={true}
-                    zoomEnabled={true}
-                    rotateEnabled={false}
-                    pitchEnabled={false}
+                    theme={theme}
+                    fullScreen={true}
+                    // Pass the pickup point to DetourMap when picking destination
+                    boundsPoints={isDestination && pickup ? [pickup] : undefined}
                 >
                     {/* Blue dot for current location */}
                     {currentLocation && (
@@ -437,7 +373,7 @@ export default function TripCreationWizard({
                             </View>
                         </Marker>
                     )}
-                </MapView>
+                </DetourMap>
 
                 {/* Top gradient for contrast */}
                 <LinearGradient
@@ -547,127 +483,6 @@ export default function TripCreationWizard({
     };
 
     // =========================================
-    // RENDER: DESTINATION SEARCH (Full screen)
-    // =========================================
-
-    const renderDestinationStep = () => {
-        return (
-            <View style={[styles.fullScreen, { backgroundColor: surfaceBg }]}>
-                {/* Header */}
-                <View style={[styles.destHeader, { paddingTop: insets.top + 12 }]}>
-                    <Text style={[styles.destTitle, { color: theme.text }]}>Set your route</Text>
-                    <TouchableOpacity onPress={goBack} style={styles.destCloseBtn} activeOpacity={0.7}>
-                        <X size={22} color={theme.text} />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Route From / To inputs */}
-                <View style={styles.routeInputsWrap}>
-                    {/* FROM */}
-                    <View style={[styles.routeInputRow, { backgroundColor: inputBg }]}>
-                        <View style={[styles.routeInputDot, { backgroundColor: '#10B981' }]} />
-                        <View style={styles.routeInputContent}>
-                            <Text style={[styles.routeInputLabel, { color: isDark ? '#8E8E93' : '#6B7280' }]}>From</Text>
-                            <Text style={[styles.routeInputValue, { color: theme.text }]} numberOfLines={1}>
-                                {pickupAddress || 'Pickup location'}
-                            </Text>
-                        </View>
-                    </View>
-
-                    {/* Connector */}
-                    <View style={styles.routeConnector}>
-                        <View style={[styles.connectorLine, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
-                    </View>
-
-                    {/* TO — Search input */}
-                    <View style={[styles.routeInputRow, styles.routeInputActive, { backgroundColor: inputBg, borderColor: theme.primary + '60' }]}>
-                        <View style={[styles.routeInputDot, { backgroundColor: '#FF3B30' }]} />
-                        <View style={styles.routeInputContent}>
-                            <Text style={[styles.routeInputLabel, { color: isDark ? '#8E8E93' : '#6B7280' }]}>To</Text>
-                            <TextInput
-                                style={[styles.routeSearchInput, { color: theme.text }]}
-                                placeholder="Search destination..."
-                                placeholderTextColor={isDark ? '#636366' : '#9CA3AF'}
-                                value={searchQuery}
-                                onChangeText={handleSearch}
-                                autoFocus
-                            />
-                        </View>
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <X size={18} color={theme.icon || '#888'} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </View>
-
-                {/* Choose on map */}
-                <TouchableOpacity
-                    style={styles.chooseOnMapRow}
-                    onPress={() => {
-                        isReadyRef.current = false;
-                        setStep('destination_map');
-                        setTimeout(() => { isReadyRef.current = true; }, 1000);
-                    }}
-                    activeOpacity={0.7}
-                >
-                    <View style={[styles.chooseOnMapIcon, { backgroundColor: theme.primary + '15' }]}>
-                        <Crosshair size={18} color={theme.primary} />
-                    </View>
-                    <Text style={[styles.chooseOnMapText, { color: theme.primary }]}>Choose on map</Text>
-                </TouchableOpacity>
-
-                {/* Divider */}
-                <View style={[styles.divider, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
-
-                {/* Search results */}
-                <ScrollView
-                    style={styles.searchScroll}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                >
-                    {isSearching && (
-                        <View style={styles.searchingIndicator}>
-                            <ActivityIndicator size="small" color={theme.primary} />
-                            <Text style={[styles.searchingText, { color: theme.textSecondary || '#888' }]}>Searching...</Text>
-                        </View>
-                    )}
-                    {searchResults.map((item, index) => (
-                        <TouchableOpacity
-                            key={`result-${index}`}
-                            style={[styles.resultItem, { borderBottomColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
-                            onPress={() => handleSelectDestination(item)}
-                            activeOpacity={0.7}
-                        >
-                            <View style={[styles.resultIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
-                                {item.icon === 'home' ? <Home size={16} color={theme.primary} /> :
-                                 item.icon === 'briefcase' ? <Briefcase size={16} color={theme.primary} /> :
-                                 item.icon === 'gym' ? <Dumbbell size={16} color={theme.primary} /> :
-                                 item.icon === 'graduation-cap' ? <GraduationCap size={16} color={theme.primary} /> :
-                                 item.isSavedPlace ? <Star size={16} color={theme.primary} /> :
-                                 <MapPin size={16} color={theme.primary} />}
-                            </View>
-                            <View style={styles.resultTextWrap}>
-                                <Text style={[styles.resultTitle, { color: theme.text }]} numberOfLines={1}>
-                                    {item.label.split('-')[0].split(',')[0]}
-                                </Text>
-                                <Text style={[styles.resultSubtitle, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>
-                                    {item.label.includes('-') ? item.label.split('-')[1].trim() : item.label}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-                    {!isSearching && searchQuery.length > 2 && searchResults.length === 0 && (
-                        <View style={styles.noResults}>
-                            <Text style={[styles.noResultsText, { color: theme.textSecondary || '#888' }]}>No results found</Text>
-                        </View>
-                    )}
-                </ScrollView>
-            </View>
-        );
-    };
-
-    // =========================================
     // RENDER: SCHEDULE & PRICE
     // =========================================
 
@@ -677,33 +492,19 @@ export default function TripCreationWizard({
         return (
             <View style={styles.fullScreen}>
                 {/* Map showing both points */}
-                <MapView
+                <DetourMap
                     ref={mapRef}
-                    style={StyleSheet.absoluteFillObject}
+                    mode="route"
                     initialRegion={getInitialRegion(false)}
-                    showsUserLocation={false}
-                    scrollEnabled={true}
-                    zoomEnabled={true}
-                    rotateEnabled={false}
+                    theme={theme}
+                    fullScreen={true}
+                    startPoint={pickup!}
+                    endPoint={destination!}
                 >
                     {currentLocation && (
                         <Marker coordinate={currentLocation} anchor={{ x: 0.5, y: 0.5 }} zIndex={1}>
                             <View style={styles.userDot}>
                                 <View style={styles.userDotInner} />
-                            </View>
-                        </Marker>
-                    )}
-                    {pickup && (
-                        <Marker coordinate={pickup} anchor={{ x: 0.5, y: 1 }}>
-                            <View style={[styles.routeMarker, { backgroundColor: '#10B981' }]}>
-                                <User size={14} color="#FFF" strokeWidth={2} />
-                            </View>
-                        </Marker>
-                    )}
-                    {destination && (
-                        <Marker coordinate={destination} anchor={{ x: 0.5, y: 1 }}>
-                            <View style={[styles.routeMarker, { backgroundColor: '#FF3B30' }]}>
-                                <MapPin size={14} color="#FFF" />
                             </View>
                         </Marker>
                     )}
@@ -715,7 +516,7 @@ export default function TripCreationWizard({
                             lineDashPattern={[8, 4]}
                         />
                     )}
-                </MapView>
+                </DetourMap>
 
                 {/* Top gradient */}
                 <LinearGradient
@@ -914,18 +715,40 @@ export default function TripCreationWizard({
     // MAIN RENDER
     // =========================================
 
-    switch (step) {
-        case 'pickup':
-            return renderMapPinStep(false);
-        case 'destination':
-            return renderDestinationStep();
-        case 'destination_map':
-            return renderMapPinStep(true);
-        case 'schedule':
-            return renderScheduleStep();
-        default:
-            return renderMapPinStep(false);
-    }
+    // =========================================
+
+    const renderContent = () => {
+        switch (step) {
+            case 'pickup':
+            case 'destination': // Show pickup map behind the search sheet
+                return renderMapPinStep(false);
+            case 'destination_map':
+                return renderMapPinStep(true);
+            case 'schedule':
+                return renderScheduleStep();
+            default:
+                return renderMapPinStep(false);
+        }
+    };
+
+    return (
+        <View style={styles.fullScreen}>
+            {renderContent()}
+            <LocationSearchBottomSheet
+                visible={step === 'destination'}
+                onClose={() => setStep('pickup')}
+                onSelectLocation={handleSelectDestination}
+                onChooseOnMap={() => {
+                    isReadyRef.current = false;
+                    setStep('destination_map');
+                    setTimeout(() => { isReadyRef.current = true; }, 1000);
+                }}
+                theme={theme}
+                isDark={isDark}
+                pickupAddress={pickupAddress}
+            />
+        </View>
+    );
 }
 
 // =========================================

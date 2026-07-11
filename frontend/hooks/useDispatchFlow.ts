@@ -38,7 +38,7 @@ export const useDispatchFlow = () => {
     const isAssigned = status === 'ASSIGNED';
     const isEnRoute = status === 'EN_ROUTE';
     const isArrived = status === 'ARRIVED';
-    const isStarted = status === 'IN_PROGRESS';
+    const isStarted = status === 'STARTED';
     const isCompleted = status === 'COMPLETED';
 
     return {

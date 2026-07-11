@@ -22,7 +22,7 @@ interface StopItem {
 }
 
 export interface MapProps {
-    mode?: 'picker' | 'trip' | 'route' | 'view' | 'interactive_routes';
+    mode?: 'picker' | 'trip' | 'route' | 'view' | 'interactive_routes' | 'browse' | 'driver-idle';
     theme: any;
     height?: ViewStyle['height'];
     readOnly?: boolean;
@@ -60,6 +60,9 @@ export interface MapProps {
     boundsPoints?: LatLng[];
     fullScreen?: boolean;
     routePolylines?: any[];
+    onRegionChange?: (region: any) => void;
+    onRegionChangeComplete?: (region: any) => void;
+    children?: React.ReactNode;
     initialRegion?: {
         latitude: number;
         longitude: number;
@@ -309,12 +312,54 @@ const RouteMarkers = React.memo(({ startPoint, endPoint, waypoints }: any) => {
     );
 });
 
+const RoutePolylines = React.memo(({ routePolylines }: { routePolylines: any[] }) => {
+    if (!routePolylines?.length) return null;
+    return (
+        <>
+            {routePolylines.map((route) => (
+                <React.Fragment key={`route-${route.id}`}>
+                    {route.coords?.length > 1 && (
+                        <Polyline
+                            coordinates={route.coords.filter((c: any) => c.latitude !== 0 && c.longitude !== 0)}
+                            strokeColor={route.color}
+                            strokeWidth={route.width}
+                            lineDashPattern={route.isActive ? [] : [8, 4]}
+                        />
+                    )}
+                    {/* Start Marker */}
+                    {route.startPoint && route.startPoint.latitude !== 0 && route.startPoint.longitude !== 0 && (
+                        <Marker coordinate={route.startPoint} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+                            <View style={[styles.routeEndpoint, {
+                                backgroundColor: route.isActive ? '#10b981' : 'rgba(79, 70, 229, 0.6)',
+                                borderColor: '#fff',
+                            }]}>
+                                <View style={styles.routeEndpointInner} />
+                            </View>
+                        </Marker>
+                    )}
+                    {/* End Marker */}
+                    {route.endPoint && route.endPoint.latitude !== 0 && route.endPoint.longitude !== 0 && (
+                        <Marker coordinate={route.endPoint} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+                            <View style={[styles.routeEndpoint, {
+                                backgroundColor: route.isActive ? '#ef4444' : 'rgba(239, 68, 68, 0.5)',
+                                borderColor: '#fff',
+                            }]}>
+                                <View style={styles.routeEndpointInner} />
+                            </View>
+                        </Marker>
+                    )}
+                </React.Fragment>
+            ))}
+        </>
+    );
+});
+
 // --- Main Component ---
 
 // Map styles are now imported from constants/design.ts
 // (refinedLightMapStyle, refinedDarkMapStyle)
 
-const Map = React.memo(({
+const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     mode = 'view',
     theme,
     height = 300,
@@ -340,20 +385,25 @@ const Map = React.memo(({
     onMapPress,
     edgePadding,
     boundsPoints,
+    routePolylines,
     fullScreen = false,
+    onRegionChange,
+    onRegionChangeComplete,
+    children,
     initialRegion = {
         latitude: 33.5731,
         longitude: -7.5898,
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
     }
-}: MapProps) => {
+}, forwardedRef) => {
     const mapStyle = theme?.dark || theme?.text === '#FFFFFF' ? refinedDarkMapStyle : refinedLightMapStyle;
 
     // Fallback: use saved places from auth store if not passed as prop
     const storeUser = useAuthStore(s => s.user);
     const savedPlaces = propSavedPlaces ?? storeUser?.savedPlaces ?? [];
-    const mapRef = useRef<any>(null);
+    const internalMapRef = useRef<any>(null);
+    const mapRef = (forwardedRef as React.MutableRefObject<any>) || internalMapRef;
     const hasFitPickerRef = useRef(false);
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -604,6 +654,8 @@ const Map = React.memo(({
                 pitchEnabled={!readOnly && interactive}
                 rotateEnabled={!readOnly && interactive}
                 onPress={handlePress}
+                onRegionChange={onRegionChange}
+                onRegionChangeComplete={onRegionChangeComplete}
                 clusterColor={theme.colors?.primary || theme.primary}
                 clusterTextColor={theme.colors?.background || theme.background}
                 radius={40}
@@ -725,6 +777,14 @@ const Map = React.memo(({
                     );
                 })}
 
+                {/* Dashboard Saved Routes */}
+                {(mode === 'browse' || mode === 'driver-idle') && routePolylines && routePolylines.length > 0 && (
+                    <RoutePolylines routePolylines={routePolylines} />
+                )}
+
+                {/* Additional custom overlays */}
+                {children}
+
             </MapView>
 
             <TouchableOpacity
@@ -768,7 +828,7 @@ const Map = React.memo(({
             )}
         </View>
     );
-});
+}));
 
 export default Map;
 
@@ -958,5 +1018,19 @@ const styles = StyleSheet.create({
         elevation: 6,
         // @ts-ignore
         boxShadow: '0px 2px 6px rgba(0,0,0,0.3)',
+    },
+    routeEndpoint: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    routeEndpointInner: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#fff',
     },
 });

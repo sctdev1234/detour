@@ -60,15 +60,7 @@ class RecurringScheduler {
                 // Future enhancement: apply timezone offset using the specified string
             }
 
-            // Idempotency check: Don't generate if already exists
-            const existingInstance = await TripInstance.findOne({
-                templateId: template._id,
-                scheduledTime: scheduledTime
-            });
-
-            if (existingInstance) continue;
-
-            // Generate Instance
+            // Generate Instance Payload
             let instancePayload = {
                 schemaVersion: 1,
                 templateId: template._id,
@@ -110,14 +102,35 @@ class RecurringScheduler {
                     }));
             }
 
-            const instance = new TripInstance(instancePayload);
-            await instance.save();
+            // [Phase 3 Resilience Fix] Idempotency Check & Atomic Upsert
+            // Avoid duplicate generations when multiple scheduler pods run simultaneously
+            let generatedInstance = null;
+            try {
+                const result = await TripInstance.findOneAndUpdate(
+                    { templateId: template._id, scheduledTime: scheduledTime },
+                    { $setOnInsert: instancePayload },
+                    { upsert: true, new: true, rawResult: true }
+                );
 
-            console.log(`[RecurringScheduler] Generated instance ${instance._id} for template ${template._id}`);
+                // If `lastErrorObject.updatedExisting` is true, another pod already created it
+                if (result.lastErrorObject && result.lastErrorObject.updatedExisting) {
+                    console.log(`[RecurringScheduler] Instance already generated for ${template._id} on ${scheduledTime}`);
+                    continue; // skip pushing to dispatch
+                }
+                
+                generatedInstance = result.value;
+                console.log(`[RecurringScheduler] Generated TripInstance: ${generatedInstance._id}`);
+            } catch (err) {
+                // Ignore E11000 duplicate key errors if unique index exists
+                if (err.code !== 11000) {
+                    console.error(`[RecurringScheduler] Failed to upsert instance for template ${template._id}:`, err);
+                }
+                continue; // skip pushing to dispatch on error
+            }
 
             // If Passenger instance, push to Dispatch Engine for Validation & Offer generation
             // The Dispatch Engine should recognize `candidateDriverIds` and generate offers for them.
-            if (template.creatorRole === 'passenger') {
+            if (template.creatorRole === 'passenger' && generatedInstance) {
                 // In a robust system, we might delay this until all driver instances are also generated.
                 // For simplicity, we invoke the matching pipeline.
                 try {

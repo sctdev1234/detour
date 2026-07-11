@@ -320,16 +320,64 @@ class TripService {
     }
 
     async getTrips(userId) {
-        return await tripRepository.find({
+        // V2 Migration: Pull from TripInstance instead of legacy Trip
+        const TripInstance = require('../models/TripInstance');
+        const TripAssignment = require('../models/TripAssignment');
+
+        // Find assignments for this driver
+        const driverAssignments = await TripAssignment.find({ driverId: userId });
+        const assignmentIds = driverAssignments.map(a => a._id);
+
+        const instances = await TripInstance.find({
             $or: [
-                { driverId: userId },
-                { 'clients.userId': userId }
+                { assignmentId: { $in: assignmentIds } },
+                { passengerIds: userId }
             ]
-        }).populate('driverId', 'fullName photoURL')
-            .populate('routeId')
-            .populate('clients.userId', 'fullName photoURL')
-            .populate('clients.routeId')
-            .sort({ createdAt: -1 });
+        })
+        .populate('assignmentId')
+        .populate('passengerIds', 'fullName photoURL')
+        .sort({ createdAt: -1 });
+
+        // Map V2 TripInstance to legacy Trip shape so frontend History renders without breaking
+        return instances.map(instance => {
+            const assignment = instance.assignmentId;
+            return {
+                _id: instance._id,
+                driverId: assignment ? assignment.driverId : null,
+                status: instance.status,
+                createdAt: instance.createdAt,
+                routeId: {
+                    _id: instance.templateId || instance._id,
+                    userId: assignment ? assignment.driverId : null,
+                    startPoint: {
+                        coordinates: instance.pickup?.coordinates || [0, 0],
+                        address: instance.pickup?.address || ''
+                    },
+                    endPoint: {
+                        coordinates: instance.destination?.coordinates || [0, 0],
+                        address: instance.destination?.address || ''
+                    },
+                    price: { amount: instance.pricing?.finalPrice || 0, type: 'fix' },
+                    distanceKm: instance.distanceMeters ? instance.distanceMeters / 1000 : 0,
+                    estimatedDurationMin: instance.durationSeconds ? Math.floor(instance.durationSeconds / 60) : 0,
+                    status: instance.status
+                },
+                clients: instance.passengerIds.map(p => ({
+                    userId: p,
+                    status: instance.status === 'COMPLETED' ? 'COMPLETED' : 'WAITING',
+                    routeId: {
+                        startPoint: {
+                            coordinates: instance.pickup?.coordinates || [0, 0],
+                            address: instance.pickup?.address || ''
+                        },
+                        endPoint: {
+                            coordinates: instance.destination?.coordinates || [0, 0],
+                            address: instance.destination?.address || ''
+                        }
+                    }
+                }))
+            };
+        });
     }
 
     async getDriverRequests(userId) {
@@ -905,29 +953,18 @@ class TripService {
         // Use updatedTrip from now on for calculations
         Object.assign(trip, updatedTrip.toObject());
         
-        // Calculate total earnings for this trip
-        let totalTripPrice = 0;
-        trip.clients.forEach(c => {
-            if (c.status === 'COMPLETED' || c.status === 'DROPPED_OFF') {
-                totalTripPrice += c.price || 0;
-            }
-        });
-
-        // Process wallet earnings
-        const walletService = require('./walletService');
-        const { driverEarning, commissionAmount } = await walletService.processTripEarnings(trip._id, trip.driverId, totalTripPrice);
-        trip.commissionAmount = commissionAmount;
-        
-        await Route.updateOne({ _id: tripId }, { $set: { commissionAmount } });
-
         // Log Analytics
         const analyticsService = require('./analyticsService');
         await analyticsService.logTripCompletion(trip.driverId, false);
 
+        // [Phase 3 Resilience Fix] Fire Domain Event instead of direct wallet processing
+        // This delegates finance execution to the idempotent TransactionService wrapper
+        const DomainEventBus = require('../events/DomainEventBus');
+        DomainEventBus.publish('TripCompleted', tripId, { tripInstanceId: tripId });
+
         if (this.io) {
             this.io.to(`trip:${tripId}`).emit('trip_completed', { tripId, completedAt: trip.stateTimestamps.completedAt });
             this.io.to(`user:${driverId}`).emit('trip_updated', { tripId });
-            this.io.to(`user:${driverId}`).emit('wallet:updated', { earning: driverEarning });
             trip.clients.forEach(c => {
                 this.io.to(`user:${c.userId}`).emit('trip_updated', { tripId });
             });

@@ -152,6 +152,10 @@ NotificationService.initialize(io);
 const FinanceListeners = require('./events/financeListeners');
 FinanceListeners.init();
 
+// Initialize Dispatch Domain Listeners
+const DispatchListeners = require('./events/dispatchListeners');
+DispatchListeners.init(io);
+
 // Initialize Pre-Trip Notifications Cron Job
 const scheduleTripNotifications = require('./cron/tripNotifications');
 scheduleTripNotifications(io);
@@ -164,3 +168,32 @@ server.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server started on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     logger.info(`Listening on http://0.0.0.0:${PORT}`);
 });
+
+// [Phase 3 Resilience Fix] Graceful Shutdown (Operational Recovery)
+// Ensures active MongoDB transactions and Socket connections drain safely on pod restart.
+const gracefulShutdown = (signal) => {
+    logger.info(`Received ${signal}. Starting graceful shutdown...`);
+    
+    // Stop accepting new HTTP/Socket connections
+    server.close(async () => {
+        logger.info('HTTP server closed. No longer accepting new connections.');
+        try {
+            // Give ongoing transactions a brief moment to finish
+            await mongoose.connection.close(false);
+            logger.info('MongoDB connection safely closed.');
+            process.exit(0);
+        } catch (err) {
+            logger.error('Error during MongoDB shutdown', err);
+            process.exit(1);
+        }
+    });
+
+    // Force close after 10 seconds if connections are hanging
+    setTimeout(() => {
+        logger.error('Could not gracefully shut down in time, forcefully terminating.');
+        process.exit(1);
+    }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

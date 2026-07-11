@@ -46,7 +46,7 @@ export default function TripExperience({ onClose }: Props) {
         switch (status) {
             case 'SEARCHING':
                 return <SearchingView onCancel={handleCancel} />;
-            case 'OFFERS_RECEIVED':
+            case 'OFFERS_OPEN':
                 return (
                     <OffersView 
                         offers={offers} 
@@ -77,7 +77,7 @@ export default function TripExperience({ onClose }: Props) {
                         onCancel={handleCancel}
                     />
                 );
-            case 'IN_PROGRESS':
+            case 'STARTED':
                 return (
                     <RideView />
                 );

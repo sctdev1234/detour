@@ -20,8 +20,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DetourMap from '../../components/Map';
-import ActiveTripTracker from '../../components/trips/ActiveTripTracker';
-import OfferList from '../../components/trips/OfferList';
 import TripCreationWizard from '../../components/trips/TripCreationWizard';
 import {
     CameraConfig,
@@ -35,7 +33,6 @@ import { useClientRequests, useClientTrips, useCreateClientTrip } from '../../ho
 import { useRideFlow } from '../../hooks/useRideFlow';
 import { RouteService } from '../../services/RouteService';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useRideStore } from '../../store/useRideStore';
 import { useTrackingStore } from '../../store/useTrackingStore';
 import { useUIStore } from '../../store/useUIStore';
 import { ClientTrip, LatLng } from '../../types';
@@ -58,7 +55,6 @@ export default function ClientDashboard() {
     const isDark = colorScheme === 'dark';
 
     const { user } = useAuthStore();
-    const { status: rideStatus, offers } = useRideStore();
     const { showToast, setHideGlobalHeader, setHideGlobalFooter, featureFlags } = useUIStore();
     const { driverLocation } = useTrackingStore();
 
@@ -183,7 +179,6 @@ export default function ClientDashboard() {
         setMapPoints(newPoints);
     }, []);
 
-    const { requestRide, acceptOffer, rejectOffer } = useRideFlow();
     const v2Flow = useDispatchFlow();
 
     const handleCreateTrip = useCallback(async (data: {
@@ -196,24 +191,19 @@ export default function ClientDashboard() {
     }) => {
         try {
             if (data.rideType === 'immediate') {
-                if (featureFlags.enableV2Dispatch) {
-                    await v2Flow.requestRide({
-                        pickup: {
-                            type: 'Point',
-                            coordinates: [data.startPoint.longitude, data.startPoint.latitude],
-                            address: 'Current Location'
-                        },
-                        dropoff: {
-                            type: 'Point',
-                            coordinates: [data.endPoint.longitude, data.endPoint.latitude],
-                            address: 'Destination'
-                        }
-                    });
-                    showToast('Looking for drivers (V2)...', 'success');
-                } else {
-                    await requestRide(data.startPoint, data.endPoint, 'Pickup', 'Destination', data.price, 5000, 600);
-                    showToast('Looking for drivers...', 'success');
-                }
+                await v2Flow.requestRide({
+                    pickup: {
+                        type: 'Point',
+                        coordinates: [data.startPoint.longitude, data.startPoint.latitude],
+                        address: 'Current Location'
+                    },
+                    dropoff: {
+                        type: 'Point',
+                        coordinates: [data.endPoint.longitude, data.endPoint.latitude],
+                        address: 'Destination'
+                    }
+                });
+                showToast('Looking for drivers...', 'success');
                 setIsCreatingTrip(false);
                 setMapPoints([]);
             } else {
@@ -226,7 +216,7 @@ export default function ClientDashboard() {
             console.error(error);
             showToast(error.response?.data?.msg || 'Failed to create trip', 'error');
         }
-    }, [createClientTrip, showToast, requestRide]);
+    }, [createClientTrip, showToast, v2Flow]);
 
     const handleCancelCreation = useCallback(() => {
         setIsCreatingTrip(false);
@@ -514,34 +504,11 @@ export default function ClientDashboard() {
                 </Animated.View>
             )}
 
-            {/* ─── State 3: Active trip ─── */}
-            {homeState === 'active_trip' && activeTrip && (
-                <ActiveTripTracker
-                    trip={activeTrip}
-                    theme={theme}
-                    colorScheme={colorScheme}
-                />
-            )}
-
-            {/* ─── State 4: Dispatch flow ─── */}
-            {featureFlags.enableV2Dispatch ? (
-                (v2Flow.isSearching || v2Flow.hasOffers || v2Flow.isAssigned) && (
-                    <View style={[styles.dispatchContainer, { bottom: 0 }]}>
-                        <TripExperience onClose={() => v2Flow.cancelSearch()} />
-                    </View>
-                )
-            ) : (
-                (rideStatus === 'SEARCHING' || rideStatus === 'OFFERS_OPEN') && (
-                    <View style={[styles.dispatchContainer, { bottom: 0 }]}>
-                        <OfferList
-                            offers={offers}
-                            theme={theme}
-                            isDark={isDark}
-                            onAccept={acceptOffer}
-                            onReject={rejectOffer}
-                        />
-                    </View>
-                )
+            {/* ─── State 3 & 4: Dispatch Flow & Active Trip ─── */}
+            {(v2Flow.isSearching || v2Flow.hasOffers || v2Flow.isAssigned || v2Flow.isEnRoute || v2Flow.isArrived || v2Flow.isStarted || v2Flow.isCompleted) && (
+                <View style={[styles.dispatchContainer, { bottom: 0 }]}>
+                    <TripExperience onClose={() => v2Flow.cancelSearch()} />
+                </View>
             )}
         </View>
     );

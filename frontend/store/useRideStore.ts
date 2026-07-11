@@ -1,3 +1,13 @@
+/**
+ * @deprecated V1 Legacy Dispatch Store
+ * WARNING: Do NOT use this store for active trip state or dispatching.
+ * This store contains "ghost state" that conflicts with the canonical Truth
+ * (React Query's `useClientTrips` pulling from `TripInstance`).
+ * It is only preserved for the `!featureFlags.enableV2Dispatch` fallback.
+ * For all new features, use `useDispatchStore` (V2) which pulls from the 
+ * Single Source of Truth backend recovery endpoints.
+ */
+
 import { create } from 'zustand';
 import { LatLng } from 'react-native-maps';
 

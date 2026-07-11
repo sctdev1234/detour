@@ -43,6 +43,9 @@ class NotificationService {
         DomainEventBus.on('WithdrawalApproved', (event) => this.handleWithdrawalApproved(event));
         DomainEventBus.on('WithdrawalRejected', (event) => this.handleWithdrawalRejected(event));
 
+        // Proximity / Tracking
+        DomainEventBus.on('DriverApproaching', (event) => this.handleDriverApproaching(event));
+
         console.log('[NotificationService] Subscribed to DomainEventBus');
     }
 
@@ -144,6 +147,11 @@ class NotificationService {
     static handleWithdrawalRejected(event) {
         const { driverId, amount, reason } = event.payload;
         this.emitToDriver(driverId, 'finance:withdrawal_rejected', { amount, reason });
+    }
+
+    static handleDriverApproaching(event) {
+        const { tripId, driverId, clientId, distance } = event.payload;
+        this.emitToPassenger(clientId, 'driver_approaching', { tripId, driverId, distance });
     }
 
     /**

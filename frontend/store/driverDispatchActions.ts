@@ -266,7 +266,6 @@ export const driverDispatchActions = {
     },
 
     _unbindSockets: () => {
-        socketLifecycleManager.stop();
         if (unsubConnectionStatus) { unsubConnectionStatus(); unsubConnectionStatus = null; }
         if (unsubResume) { unsubResume(); unsubResume = null; }
         if (unsubOffer) { unsubOffer(); unsubOffer = null; }

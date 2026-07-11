@@ -1,77 +1,171 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
-import { WifiOff } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { WifiOff, Wallet, Star, Calendar } from 'lucide-react-native';
 import { Colors } from '../../../constants/theme';
+import { useCountdownDate } from '../../../hooks/useCountdown';
 
 interface Props {
     onGoOnline: () => void;
+    stats?: {
+        rating: number;
+        weeklyPotential: number;
+        nextTripDate: Date | null;
+        nextTripRef: any;
+    };
 }
 
-export default function OfflineView({ onGoOnline }: Props) {
+export default function OfflineView({ onGoOnline, stats }: Props) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const nextTripCountdown = useCountdownDate(stats?.nextTripDate || null);
+
+    const Container = Platform.OS === 'ios' ? BlurView : View;
+    const containerProps = Platform.OS === 'ios'
+        ? { intensity: 90, tint: colorScheme }
+        : {};
+    
+    const bgColor = colorScheme === 'dark'
+        ? 'rgba(28, 28, 30, 0.95)'
+        : 'rgba(255, 255, 255, 0.95)';
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.surface }]}>
-            <View style={styles.iconContainer}>
-                <WifiOff size={48} color={theme.textSecondary} />
-            </View>
-
-            <Text style={[styles.title, { color: theme.text }]}>You're Offline</Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                Go online to start receiving trip requests.
-            </Text>
-
-            <TouchableOpacity
-                style={[styles.goOnlineButton, { backgroundColor: '#10b981' }]}
-                onPress={onGoOnline}
-                activeOpacity={0.8}
+        <View style={styles.wrapper}>
+            <Container
+                {...containerProps}
+                style={[styles.container, Platform.OS !== 'ios' && { backgroundColor: bgColor }]}
             >
-                <Text style={styles.buttonText}>GO ONLINE</Text>
-            </TouchableOpacity>
+                <View style={styles.iconContainer}>
+                    <WifiOff size={40} color={theme.textSecondary} />
+                </View>
+
+                <Text style={[styles.title, { color: theme.text }]}>You're Offline</Text>
+                
+                {/* Stats Row */}
+                <View style={styles.statsRow}>
+                    <View style={styles.statBox}>
+                        <Star size={16} color="#F59E0B" />
+                        <Text style={[styles.statValue, { color: theme.text }]}>{stats?.rating ? stats.rating.toFixed(1) : 'New'}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Rating</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statBox}>
+                        <Wallet size={16} color="#10b981" />
+                        <Text style={[styles.statValue, { color: theme.text }]}>{stats?.weeklyPotential || 0} MAD</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Weekly</Text>
+                    </View>
+                </View>
+
+                {/* Next Trip Alert */}
+                {stats?.nextTripRef && (
+                    <View style={[styles.nextTripCard, { backgroundColor: theme.surfaceHighlight + '40' }]}>
+                        <Calendar size={18} color={theme.primary} />
+                        <View style={styles.nextTripInfo}>
+                            <Text style={[styles.nextTripTitle, { color: theme.text }]}>Next Trip in {nextTripCountdown}</Text>
+                            <Text style={[styles.nextTripSub, { color: theme.textSecondary }]} numberOfLines={1}>
+                                {stats.nextTripRef.routeId?.startPoint?.address?.split(',')[0]} → {stats.nextTripRef.routeId?.endPoint?.address?.split(',')[0]}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
+                <TouchableOpacity
+                    style={[styles.goOnlineButton, { backgroundColor: '#10b981' }]}
+                    onPress={onGoOnline}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.buttonText}>GO ONLINE</Text>
+                </TouchableOpacity>
+            </Container>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
+    wrapper: {
+        width: '100%',
+        paddingBottom: 20, // To give it some space at bottom
+    },
     container: {
-        padding: 32,
+        padding: 24,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 20,
+        borderRadius: 24,
         marginHorizontal: 16,
+        overflow: 'hidden',
     },
     iconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         backgroundColor: 'rgba(156, 163, 175, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
     },
     title: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '800',
-        marginBottom: 8,
+        marginBottom: 20,
     },
-    subtitle: {
+    statsRow: {
+        flexDirection: 'row',
+        width: '100%',
+        justifyContent: 'space-evenly',
+        alignItems: 'center',
+        marginBottom: 24,
+        backgroundColor: 'rgba(156, 163, 175, 0.05)',
+        borderRadius: 16,
+        paddingVertical: 16,
+    },
+    statBox: {
+        alignItems: 'center',
+        flex: 1,
+        gap: 4,
+    },
+    statDivider: {
+        width: 1,
+        height: 32,
+        backgroundColor: 'rgba(156, 163, 175, 0.2)',
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    statLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    nextTripCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 12,
+        width: '100%',
+        marginBottom: 24,
+        gap: 12,
+    },
+    nextTripInfo: {
+        flex: 1,
+    },
+    nextTripTitle: {
         fontSize: 14,
-        textAlign: 'center',
-        marginBottom: 28,
-        lineHeight: 20,
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    nextTripSub: {
+        fontSize: 13,
     },
     goOnlineButton: {
         paddingVertical: 16,
-        paddingHorizontal: 48,
         borderRadius: 14,
         width: '100%',
         alignItems: 'center',
     },
     buttonText: {
         color: '#fff',
-        fontWeight: '900',
+        fontWeight: '800',
         fontSize: 16,
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     }
 });

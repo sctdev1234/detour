@@ -33,13 +33,22 @@ class CronServices {
                 });
 
                 for (const instance of instancesToDispatch) {
-                    TripStateMachine.validateTransition(instance.status, TripStateMachine.STATES.SEARCHING);
-                    instance.status = TripStateMachine.STATES.SEARCHING;
-                    instance.stateTimestamps = instance.stateTimestamps || {};
-                    instance.stateTimestamps.searchingAt = new Date();
-                    await instance.save();
-                    console.log(`[Cron] Dispatched Scheduled TripInstance: ${instance._id}`);
-                    // Note: Socket/Notification events would be triggered here to alert matching engine.
+                    // [Phase 3 Resilience Fix] Atomic status flip to prevent duplicate dispatch
+                    const updatedInstance = await TripInstance.findOneAndUpdate(
+                        { _id: instance._id, status: 'DRAFT' },
+                        { 
+                            $set: { 
+                                status: TripStateMachine.STATES.SEARCHING,
+                                'stateTimestamps.searchingAt': new Date()
+                            }
+                        },
+                        { new: true }
+                    );
+
+                    if (updatedInstance) {
+                        console.log(`[Cron] Dispatched Scheduled TripInstance: ${updatedInstance._id}`);
+                        // Note: Socket/Notification events would be triggered here to alert matching engine.
+                    }
                 }
             } catch (err) {
                 console.error('[Cron] Scheduled Dispatcher Error:', err);
