@@ -69,3 +69,57 @@ exports.acceptOffer = async (req, res) => {
         res.status(400).json({ success: false, error: error.message });
     }
 };
+
+exports.getRecoveryState = async (req, res) => {
+    try {
+        const passengerId = req.user.id;
+        const Offer = require('../models/Offer');
+        const TripAssignment = require('../models/TripAssignment');
+        
+        // 1. Find active TripInstance for passenger
+        const instance = await TripInstance.findOne({ 
+            passengerIds: passengerId,
+            status: { $nin: ['COMPLETED', 'CANCELLED'] }
+        }).sort({ createdAt: -1 }).lean();
+
+        if (!instance) {
+            return res.status(200).json({ success: true, data: null });
+        }
+
+        // 2. Find pending offers for this instance
+        const offers = await Offer.find({
+            tripInstanceId: instance._id,
+            status: { $in: ['PENDING', 'COUNTERED'] },
+            expiresAt: { $gt: new Date() }
+        }).populate('driverId', 'firstName lastName rating profileImage').lean();
+
+        // 3. Find assignment if any
+        const assignment = await TripAssignment.findOne({
+            tripInstanceId: instance._id
+        }).populate('driverId').lean();
+
+        // Map status correctly based on instance status
+        let status = instance.status; // SEARCHING
+        if (assignment) {
+            status = 'ASSIGNED';
+            if (instance.status === 'EN_ROUTE') status = 'EN_ROUTE';
+            if (instance.status === 'ARRIVED') status = 'ARRIVED';
+            if (instance.status === 'STARTED') status = 'IN_PROGRESS';
+        } else if (offers.length > 0) {
+            status = 'OFFERS_RECEIVED';
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                status,
+                tripInstance: instance,
+                offers,
+                assignment
+            }
+        });
+    } catch (error) {
+        console.error('[DispatchController] getRecoveryState error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};

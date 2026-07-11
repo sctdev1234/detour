@@ -98,11 +98,27 @@ export type Trip = {
         routeId: Route;
         price?: number;
         seats?: number;
-        status?: 'WAITING' | 'READY' | 'PICKUP_INCOMING' | 'IN_CAR' | 'DROPPED_OFF' | 'COMPLETED' | 'CANCELLED';
+        status?: 'ROUTE_CREATED' | 'WAITING' | 'READY' | 'PICKUP_INCOMING' | 'IN_CAR' | 'DROPPED_OFF' | 'COMPLETED' | 'CANCELLED' | 'CANCELLED_AT_PICKUP' | 'CANCELLED_AT_DROPOFF' | 'PICKUP_DISPUTED' | 'DROPOFF_DISPUTED';
         paymentStatus?: 'pending' | 'paid' | 'failed';
     }>;
-    status: 'CREATED' | 'PENDING' | 'FULL' | 'CONFIRMED' | 'STARTING_SOON' | 'STARTED' | 'IN_PROGRESS' | 'ARRIVED_PICKUP' | 'CLIENT_PICKED_UP' | 'CLIENT_DROPPED_OFF' | 'COMPLETED' | 'CANCELLED' | 'active';
+    status: 'CREATED' | 'PENDING' | 'MATCHING' | 'PARTIAL' | 'FULL' | 'CONFIRMED' | 'STARTING_SOON' | 'STARTED' | 'PICKUP_IN_PROGRESS' | 'IN_PROGRESS' | 'DROPOFF_IN_PROGRESS' | 'ARRIVED_PICKUP' | 'CLIENT_PICKED_UP' | 'CLIENT_DROPPED_OFF' | 'DRIVER_GOING' | 'DRIVER_ARRIVED' | 'PASSENGER_BOARDED' | 'RIDE_STARTED' | 'WAYPOINT_REACHED' | 'DESTINATION_CHANGED' | 'RIDE_COMPLETED' | 'RECEIPT_PENDING' | 'RATED' | 'ARCHIVED' | 'COMPLETED' | 'CANCELLED' | 'active';
     createdAt: string;
+    receiptSnapshot?: {
+        receiptId: string;
+        date: string;
+        amountTotal: number;
+        baseFare: number;
+        distanceFare?: number;
+        timeFare?: number;
+        surgeMultiplier?: number;
+        surgeAmount?: number;
+        tolls?: number;
+        tax?: number;
+        total: number;
+        currency: string;
+        distanceKm?: number;
+        durationMin?: number;
+    };
 };
 
 export type JoinRequest = {
@@ -140,4 +156,7 @@ export type ClientTrip = {
     clientStatus?: string; // Client's status within the trip (WAITING, READY, IN_CAR, etc.)
     nextOccurrence?: Date | null;
     createdAt?: string;
+    routeGeometry?: string;
+    distanceKm?: number;
+    estimatedDurationMin?: number;
 };

@@ -52,7 +52,8 @@ exports.approveWithdrawal = async (req, res) => {
         const { adminId } = req.user; // Assuming req.user has the admin context
         const note = req.body.note || 'Approved by admin';
 
-        const result = await walletService.approveWithdrawal(id, adminId || 'admin', note);
+        const TransactionService = require('../services/transactionService');
+        const result = await TransactionService.approveWithdrawal(id, adminId || 'admin', note);
         res.json({ msg: 'Withdrawal approved', transaction: result });
     } catch (err) {
         console.error("Admin approveWithdrawal Error:", err.message);

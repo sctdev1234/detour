@@ -73,19 +73,25 @@ class TransactionService {
             // 5. Calculate Commission
             const { commissionAmount, driverEarning } = CommissionService.calculateCommission(amount);
 
-            // 6. Deduct from Client
-            client.balance -= amount;
-            client.spending.total += amount;
-            client.spending.today += amount;
-            client.stats.tripsDone += 1;
-            await client.save({ session });
+            // 6. Deduct from Client atomically
+            await User.findByIdAndUpdate(clientId, {
+                $inc: {
+                    balance: -amount,
+                    'spending.total': amount,
+                    'spending.today': amount,
+                    'stats.tripsDone': 1
+                }
+            }, { session });
 
-            // 7. Credit Driver
-            driver.balance += driverEarning;
-            driver.earnings.total += driverEarning;
-            driver.earnings.today += driverEarning;
-            driver.stats.clientsServed += 1;
-            await driver.save({ session });
+            // 7. Credit Driver atomically
+            await User.findByIdAndUpdate(driverId, {
+                $inc: {
+                    balance: driverEarning,
+                    'earnings.total': driverEarning,
+                    'earnings.today': driverEarning,
+                    'stats.clientsServed': 1
+                }
+            }, { session });
 
             // 8. Create Ledger Records (Append-Only)
             const txRecords = [
@@ -159,11 +165,10 @@ class TransactionService {
      * Add funds to user wallet (Cash In)
      */
     async deposit(userId, amount) {
-        const user = await User.findById(userId);
+        const user = await User.findByIdAndUpdate(userId, {
+            $inc: { balance: amount }
+        }, { new: true });
         if (!user) throw new Error('User not found');
-
-        user.balance += amount;
-        await user.save();
 
         await Transaction.create({
             userId,
@@ -187,34 +192,31 @@ class TransactionService {
         session.startTransaction();
 
         try {
-            const user = await User.findById(userId).session(session);
-            if (!user) throw new Error('User not found');
-
-            if (user.subscription && user.subscription.status === 'pro' && user.subscription.expiresAt > new Date()) {
-                throw new Error('Already subscribed');
-            }
-
-            const amount = 29.99;
-
-            if (user.balance < amount) {
-                throw new Error('Insufficient balance');
-            }
-
-            // Deduct balance
-            user.balance -= amount;
-            user.spending.total += amount;
-            user.spending.today += amount;
-
-            // Update subscription
             const expiresAt = new Date();
             expiresAt.setMonth(expiresAt.getMonth() + 1); // 1 month
 
-            user.subscription = {
-                status: 'pro',
-                expiresAt
-            };
+            // Deduct balance and update subscription atomically
+            const updatedUser = await User.findOneAndUpdate(
+                { _id: userId, balance: { $gte: amount } },
+                {
+                    $inc: {
+                        balance: -amount,
+                        'spending.total': amount,
+                        'spending.today': amount
+                    },
+                    $set: {
+                        subscription: {
+                            status: 'pro',
+                            expiresAt
+                        }
+                    }
+                },
+                { session, new: true }
+            );
 
-            await user.save({ session });
+            if (!updatedUser) {
+                throw new Error('Insufficient balance or User not found');
+            }
 
             // Create Transaction Record
             await Transaction.create([{
@@ -267,6 +269,16 @@ class TransactionService {
         const session = await User.startSession();
         session.startTransaction();
         try {
+            const updatedUser = await User.findOneAndUpdate(
+                { _id: driverId, balance: { $gte: amount } },
+                { $inc: { balance: -amount } },
+                { session, new: true }
+            );
+
+            if (!updatedUser) {
+                throw new Error('Insufficient balance or Driver not found');
+            }
+
             const Withdrawal = require('../models/Withdrawal');
             const withdrawal = new Withdrawal({
                 user: driverId,
@@ -276,10 +288,6 @@ class TransactionService {
                 status: 'pending'
             });
             await withdrawal.save({ session });
-
-            // Deduct immediately, kept in escrow logically
-            user.balance -= amount;
-            await user.save({ session });
 
             await Transaction.create([{
                 userId: driverId,
@@ -305,24 +313,30 @@ class TransactionService {
      */
     async approveWithdrawal(withdrawalId, adminId) {
         const Withdrawal = require('../models/Withdrawal');
+        const TransactionStateMachine = require('../state/TransactionStateMachine');
         const session = await Withdrawal.startSession();
         session.startTransaction();
 
         try {
-            const withdrawal = await Withdrawal.findById(withdrawalId).session(session);
-            if (!withdrawal || withdrawal.status !== 'pending') {
-                throw new Error('Withdrawal not found or not pending');
+            const withdrawal = await Withdrawal.findOneAndUpdate(
+                { _id: withdrawalId, status: 'pending' },
+                { $set: { status: 'approved', adminNote: `Approved by Admin ${adminId}`, proccessedAt: new Date() } },
+                { session, new: true }
+            );
+
+            if (!withdrawal) {
+                throw new Error('Withdrawal not found, not pending, or already processed');
             }
 
-            withdrawal.status = 'approved';
-            withdrawal.adminNote = `Approved by Admin ${adminId}`;
-            withdrawal.proccessedAt = new Date();
-            await withdrawal.save({ session });
+            TransactionStateMachine.validateTransition('pending', 'approved'); // Logically validated by the atomic query
 
-            const tx = await Transaction.findOne({ userId: withdrawal.user, category: 'withdrawal', status: 'pending', amount: withdrawal.amount }).session(session);
+            const tx = await Transaction.findOneAndUpdate(
+                { userId: withdrawal.user, category: 'withdrawal', status: 'pending', amount: withdrawal.amount },
+                { $set: { status: 'completed' } },
+                { session, new: true }
+            );
             if (tx) {
-                tx.status = 'completed';
-                await tx.save({ session });
+                TransactionStateMachine.validateTransition('pending', 'completed');
             }
 
             await session.commitTransaction();
@@ -330,6 +344,7 @@ class TransactionService {
 
             const DomainEventBus = require('../events/DomainEventBus');
             DomainEventBus.publish('WithdrawalApproved', withdrawal.user, { driverId: withdrawal.user, amount: withdrawal.amount });
+
             return withdrawal;
         } catch (error) {
             await session.abortTransaction();
@@ -343,29 +358,35 @@ class TransactionService {
      */
     async rejectWithdrawal(withdrawalId, adminNote, adminId) {
         const Withdrawal = require('../models/Withdrawal');
+        const TransactionStateMachine = require('../state/TransactionStateMachine');
         const session = await Withdrawal.startSession();
         session.startTransaction();
 
         try {
-            const withdrawal = await Withdrawal.findById(withdrawalId).session(session);
-            if (!withdrawal || withdrawal.status !== 'pending') {
-                throw new Error('Withdrawal not found or not pending');
+            const withdrawal = await Withdrawal.findOneAndUpdate(
+                { _id: withdrawalId, status: 'pending' },
+                { $set: { status: 'rejected', adminNote: adminNote || `Rejected by Admin ${adminId}`, proccessedAt: new Date() } },
+                { session, new: true }
+            );
+
+            if (!withdrawal) {
+                throw new Error('Withdrawal not found, not pending, or already processed');
             }
 
-            withdrawal.status = 'rejected';
-            withdrawal.adminNote = adminNote || `Rejected by Admin ${adminId}`;
-            withdrawal.proccessedAt = new Date();
-            await withdrawal.save({ session });
+            TransactionStateMachine.validateTransition('pending', 'rejected');
 
             // Refund the driver's balance
-            const user = await User.findById(withdrawal.user).session(session);
-            user.balance += withdrawal.amount;
-            await user.save({ session });
+            await User.findByIdAndUpdate(withdrawal.user, {
+                $inc: { balance: withdrawal.amount }
+            }, { session });
 
-            const tx = await Transaction.findOne({ userId: withdrawal.user, category: 'withdrawal', status: 'pending', amount: withdrawal.amount }).session(session);
+            const tx = await Transaction.findOneAndUpdate(
+                { userId: withdrawal.user, category: 'withdrawal', status: 'pending', amount: withdrawal.amount },
+                { $set: { status: 'failed' } },
+                { session, new: true }
+            );
             if (tx) {
-                tx.status = 'failed';
-                await tx.save({ session });
+                TransactionStateMachine.validateTransition('pending', 'failed');
             }
 
             await session.commitTransaction();
@@ -443,14 +464,20 @@ class TransactionService {
             await Transaction.insertMany(txRecords, { session });
 
             // Restore Passenger Balance
-            passenger.balance += amountTotal;
-            passenger.spending.total -= amountTotal;
-            await passenger.save({ session });
+            await User.findByIdAndUpdate(passengerId, {
+                $inc: {
+                    balance: amountTotal,
+                    'spending.total': -amountTotal
+                }
+            }, { session });
 
             // Deduct Driver Balance (Admin force-refund can result in negative balance)
-            driver.balance -= driverEarning;
-            driver.earnings.total -= driverEarning;
-            await driver.save({ session });
+            await User.findByIdAndUpdate(driverId, {
+                $inc: {
+                    balance: -driverEarning,
+                    'earnings.total': -driverEarning
+                }
+            }, { session });
 
             // Mark trip as refunded
             trip.financialStatus = 'REFUNDED';
@@ -481,11 +508,10 @@ class TransactionService {
         if (!existingSession) session.startTransaction();
 
         try {
-            const user = await User.findById(userId).session(session);
+            const user = await User.findByIdAndUpdate(userId, {
+                $inc: { balance: amount }
+            }, { session, new: true });
             if (!user) throw new Error('User not found');
-
-            user.balance += amount;
-            await user.save({ session });
 
             await Transaction.create([{
                 userId,
@@ -520,18 +546,17 @@ class TransactionService {
         if (!existingSession) session.startTransaction();
 
         try {
-            const user = await User.findById(userId).session(session);
-            if (!user) throw new Error('User not found');
-
             if (amount <= 0) throw new Error('Invalid amount');
 
-            if (user.balance < amount) {
-                throw new Error('Insufficient balance');
-            }
+            const user = await User.findOneAndUpdate(
+                { _id: userId, balance: { $gte: amount } },
+                { $inc: { balance: -amount } },
+                { session, new: true }
+            );
 
-            // Deduct balance immediately
-            user.balance -= amount;
-            await user.save({ session });
+            if (!user) {
+                throw new Error('Insufficient balance or User not found');
+            }
 
             // Create Transaction Record (Withdrawal)
             // We mark it as 'pending' status if we want manual approval, 

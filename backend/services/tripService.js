@@ -481,6 +481,8 @@ class TripService {
             throw new Error(`Invalid Transition: You must confirm you are ready before starting the trip.`);
         }
 
+        const LegacyRouteStateMachine = require('../state/LegacyRouteStateMachine');
+        LegacyRouteStateMachine.validateTransition(trip.status, 'STARTED');
         trip.status = 'STARTED';
         trip.stateTimestamps = trip.stateTimestamps || {};
         trip.stateTimestamps.startedAt = new Date();
@@ -732,6 +734,12 @@ class TripService {
             }
         }
 
+        const LegacyRouteStateMachine = require('../state/LegacyRouteStateMachine');
+        const LegacyClientStateMachine = require('../state/LegacyClientStateMachine');
+
+        LegacyRouteStateMachine.validateTransition(trip.status, 'ARRIVED_PICKUP');
+        LegacyClientStateMachine.validateTransition(clientEntry.status, 'PICKUP_INCOMING');
+
         trip.status = 'ARRIVED_PICKUP';
         clientEntry.status = 'PICKUP_INCOMING';
         await trip.save();
@@ -810,6 +818,8 @@ class TripService {
             // No status change (they are IN_CAR), but we can record the rating for the driver arriving on time
             if (rating) clientEntry.driverRating = rating;
         } else {
+            const LegacyClientStateMachine = require('../state/LegacyClientStateMachine');
+            LegacyClientStateMachine.validateTransition(clientEntry.status, 'PICKUP_DISPUTED');
             clientEntry.status = 'PICKUP_DISPUTED';
             trip.cancellationReason = `Client Disputed Pickup: ${reason}`;
             // System could trigger refund or admin review here
@@ -871,9 +881,29 @@ class TripService {
             throw new Error(`Cannot finish trip: ${unfinishedClients.length} client(s) are still active.`);
         }
 
-        trip.status = 'COMPLETED';
-        trip.stateTimestamps = trip.stateTimestamps || {};
-        trip.stateTimestamps.completedAt = new Date();
+        const Route = require('../models/Route'); // Assuming Trip is actually Route under the hood for V1
+        const updatedTrip = await Route.findOneAndUpdate(
+            { _id: tripId, status: { $in: ['STARTED', 'IN_PROGRESS'] } },
+            { 
+                $set: { 
+                    status: 'COMPLETED',
+                    'stateTimestamps.completedAt': new Date()
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedTrip) {
+            // Either already completed or invalid state
+            const currentTrip = await tripRepository.findById(tripId);
+            if (currentTrip && currentTrip.status === 'COMPLETED') {
+                return currentTrip; // Idempotent return
+            }
+            throw new Error('Trip could not be completed, it may have already been finished concurrently.');
+        }
+
+        // Use updatedTrip from now on for calculations
+        Object.assign(trip, updatedTrip.toObject());
         
         // Calculate total earnings for this trip
         let totalTripPrice = 0;
@@ -888,7 +918,7 @@ class TripService {
         const { driverEarning, commissionAmount } = await walletService.processTripEarnings(trip._id, trip.driverId, totalTripPrice);
         trip.commissionAmount = commissionAmount;
         
-        await trip.save();
+        await Route.updateOne({ _id: tripId }, { $set: { commissionAmount } });
 
         // Log Analytics
         const analyticsService = require('./analyticsService');

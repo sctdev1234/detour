@@ -10,7 +10,20 @@
 const context = require('./context');
 
 class AppError extends Error {
-    constructor({ message, errorCode, domain, operation, statusCode = 500, isOperational = true }) {
+    constructor(args) {
+        let message, errorCode, domain, operation, statusCode, isOperational;
+        
+        if (typeof args === 'string') {
+            message = arguments[0];
+            statusCode = arguments[1] || 500;
+            errorCode = 'LEGACY_ERROR';
+            domain = 'UNKNOWN';
+            operation = 'UNKNOWN';
+            isOperational = true;
+        } else if (args) {
+            ({ message, errorCode, domain, operation, statusCode = 500, isOperational = true } = args);
+        }
+
         super(message);
         this.name = this.constructor.name;
         

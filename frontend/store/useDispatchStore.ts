@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type DispatchStatus = 'IDLE' | 'SEARCHING' | 'OFFERS_RECEIVED' | 'ASSIGNED' | 'EN_ROUTE' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'ERROR';
+export type DispatchStatus = 'IDLE' | 'DRAFT' | 'SEARCHING' | 'OFFERS_OPEN' | 'ASSIGNED' | 'EN_ROUTE' | 'ARRIVED' | 'BOARDED' | 'STARTED' | 'COMPLETED' | 'CANCELLED' | 'ERROR';
 
 interface DispatchState {
     // State

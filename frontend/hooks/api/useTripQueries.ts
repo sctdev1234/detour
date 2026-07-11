@@ -618,6 +618,9 @@ export const useClientTrips = () => {
                 clientStatus,
                 nextOccurrence,
                 createdAt: (route as any).createdAt,
+                routeGeometry: route.routeGeometry,
+                distanceKm: route.distanceKm,
+                estimatedDurationMin: route.estimatedDurationMin,
             };
         }).filter(t => t.status !== 'completed' && t.status !== 'cancelled'); // Only show active/searching/matched
     }, [routes, trips, requests]);

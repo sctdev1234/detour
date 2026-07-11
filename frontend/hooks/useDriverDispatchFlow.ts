@@ -27,15 +27,12 @@ export const useDriverDispatchFlow = () => {
         status = 'BREAK';
     } else if (tripStatus === 'COMPLETED') {
         status = 'TRIP_COMPLETED';
-    } else if (tripStatus === 'ACTIVE') {
+    } else if (tripStatus === 'STARTED') {
         status = 'TRIP_ACTIVE';
-    } else if (tripStatus === 'TO_PICKUP') {
-        // Distinguish between en-route to pickup and arrived at pickup
-        if (activeTrip?.status === 'ARRIVED_PICKUP' || activeTrip?.status === 'ARRIVED') {
-            status = 'ARRIVED';
-        } else {
-            status = 'EN_ROUTE';
-        }
+    } else if (tripStatus === 'ARRIVED') {
+        status = 'ARRIVED';
+    } else if (tripStatus === 'EN_ROUTE') {
+        status = 'EN_ROUTE';
     } else if (currentOffer) {
         status = 'OFFER_INCOMING';
     } else if (presence === 'ONLINE' && availability === 'AVAILABLE') {

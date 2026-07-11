@@ -9,6 +9,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { LatLng, Trip } from '../types';
 import { decodePolyline } from '../utils/location';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
+import InteractiveTripRoute from './InteractiveTripRoute';
+import { refinedLightMapStyle, refinedDarkMapStyle, RecenterDesign, CameraConfig } from '../constants/design';
 
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
@@ -20,7 +22,7 @@ interface StopItem {
 }
 
 export interface MapProps {
-    mode?: 'picker' | 'trip' | 'route' | 'view';
+    mode?: 'picker' | 'trip' | 'route' | 'view' | 'interactive_routes';
     theme: any;
     height?: ViewStyle['height'];
     readOnly?: boolean;
@@ -40,6 +42,11 @@ export interface MapProps {
     startPoint?: LatLng;
     endPoint?: LatLng;
     waypoints?: LatLng[];
+
+    // Interactive Routes Mode (Home Screen Browsing)
+    interactiveTrips?: any[]; // Reusing existing generic trip type
+    onRoutePress?: (trip: any) => void;
+    onAnnotationPress?: (trip: any) => void;
 
     // General
     driverLocation?: { latitude: number; longitude: number; heading: number };
@@ -304,167 +311,8 @@ const RouteMarkers = React.memo(({ startPoint, endPoint, waypoints }: any) => {
 
 // --- Main Component ---
 
-const darkMapStyle = [
-  {
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#242f3e"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#746855"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#242f3e"
-      }
-    ]
-  },
-  {
-    "featureType": "administrative.locality",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#d59563"
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#d59563"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#263c3f"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#6b9a76"
-      }
-    ]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#38414e"
-      }
-    ]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry.stroke",
-    "stylers": [
-      {
-        "color": "#212a37"
-      }
-    ]
-  },
-  {
-    "featureType": "road",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9ca5b3"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#746855"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry.stroke",
-    "stylers": [
-      {
-        "color": "#1f2835"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#f3d19c"
-      }
-    ]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#2f3948"
-      }
-    ]
-  },
-  {
-    "featureType": "transit.station",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#d59563"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#17263c"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#515c6d"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#17263c"
-      }
-    ]
-  }
-];
+// Map styles are now imported from constants/design.ts
+// (refinedLightMapStyle, refinedDarkMapStyle)
 
 const Map = React.memo(({
     mode = 'view',
@@ -485,6 +333,9 @@ const Map = React.memo(({
     driverLocation,
     selectedRouteId,
     onRouteSelect,
+    interactiveTrips = [],
+    onRoutePress,
+    onAnnotationPress,
     clientColors,
     onMapPress,
     edgePadding,
@@ -497,7 +348,7 @@ const Map = React.memo(({
         longitudeDelta: 0.0421,
     }
 }: MapProps) => {
-    const mapStyle = theme?.dark || theme?.text === '#FFFFFF' ? darkMapStyle : undefined;
+    const mapStyle = theme?.dark || theme?.text === '#FFFFFF' ? refinedDarkMapStyle : refinedLightMapStyle;
 
     // Fallback: use saved places from auth store if not passed as prop
     const storeUser = useAuthStore(s => s.user);
@@ -617,6 +468,25 @@ const Map = React.memo(({
 
             // Include polyline points for better fit
             if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+        } else if (mode === 'interactive_routes' && interactiveTrips.length > 0) {
+            if (selectedRouteId) {
+                const selected = interactiveTrips.find(t => t.id === selectedRouteId || t.routeId === selectedRouteId);
+                if (selected) {
+                    if (selected.startPoint) markersToFit.push(selected.startPoint);
+                    if (selected.endPoint) markersToFit.push(selected.endPoint);
+                    if (selected.waypoints) markersToFit.push(...selected.waypoints);
+                    if (selected.routeGeometry) {
+                         const decoded = decodePolyline(selected.routeGeometry);
+                         markersToFit.push(...decoded);
+                    }
+                }
+            } else {
+                interactiveTrips.forEach(t => {
+                    if (t.startPoint) markersToFit.push(t.startPoint);
+                    if (t.endPoint) markersToFit.push(t.endPoint);
+                    if (t.waypoints) markersToFit.push(...t.waypoints);
+                });
+            }
         }
 
         // Filter invalid points
@@ -626,12 +496,20 @@ const Map = React.memo(({
         if (markersToFit.length > 0 && mapRef.current) {
             setTimeout(() => {
                 mapRef.current?.fitToCoordinates(markersToFit, {
-                    edgePadding: edgePadding || { top: 60, right: 60, bottom: 60, left: 60 },
+                    edgePadding: edgePadding || { top: 120, right: 40, bottom: 160, left: 40 },
                     animated: true,
                 });
+                
+                // Keep flat view for route browsing — no dramatic pitch
+                // Browsing is not navigation; camera stays calm
+                if (mode === 'interactive_routes') {
+                    setTimeout(() => {
+                        mapRef.current?.animateToViewingAngle(CameraConfig.overviewPitch, 500);
+                    }, 200);
+                }
             }, 100);
         }
-    }, [points, savedPlaces, trip?.id, startPoint, endPoint, waypoints, routeCoordinates, mode, edgePadding, boundsPoints]);
+    }, [points, savedPlaces, trip?.id, startPoint, endPoint, waypoints, routeCoordinates, mode, edgePadding, boundsPoints, interactiveTrips, selectedRouteId]);
     // Note: removed driverLocation from dependencies.
     // If we want to initially center on driver, we can checking if it's the FIRST render with driver location.
     // But typically for a Trip view, seeing the whole Route is better.
@@ -831,13 +709,32 @@ const Map = React.memo(({
                     );
                 })}
 
+                {/* Interactive Routes Mode */}
+                {mode === 'interactive_routes' && interactiveTrips.map(t => {
+                    const id = t.id || t.routeId;
+                    return (
+                        <InteractiveTripRoute
+                            key={`interactive-${id}`}
+                            trip={t}
+                            isSelected={selectedRouteId === id}
+                            onPress={onRoutePress!}
+                            onAnnotationPress={onAnnotationPress!}
+                            theme={theme}
+                            otherAnchors={[]} // For now, we will just pass empty array. If we want global avoidance, we'd need to precompute.
+                        />
+                    );
+                })}
+
             </MapView>
 
             <TouchableOpacity
                 style={[styles.recenterBtn, { bottom: mode === 'picker' ? 80 : 40 }]}
                 onPress={centerToMyLocation}
+                accessibilityLabel="Center on my location"
+                accessibilityRole="button"
+                activeOpacity={0.8}
             >
-                <Navigation size={22} color="#4F46E5" />
+                <Navigation size={RecenterDesign.iconSize} color={RecenterDesign.iconColor} />
             </TouchableOpacity>
 
             {/* Controls for Picker Mode */}
@@ -1039,19 +936,15 @@ const styles = StyleSheet.create({
     },
     recenterBtn: {
         position: 'absolute',
-        right: 20,
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        right: 16,
+        width: RecenterDesign.size,
+        height: RecenterDesign.size,
+        borderRadius: RecenterDesign.borderRadius,
         backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        zIndex: 10,
+        zIndex: 15,
+        ...RecenterDesign.shadow,
     },
     userLocationMarker: {
         width: 26,

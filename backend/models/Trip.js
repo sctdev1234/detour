@@ -46,8 +46,18 @@ const TripSchema = new mongoose.Schema({
     }],
     status: {
         type: String,
-        enum: ['DRIVER_GOING', 'DRIVER_ARRIVED', 'PASSENGER_BOARDED', 'RIDE_STARTED', 'WAYPOINT_REACHED', 'DESTINATION_CHANGED', 'RIDE_COMPLETED', 'RECEIPT_PENDING', 'RATED', 'ARCHIVED', 'CANCELLED'],
-        default: 'DRIVER_GOING'
+        enum: [
+            // Legacy / Scheduling States
+            'CREATED', 'PENDING', 'MATCHING', 'PARTIAL', 'FULL', 'CONFIRMED', 
+            // Execution States
+            'STARTING_SOON', 'STARTED', 'PICKUP_IN_PROGRESS', 'IN_PROGRESS', 'DROPOFF_IN_PROGRESS', 
+            'ARRIVED_PICKUP', 'CLIENT_PICKED_UP', 'CLIENT_DROPPED_OFF', 
+            // New Granular States (dispatch fallback)
+            'DRIVER_GOING', 'DRIVER_ARRIVED', 'PASSENGER_BOARDED', 'RIDE_STARTED', 'WAYPOINT_REACHED', 'DESTINATION_CHANGED', 'RIDE_COMPLETED', 'RECEIPT_PENDING', 'RATED', 'ARCHIVED',
+            // Terminal States
+            'COMPLETED', 'CANCELLED', 'active'
+        ],
+        default: 'CREATED'
     },
     driverReady: {
         type: Boolean,

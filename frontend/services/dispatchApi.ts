@@ -29,5 +29,13 @@ export const dispatchApi = {
     acceptOffer: async (offerId: string) => {
         const response = await api.post(`/v2/dispatch/offer/${offerId}/accept`);
         return response.data; // { assignment }
+    },
+
+    /**
+     * Recovers passenger dispatch state on socket reconnect.
+     */
+    getRecoveryState: async () => {
+        const response = await api.get('/v2/dispatch/recovery');
+        return response.data; // { status, tripInstance, offers, assignment }
     }
 };

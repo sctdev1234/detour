@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import apiClient from '../../services/api';
 
 export interface RouteGeometry {
     type: string;

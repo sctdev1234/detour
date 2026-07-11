@@ -96,55 +96,12 @@ class WalletService {
         return withdrawalRequest;
     }
 
-    async approveWithdrawal(withdrawalId, adminNote = '') {
-        const Withdrawal = require('../models/Withdrawal');
-        const withdrawal = await Withdrawal.findById(withdrawalId);
-        if (!withdrawal) throw new Error('Withdrawal not found');
-        if (withdrawal.status !== 'pending') throw new Error('Withdrawal is not pending');
-
-        withdrawal.status = 'approved';
-        withdrawal.adminNote = adminNote;
-        withdrawal.proccessedAt = new Date();
-        await withdrawal.save();
-
-        // Transaction is implicitly approved since balance was already deducted
-        // But we could update the transaction status if linked
-
-        const DomainEventBus = require('../events/DomainEventBus');
-        DomainEventBus.emit('WithdrawalApproved', { userId: withdrawal.user, amount: withdrawal.amount });
-
-        return withdrawal;
+    async approveWithdrawal() {
+        throw new Error('walletService.approveWithdrawal is deprecated. Use transactionService.approveWithdrawal instead to enforce state machine invariants.');
     }
 
-    async rejectWithdrawal(withdrawalId, adminNote = '') {
-        const Withdrawal = require('../models/Withdrawal');
-        const withdrawal = await Withdrawal.findById(withdrawalId);
-        if (!withdrawal) throw new Error('Withdrawal not found');
-        if (withdrawal.status !== 'pending') throw new Error('Withdrawal is not pending');
-
-        withdrawal.status = 'rejected';
-        withdrawal.adminNote = adminNote;
-        withdrawal.proccessedAt = new Date();
-        await withdrawal.save();
-
-        // Refund the user's balance
-        await User.findByIdAndUpdate(withdrawal.user, {
-            $inc: { balance: withdrawal.amount }
-        });
-
-        // Add a refund transaction
-        await Transaction.create({
-            userId: withdrawal.user,
-            amount: withdrawal.amount,
-            type: 'credit',
-            category: 'refund',
-            description: 'Refund for rejected withdrawal'
-        });
-
-        const DomainEventBus = require('../events/DomainEventBus');
-        DomainEventBus.emit('WithdrawalRejected', { userId: withdrawal.user, amount: withdrawal.amount, reason: adminNote });
-
-        return withdrawal;
+    async rejectWithdrawal() {
+        throw new Error('walletService.rejectWithdrawal is deprecated. Use transactionService.rejectWithdrawal instead to enforce state machine invariants.');
     }
 }
 

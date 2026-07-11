@@ -135,3 +135,45 @@ export const getAllPointsFromTrip = (trip: Trip): LatLng[] => {
 
     return allPoints;
 };
+
+export const calculateOptimalAnnotationAnchor = (
+    routeCoords: LatLng[],
+    otherAnchors: LatLng[] = []
+): LatLng => {
+    if (!routeCoords || routeCoords.length === 0) return { latitude: 0, longitude: 0 };
+    if (routeCoords.length === 1) return routeCoords[0];
+    if (routeCoords.length === 2) {
+        return {
+            latitude: (routeCoords[0].latitude + routeCoords[1].latitude) / 2,
+            longitude: (routeCoords[0].longitude + routeCoords[1].longitude) / 2
+        };
+    }
+
+    // Candidate fractions along the polyline to try to avoid overlaps
+    const candidates = [0.5, 0.4, 0.6, 0.3, 0.7];
+    let bestPoint = routeCoords[Math.floor(routeCoords.length / 2)];
+    let maxMinDist = -1;
+
+    for (const fraction of candidates) {
+        const index = Math.floor(routeCoords.length * fraction);
+        const candidate = routeCoords[index];
+        if (!candidate) continue;
+
+        if (otherAnchors.length === 0) {
+            return candidate;
+        }
+
+        let minDist = Infinity;
+        for (const other of otherAnchors) {
+            const d = calculateDistance(candidate, other);
+            if (d < minDist) minDist = d;
+        }
+
+        if (minDist > maxMinDist) {
+            maxMinDist = minDist;
+            bestPoint = candidate;
+        }
+    }
+
+    return bestPoint;
+};

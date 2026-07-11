@@ -121,6 +121,10 @@ class RecurringScheduler {
                 // In a robust system, we might delay this until all driver instances are also generated.
                 // For simplicity, we invoke the matching pipeline.
                 try {
+                    instance.status = 'SEARCHING';
+                    instance.stateTimestamps.searchingAt = new Date();
+                    await instance.save();
+                    
                     await DispatchServiceV2.executeMatchingPipeline(instance);
                 } catch (err) {
                     console.error(`[RecurringScheduler] Failed to auto-dispatch instance ${instance._id}:`, err);

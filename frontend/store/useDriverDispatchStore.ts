@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export type DriverPresence = 'ONLINE' | 'OFFLINE';
 export type DriverAvailability = 'AVAILABLE' | 'BUSY' | 'BREAK';
-export type DriverTripStatus = 'NONE' | 'TO_PICKUP' | 'ACTIVE' | 'COMPLETED';
+export type DriverTripStatus = 'NONE' | 'ASSIGNED' | 'EN_ROUTE' | 'ARRIVED' | 'BOARDED' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
 export type ConnectionStatus = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING';
 
 export interface DriverOffer {

@@ -3,7 +3,7 @@ const TripTemplate = require('../models/TripTemplate');
 const TripInstance = require('../models/TripInstance');
 const Offer = require('../models/Offer');
 const User = require('../models/User');
-const { transitionState } = require('../utils/stateMachine');
+const TripStateMachine = require('../state/TripStateMachine');
 
 class CronServices {
     static init() {
@@ -33,7 +33,11 @@ class CronServices {
                 });
 
                 for (const instance of instancesToDispatch) {
-                    await transitionState(instance, 'SEARCHING');
+                    TripStateMachine.validateTransition(instance.status, TripStateMachine.STATES.SEARCHING);
+                    instance.status = TripStateMachine.STATES.SEARCHING;
+                    instance.stateTimestamps = instance.stateTimestamps || {};
+                    instance.stateTimestamps.searchingAt = new Date();
+                    await instance.save();
                     console.log(`[Cron] Dispatched Scheduled TripInstance: ${instance._id}`);
                     // Note: Socket/Notification events would be triggered here to alert matching engine.
                 }

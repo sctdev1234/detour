@@ -37,7 +37,7 @@ export default function DriverLayout() {
 
     // V2 takes precedence when feature flag is ON and driver is in an active V2 dispatch state
     const isV2Active = featureFlags.enableV2DriverDispatch &&
-        ['TO_PICKUP', 'ACTIVE', 'COMPLETED'].includes(tripStatus);
+        ['EN_ROUTE', 'ARRIVED', 'BOARDED', 'STARTED', 'COMPLETED'].includes(tripStatus);
 
     // Hard Lock: V2 active trip takes over
     if (isV2Active) {

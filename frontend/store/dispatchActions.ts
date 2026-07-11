@@ -6,6 +6,8 @@ import { useDispatchStore } from './useDispatchStore';
 let unsubscribeOffers: (() => void) | null = null;
 let unsubscribeAssignment: (() => void) | null = null;
 let unsubscribeTripStatus: (() => void) | null = null;
+let unsubResume: (() => void) | null = null;
+let unsubConnectionStatus: (() => void) | null = null;
 
 export const dispatchActions = {
     /**
@@ -77,15 +79,53 @@ export const dispatchActions = {
         dispatchActions._unbindSockets();
     },
 
+    /**
+     * Recover missed state from the unified Recovery API on reconnect.
+     */
+    recoverState: async () => {
+        const store = useDispatchStore.getState();
+        try {
+            const data = await dispatchApi.getRecoveryState();
+            if (!data) return;
+
+            store.setTripInstance(data.tripInstance);
+            store.setOffers(data.offers || []);
+            store.setAssignment(data.assignment);
+            store.setStatus(data.status);
+            
+            // Re-bind sockets if active
+            if (data.status !== 'IDLE' && data.status !== 'COMPLETED' && data.status !== 'CANCELLED') {
+                dispatchActions._bindSockets();
+            }
+        } catch (error) {
+            console.error('[dispatchActions] recoverState failed', error);
+        }
+    },
+
     _bindSockets: () => {
         const store = useDispatchStore.getState();
 
         dispatchActions._unbindSockets(); // Ensure clean slate
 
+        const { socketLifecycleManager } = require('../services/SocketLifecycleManager');
+        socketLifecycleManager.start();
+
+        // Recover state on reconnection (e.g. server restart while app is active)
+        unsubConnectionStatus = socketLifecycleManager.addStatusListener((status: any) => {
+            if (status === 'CONNECTED') {
+                dispatchActions.recoverState();
+            }
+        });
+
+        // Register resume listener for explicit hydration (app comes to foreground)
+        unsubResume = socketLifecycleManager.addResumeListener(() => {
+            dispatchActions.recoverState();
+        });
+
         unsubscribeOffers = dispatchSocket.onOfferReceived((offer) => {
             // Update Zustand Store
             useDispatchStore.getState().addOffer(offer);
-            useDispatchStore.getState().setStatus('OFFERS_RECEIVED');
+            useDispatchStore.getState().setStatus('OFFERS_OPEN');
         });
 
         unsubscribeAssignment = dispatchSocket.onDriverAssigned((assignment) => {
@@ -97,7 +137,7 @@ export const dispatchActions = {
         unsubscribeTripStatus = dispatchSocket.onTripStatusUpdated((update) => {
             const store = useDispatchStore.getState();
             if (update.status === 'STARTED') {
-                store.setStatus('IN_PROGRESS');
+                store.setStatus('STARTED');
             } else if (update.status === 'EN_ROUTE' || update.status === 'ARRIVED' || update.status === 'COMPLETED' || update.status === 'CANCELLED') {
                 store.setStatus(update.status as any);
             }
@@ -119,6 +159,14 @@ export const dispatchActions = {
         if (unsubscribeTripStatus) {
             unsubscribeTripStatus();
             unsubscribeTripStatus = null;
+        }
+        if (unsubResume) {
+            unsubResume();
+            unsubResume = null;
+        }
+        if (unsubConnectionStatus) {
+            unsubConnectionStatus();
+            unsubConnectionStatus = null;
         }
     }
 };

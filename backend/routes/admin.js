@@ -497,17 +497,17 @@ router.get('/trips', auth, authAdmin, async (req, res, next) => {
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
 
-        const Trip = require('../models/Trip');
+        const TripInstance = require('../models/TripInstance');
 
         let query = {};
         if (status && status !== 'all') {
             query.status = status;
         }
 
-        const totalTrips = await Trip.countDocuments(query);
-        const trips = await Trip.find(query)
-            .populate('driverId', 'fullName email')
-            .populate('routeId')
+        const totalTrips = await TripInstance.countDocuments(query);
+        const trips = await TripInstance.find(query)
+            .populate('driverId', 'fullName email') // If driverId exists
+            .populate('passengerIds', 'fullName email') // Passenger info
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limitNum);

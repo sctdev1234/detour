@@ -1,8 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { Bell } from 'lucide-react-native';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'expo-router';
+import { Bell, Briefcase, Home, Navigation, Plus } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     StatusBar,
     StyleSheet,
@@ -11,52 +11,75 @@ import {
     useColorScheme,
     View,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+    FadeInDown,
+    SlideInDown,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DetourMap from '../../components/Map';
-import TripCreationWizard from '../../components/trips/TripCreationWizard';
-import TripCardsOverlay from '../../components/trips/TripCardsOverlay';
 import ActiveTripTracker from '../../components/trips/ActiveTripTracker';
-import { Colors } from '../../constants/theme';
-import { useClientTrips, useCreateClientTrip, useClientRequests } from '../../hooks/api/useTripQueries';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useUIStore } from '../../store/useUIStore';
-import { useTrackingStore } from '../../store/useTrackingStore';
-import { RouteService } from '../../services/RouteService';
-import { LatLng, ClientTrip } from '../../types';
-import { useRideStore } from '../../store/useRideStore';
-import { useRideFlow } from '../../hooks/useRideFlow';
 import OfferList from '../../components/trips/OfferList';
+import TripCreationWizard from '../../components/trips/TripCreationWizard';
+import {
+    CameraConfig,
+    EmptyStateDesign,
+    FabDesign,
+    GradientConfig,
+    SearchBarDesign,
+} from '../../constants/design';
+import { Colors } from '../../constants/theme';
+import { useClientRequests, useClientTrips, useCreateClientTrip } from '../../hooks/api/useTripQueries';
+import { useRideFlow } from '../../hooks/useRideFlow';
+import { RouteService } from '../../services/RouteService';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useRideStore } from '../../store/useRideStore';
+import { useTrackingStore } from '../../store/useTrackingStore';
+import { useUIStore } from '../../store/useUIStore';
+import { ClientTrip, LatLng } from '../../types';
 
 // V2 Imports
-import { useDispatchFlow } from '../../hooks/useDispatchFlow';
 import TripExperience from '../../components/dispatch/passenger/TripExperience';
+import { useDispatchFlow } from '../../hooks/useDispatchFlow';
+
+// ─── Home State ─────────────────────────────────────────────────────
 
 type HomeState = 'zero_trips' | 'has_trips' | 'active_trip';
+
+// ─── Component ──────────────────────────────────────────────────────
 
 export default function ClientDashboard() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const isDark = colorScheme === 'dark';
 
     const { user } = useAuthStore();
     const { status: rideStatus, offers } = useRideStore();
     const { showToast, setHideGlobalHeader, setHideGlobalFooter, featureFlags } = useUIStore();
     const { driverLocation } = useTrackingStore();
 
-    // Data hooks
+    // ─── Data hooks (untouched) ─────────────────────────────────────
     const { data: clientTrips, isLoading } = useClientTrips();
     const { mutateAsync: createClientTrip, isPending: isCreating } = useCreateClientTrip();
     const { data: requests } = useClientRequests();
 
-    // Local state
+    // ─── Local state ────────────────────────────────────────────────
     const [currentLoc, setCurrentLoc] = useState<LatLng | null>(null);
     const [currentAddr, setCurrentAddr] = useState('Current Location');
     const [isCreatingTrip, setIsCreatingTrip] = useState(false);
     const [mapPoints, setMapPoints] = useState<LatLng[]>([]);
     const [selectedTrip, setSelectedTrip] = useState<ClientTrip | null>(null);
+
+    // Auto-select first trip on load if none selected
+    useEffect(() => {
+        if (clientTrips && clientTrips.length > 0 && !selectedTrip) {
+            setSelectedTrip(clientTrips[0]);
+        }
+    }, [clientTrips, selectedTrip]);
 
     // Pending offers count
     const pendingOffersCount = useMemo(() =>
@@ -100,9 +123,8 @@ export default function ClientDashboard() {
         })();
     }, []);
 
-    // ============================================
-    // DETERMINE HOME STATE
-    // ============================================
+    // ─── Determine home state ───────────────────────────────────────
+
     const activeTrip = useMemo(() =>
         (clientTrips || []).find(t => t.status === 'active'),
         [clientTrips]
@@ -110,24 +132,22 @@ export default function ClientDashboard() {
 
     const homeState: HomeState = useMemo(() => {
         if (activeTrip) return 'active_trip';
-        if (isCreatingTrip) return 'zero_trips'; // Manual trigger
+        if (isCreatingTrip) return 'zero_trips';
         if (!clientTrips || clientTrips.length === 0) return 'zero_trips';
         return 'has_trips';
     }, [activeTrip, clientTrips, isCreatingTrip]);
 
-    // ============================================
-    // MAP CONFIGURATION BASED ON STATE
-    // ============================================
+    // ─── Map configuration ─────────────────────────────────────────
+
     const mapMode = useMemo(() => {
         switch (homeState) {
             case 'zero_trips': return 'view';
-            case 'has_trips': return 'view';
+            case 'has_trips': return 'interactive_routes';
             case 'active_trip': return 'trip';
             default: return 'view';
         }
     }, [homeState]);
 
-    // Map points for State 2 (show selected trip's route)
     const mapTripPoints = useMemo(() => {
         if (homeState === 'has_trips' && selectedTrip) {
             return [selectedTrip.startPoint, selectedTrip.endPoint];
@@ -138,7 +158,6 @@ export default function ClientDashboard() {
         return undefined;
     }, [homeState, selectedTrip, mapPoints]);
 
-    // Active trip data for map
     const mapTripData = useMemo(() => {
         if (homeState === 'active_trip' && activeTrip?.tripId) {
             return {
@@ -153,9 +172,13 @@ export default function ClientDashboard() {
         return undefined;
     }, [homeState, activeTrip]);
 
-    // ============================================
-    // HANDLERS
-    // ============================================
+    // Camera edge padding from design tokens
+    const edgePadding = useMemo(() => {
+        return selectedTrip ? CameraConfig.selectedPadding : CameraConfig.overviewPadding;
+    }, [selectedTrip]);
+
+    // ─── Handlers (all untouched) ───────────────────────────────────
+
     const handlePointsChange = useCallback(async (newPoints: LatLng[]) => {
         setMapPoints(newPoints);
     }, []);
@@ -188,7 +211,7 @@ export default function ClientDashboard() {
                     });
                     showToast('Looking for drivers (V2)...', 'success');
                 } else {
-                    await requestRide(data.startPoint, data.endPoint, 'Pickup', 'Destination', data.price, 5000, 600); // Approximate distance/duration for now
+                    await requestRide(data.startPoint, data.endPoint, 'Pickup', 'Destination', data.price, 5000, 600);
                     showToast('Looking for drivers...', 'success');
                 }
                 setIsCreatingTrip(false);
@@ -210,36 +233,67 @@ export default function ClientDashboard() {
         setMapPoints([]);
     }, []);
 
-    const handleTripSelect = useCallback((trip: ClientTrip) => {
-        setSelectedTrip(trip);
-    }, []);
-
     const handleTripDetails = useCallback((trip: ClientTrip) => {
         if (trip.tripId) {
             router.push({ pathname: '/modal', params: { type: 'trip_details', id: trip.tripId } });
         } else {
-            // No matched trip yet — go to requests
             router.push('/(client)/requests');
         }
     }, [router]);
+
+    const handleRoutePress = useCallback((trip: ClientTrip) => {
+        if (selectedTrip?.id === trip.id) return;
+        setSelectedTrip(trip);
+    }, [selectedTrip]);
+
+    const handleAnnotationPress = useCallback((trip: ClientTrip) => {
+        if (selectedTrip?.id === trip.id) {
+            handleTripDetails(trip);
+        } else {
+            setSelectedTrip(trip);
+        }
+    }, [selectedTrip, handleTripDetails]);
+
+    const handleMapPress = useCallback(() => {
+        setSelectedTrip(null);
+    }, []);
 
     const handleAddTrip = useCallback(() => {
         setIsCreatingTrip(true);
     }, []);
 
-    // ============================================
-    // RENDER
-    // ============================================
+    // ─── FAB press animation ────────────────────────────────────────
+
+    const fabScale = useSharedValue(1);
+    const fabAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: fabScale.value }],
+    }));
+
+    const handleFabPressIn = useCallback(() => {
+        fabScale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+    }, [fabScale]);
+
+    const handleFabPressOut = useCallback(() => {
+        fabScale.value = withSpring(1, { damping: 15, stiffness: 300 });
+    }, [fabScale]);
+
+    // ─── Render ─────────────────────────────────────────────────────
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            {/* Full-screen Background Map */}
+            {/* ─── Full-screen map ─── */}
             <View style={StyleSheet.absoluteFillObject}>
                 <DetourMap
                     mode={mapMode as any}
                     theme={theme}
                     initialPoints={mapTripPoints}
+                    interactiveTrips={homeState === 'has_trips' ? clientTrips : []}
+                    selectedRouteId={selectedTrip?.id}
+                    onRoutePress={handleRoutePress}
+                    onAnnotationPress={handleAnnotationPress}
+                    onMapPress={handleMapPress}
                     trip={mapTripData as any}
                     driverLocation={homeState === 'active_trip' ? (driverLocation || undefined) : undefined}
                     savedPlaces={user?.savedPlaces}
@@ -247,51 +301,103 @@ export default function ClientDashboard() {
                     height="100%"
                     interactive={true}
                     style={StyleSheet.absoluteFillObject}
+                    edgePadding={edgePadding}
                 />
 
-                {/* Dark gradient overlay for contrast */}
                 <LinearGradient
-                    colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
-                    locations={[0, 0.35, 1]}
-                    style={StyleSheet.absoluteFillObject}
+                    colors={GradientConfig.topColors as unknown as [string, string, ...string[]]}
+                    locations={GradientConfig.topLocations as unknown as [number, number, ...number[]]}
+                    style={[styles.topGradient, { height: GradientConfig.topHeight }]}
+                    pointerEvents="none"
+                />
+
+                {/* Bottom gradient — smooth three-stop fade */}
+                <LinearGradient
+                    colors={GradientConfig.bottomColors as unknown as [string, string, ...string[]]}
+                    locations={GradientConfig.bottomLocations as unknown as [number, number, ...number[]]}
+                    style={[styles.bottomGradient, { height: GradientConfig.bottomHeight }]}
                     pointerEvents="none"
                 />
             </View>
 
-            {/* Floating Header — Always visible */}
-            <BlurView intensity={30} tint="dark" style={[styles.headerFloating, { paddingTop: insets.top + 10 }]}>
-                <View style={styles.headerRow}>
-                    <TouchableOpacity onPress={() => router.push('/(client)/profile')} activeOpacity={0.8} style={styles.avatarButton}>
-                        {user?.photoURL ? (
-                            <Animated.Image source={{ uri: user.photoURL }} style={styles.profileAvatar} />
-                        ) : (
-                            <View style={[styles.profileAvatarFallback, { backgroundColor: theme.primary }]}>
-                                <Text style={styles.avatarFallbackText}>{user?.fullName?.charAt(0).toUpperCase() || 'C'}</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                    <View style={styles.greetingText}>
-                        <Text style={styles.greetingTitle}>Salam,</Text>
-                        <Text style={styles.greetingName}>{user?.fullName || 'Client'}</Text>
-                    </View>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(client)/requests')}
-                        style={styles.notificationBtn}
-                        activeOpacity={0.8}
+            {/* ─── Search bar (State 0 + State 2) ─── */}
+            {(homeState === 'zero_trips' || homeState === 'has_trips') && !isCreatingTrip && (
+                <Animated.View
+                    entering={FadeInDown.springify().damping(18).delay(80)}
+                    style={[styles.searchContainer, { top: insets.top + 12 }]}
+                >
+                    <View
+                        style={[
+                            styles.searchBar,
+                            { backgroundColor: isDark ? '#1c1c1e' : '#ffffff' },
+                            SearchBarDesign.shadow,
+                        ]}
+                        accessibilityRole="search"
                     >
-                        <Bell size={22} color="#FFF" />
-                        {pendingOffersCount > 0 && (
-                            <View style={styles.notificationBadge}>
-                                <Text style={styles.badgeText}>{pendingOffersCount}</Text>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </BlurView>
+                        {/* Avatar */}
+                        <TouchableOpacity
+                            onPress={() => router.push('/(client)/profile')}
+                            activeOpacity={0.8}
+                            style={styles.avatarBtn}
+                            accessibilityLabel="Open profile"
+                            accessibilityRole="button"
+                        >
+                            {user?.photoURL ? (
+                                <Animated.Image source={{ uri: user.photoURL }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatarFallback, { backgroundColor: theme.primary }]}>
+                                    <Text style={styles.avatarText}>
+                                        {user?.fullName?.charAt(0).toUpperCase() || 'U'}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
 
-            {/* ========================================== */}
-            {/* STATE 1: Zero trips — Creation Wizard      */}
-            {/* ========================================== */}
+                        {/* Search input area */}
+                        <TouchableOpacity
+                            style={styles.searchInputArea}
+                            activeOpacity={0.7}
+                            onPress={() => setIsCreatingTrip(true)}
+                            accessibilityLabel="Search destination"
+                            accessibilityRole="button"
+                        >
+                            <Text
+                                style={[
+                                    styles.searchPlaceholder,
+                                    { color: isDark ? '#A0A0A0' : '#8E8E93' },
+                                ]}
+                            >
+                                Where are you going?
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* Notification bell */}
+                        <TouchableOpacity
+                            onPress={() => router.push('/(client)/requests')}
+                            style={[
+                                styles.bellBtn,
+                                { backgroundColor: isDark ? '#2c2c2e' : '#f2f2f7' },
+                            ]}
+                            activeOpacity={0.8}
+                            accessibilityLabel={
+                                pendingOffersCount > 0
+                                    ? `${pendingOffersCount} pending offers`
+                                    : 'Notifications'
+                            }
+                            accessibilityRole="button"
+                        >
+                            <Bell size={SearchBarDesign.bellIconSize} color={theme.text} />
+                            {pendingOffersCount > 0 && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>{pendingOffersCount}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+            )}
+
+            {/* ─── State 0: Empty state / Trip creation ─── */}
             {homeState === 'zero_trips' && (
                 isCreatingTrip ? (
                     <TripCreationWizard
@@ -306,50 +412,109 @@ export default function ClientDashboard() {
                         isSubmitting={isCreating}
                     />
                 ) : (
-                    /* "Where to?" prompt */
-                    <View style={styles.whereToContainer}>
-                        <Animated.View entering={FadeInDown.springify()}>
-                            <BlurView
-                                intensity={70}
-                                tint={colorScheme === 'dark' ? 'dark' : 'light'}
-                                style={[styles.whereToCard, { backgroundColor: colorScheme === 'dark' ? 'rgba(28,28,30,0.92)' : 'rgba(255,255,255,0.95)' }]}
+                    <Animated.View
+                        entering={SlideInDown.springify().damping(20)}
+                        style={[styles.emptyStateContainer, { bottom: insets.bottom + 24 }]}
+                    >
+                        <View
+                            style={[
+                                styles.emptyStateCard,
+                                { backgroundColor: isDark ? '#1c1c1e' : '#ffffff' },
+                                SearchBarDesign.shadow,
+                            ]}
+                        >
+                            <View
+                                style={[
+                                    styles.emptyStateIconWrap,
+                                    { backgroundColor: isDark ? '#2c2c2e' : '#f2f2f7' },
+                                ]}
                             >
-                                <Text style={[styles.whereToTitle, { color: theme.text }]}>
-                                    Where are you going?
-                                </Text>
-                                <Text style={[styles.whereToSubtitle, { color: theme.textSecondary }]}>
-                                    Create your daily commute and find a driver
-                                </Text>
+                                <Navigation size={28} color={theme.primary} />
+                            </View>
+
+                            <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
+                                Where are you commuting today?
+                            </Text>
+
+                            <View style={styles.quickActions}>
                                 <TouchableOpacity
-                                    style={[styles.whereToBtn, { backgroundColor: theme.primary }]}
+                                    style={[
+                                        styles.quickChip,
+                                        { backgroundColor: isDark ? '#2c2c2e' : '#f2f2f7' },
+                                    ]}
                                     onPress={() => setIsCreatingTrip(true)}
-                                    activeOpacity={0.85}
+                                    activeOpacity={0.7}
+                                    accessibilityLabel="Set home as destination"
+                                    accessibilityRole="button"
                                 >
-                                    <Text style={styles.whereToBtnText}>Set Up My Commute</Text>
+                                    <Home size={18} color={theme.text} style={styles.quickChipIcon} />
+                                    <Text style={[styles.quickChipText, { color: theme.text }]}>
+                                        Home
+                                    </Text>
                                 </TouchableOpacity>
-                            </BlurView>
-                        </Animated.View>
-                    </View>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.quickChip,
+                                        { backgroundColor: isDark ? '#2c2c2e' : '#f2f2f7' },
+                                    ]}
+                                    onPress={() => setIsCreatingTrip(true)}
+                                    activeOpacity={0.7}
+                                    accessibilityLabel="Set work as destination"
+                                    accessibilityRole="button"
+                                >
+                                    <Briefcase size={18} color={theme.text} style={styles.quickChipIcon} />
+                                    <Text style={[styles.quickChipText, { color: theme.text }]}>
+                                        Work
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.ctaBtn, { backgroundColor: theme.primary }]}
+                                onPress={() => setIsCreatingTrip(true)}
+                                activeOpacity={0.85}
+                                accessibilityLabel="Create a commute"
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.ctaBtnText}>Create Commute</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
                 )
             )}
 
-            {/* ========================================== */}
-            {/* STATE 2: Has trips — Cards on map           */}
-            {/* ========================================== */}
+            {/* ─── State 2: Route browsing — FAB ─── */}
             {homeState === 'has_trips' && clientTrips && clientTrips.length > 0 && (
-                <TripCardsOverlay
-                    trips={clientTrips}
-                    theme={theme}
-                    colorScheme={colorScheme}
-                    onTripSelect={handleTripSelect}
-                    onTripDetails={handleTripDetails}
-                    onAddTrip={handleAddTrip}
-                />
+                <Animated.View
+                    entering={SlideInDown.springify().damping(20).delay(200)}
+                    style={[
+                        styles.fabContainer,
+                        { bottom: insets.bottom + 24 },
+                    ]}
+                >
+                    <Animated.View style={fabAnimatedStyle}>
+                        <TouchableOpacity
+                            style={[
+                                styles.fab,
+                                { backgroundColor: theme.primary },
+                                FabDesign.shadow,
+                            ]}
+                            onPress={handleAddTrip}
+                            onPressIn={handleFabPressIn}
+                            onPressOut={handleFabPressOut}
+                            activeOpacity={1}
+                            accessibilityLabel="Plan a new commute"
+                            accessibilityRole="button"
+                        >
+                            <Plus size={18} color="#FFFFFF" style={styles.fabIcon} />
+                            <Text style={styles.fabText}>Plan Commute</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </Animated.View>
             )}
 
-            {/* ========================================== */}
-            {/* STATE 3: Active trip — Live tracking         */}
-            {/* ========================================== */}
+            {/* ─── State 3: Active trip ─── */}
             {homeState === 'active_trip' && activeTrip && (
                 <ActiveTripTracker
                     trip={activeTrip}
@@ -358,24 +523,20 @@ export default function ClientDashboard() {
                 />
             )}
 
-            {/* ========================================== */}
-            {/* STATE 4: Searching / Offers Incoming         */}
-            {/* ========================================== */}
+            {/* ─── State 4: Dispatch flow ─── */}
             {featureFlags.enableV2Dispatch ? (
-                // V2 Dispatch Flow
                 (v2Flow.isSearching || v2Flow.hasOffers || v2Flow.isAssigned) && (
-                    <View style={[styles.whereToContainer, { bottom: 0 }]}>
+                    <View style={[styles.dispatchContainer, { bottom: 0 }]}>
                         <TripExperience onClose={() => v2Flow.cancelSearch()} />
                     </View>
                 )
             ) : (
-                // V1 Dispatch Flow
                 (rideStatus === 'SEARCHING' || rideStatus === 'OFFERS_OPEN') && (
-                    <View style={[styles.whereToContainer, { bottom: 0 }]}>
+                    <View style={[styles.dispatchContainer, { bottom: 0 }]}>
                         <OfferList
                             offers={offers}
                             theme={theme}
-                            isDark={colorScheme === 'dark'}
+                            isDark={isDark}
                             onAccept={acceptOffer}
                             onReject={rejectOffer}
                         />
@@ -386,83 +547,83 @@ export default function ClientDashboard() {
     );
 }
 
+// ─── Styles ─────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#000',
     },
-    // Floating Top Header
-    headerFloating: {
+
+    // Gradients
+    topGradient: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 10,
-        paddingHorizontal: 20,
-        paddingBottom: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.08)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        zIndex: 5,
     },
-    headerRow: {
+    bottomGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 5,
+    },
+
+    // Search bar
+    searchContainer: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        zIndex: 20,
+    },
+    searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        height: SearchBarDesign.height,
+        borderRadius: SearchBarDesign.borderRadius,
+        paddingHorizontal: 8,
     },
-    avatarButton: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
+    avatarBtn: {
+        padding: 4,
     },
-    profileAvatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 2,
-        borderColor: '#FFF',
+    avatar: {
+        width: SearchBarDesign.avatarSize,
+        height: SearchBarDesign.avatarSize,
+        borderRadius: SearchBarDesign.avatarSize / 2,
     },
-    profileAvatarFallback: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+    avatarFallback: {
+        width: SearchBarDesign.avatarSize,
+        height: SearchBarDesign.avatarSize,
+        borderRadius: SearchBarDesign.avatarSize / 2,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#FFF',
     },
-    avatarFallbackText: {
-        color: '#FFF',
-        fontSize: 18,
+    avatarText: {
+        color: '#FFFFFF',
+        fontSize: 16,
         fontWeight: 'bold',
     },
-    greetingText: {
+    searchInputArea: {
         flex: 1,
-        marginLeft: 12,
+        height: '100%',
+        justifyContent: 'center',
+        paddingHorizontal: 12,
     },
-    greetingTitle: {
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: 12,
-        fontWeight: '500',
+    searchPlaceholder: {
+        fontSize: SearchBarDesign.placeholderFontSize,
+        fontWeight: '600',
     },
-    greetingName: {
-        color: '#FFF',
-        fontSize: 16,
-        fontWeight: '800',
-    },
-    notificationBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+    bellBtn: {
+        width: SearchBarDesign.bellSize,
+        height: SearchBarDesign.bellSize,
+        borderRadius: SearchBarDesign.bellSize / 2,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 2,
     },
-    notificationBadge: {
+    badge: {
         position: 'absolute',
         top: -2,
         right: -2,
@@ -473,52 +634,110 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#000',
+        borderColor: '#FFFFFF',
     },
     badgeText: {
-        color: '#FFF',
+        color: '#FFFFFF',
         fontSize: 10,
         fontWeight: '800',
     },
-    whereToContainer: {
+
+    // Empty state
+    emptyStateContainer: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        zIndex: 15,
+    },
+    emptyStateCard: {
+        borderRadius: EmptyStateDesign.cardBorderRadius,
+        padding: EmptyStateDesign.cardPadding,
+        alignItems: 'center',
+    },
+    emptyStateIconWrap: {
+        width: EmptyStateDesign.iconWrapperSize,
+        height: EmptyStateDesign.iconWrapperSize,
+        borderRadius: EmptyStateDesign.iconWrapperSize / 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    emptyStateTitle: {
+        fontSize: EmptyStateDesign.titleFontSize,
+        fontWeight: EmptyStateDesign.titleFontWeight,
+        letterSpacing: -0.4,
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    quickActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+        gap: 12,
+    },
+    quickChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: EmptyStateDesign.chipPaddingH,
+        paddingVertical: EmptyStateDesign.chipPaddingV,
+        borderRadius: EmptyStateDesign.chipBorderRadius,
+    },
+    quickChipIcon: {
+        marginRight: 6,
+    },
+    quickChipText: {
+        fontSize: EmptyStateDesign.chipFontSize,
+        fontWeight: EmptyStateDesign.chipFontWeight,
+    },
+    ctaBtn: {
+        width: '100%',
+        height: EmptyStateDesign.ctaHeight,
+        borderRadius: EmptyStateDesign.ctaBorderRadius,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    ctaBtnText: {
+        color: '#FFFFFF',
+        fontSize: EmptyStateDesign.ctaFontSize,
+        fontWeight: EmptyStateDesign.ctaFontWeight,
+    },
+
+    // FAB
+    fabContainer: {
+        position: 'absolute',
+        alignSelf: 'center',
+        zIndex: 15,
+    },
+    fab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: FabDesign.height,
+        paddingHorizontal: FabDesign.paddingHorizontal,
+        borderRadius: FabDesign.borderRadius,
+    },
+    fabIcon: {
+        marginRight: 8,
+    },
+    fabText: {
+        color: '#FFFFFF',
+        fontSize: FabDesign.fontSize,
+        fontWeight: FabDesign.fontWeight,
+    },
+
+    // Dispatch
+    dispatchContainer: {
         position: 'absolute',
         bottom: 75,
         left: 0,
         right: 0,
         paddingHorizontal: 20,
         paddingBottom: 20,
-    },
-    whereToCard: {
-        borderRadius: 28,
-        padding: 28,
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    whereToTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-        marginBottom: 8,
-    },
-    whereToSubtitle: {
-        fontSize: 14,
-        fontWeight: '500',
-        textAlign: 'center',
-        marginBottom: 24,
-        lineHeight: 20,
-    },
-    whereToBtn: {
-        width: '100%',
-        height: 52,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 4,
-        boxShadow: '0px 4px 16px rgba(0,102,255,0.3)',
-    },
-    whereToBtnText: {
-        color: '#FFFFFF',
-        fontSize: 17,
-        fontWeight: '700',
     },
 });

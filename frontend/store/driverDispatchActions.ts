@@ -118,9 +118,9 @@ export const driverDispatchActions = {
 
             // Update the architectural tripStatus dimension
             const statusMap: Record<string, any> = {
-                'EN_ROUTE': 'TO_PICKUP',
-                'ARRIVED': 'TO_PICKUP', // Arrived at pickup
-                'STARTED': 'ACTIVE',
+                'EN_ROUTE': 'EN_ROUTE',
+                'ARRIVED': 'ARRIVED',
+                'STARTED': 'STARTED',
                 'COMPLETED': 'COMPLETED'
             };
             const tripStatus = statusMap[status];
@@ -230,7 +230,7 @@ export const driverDispatchActions = {
             store.setActiveTrip(assignment);
             store.setCurrentOffer(null);
             store.setAvailability('BUSY');
-            store.setTripStatus('TO_PICKUP');
+            store.setTripStatus('EN_ROUTE');
         });
 
         const cancelledUnsub = driverDispatchSocket.onTripCancelled(currentSeq, (data: any) => {

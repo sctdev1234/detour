@@ -4,7 +4,6 @@ const Offer = require('../models/Offer');
 const Trip = require('../models/Trip');
 const AppError = require('../utils/AppError');
 const DispatchService = require('./dispatchService');
-const { transitionState } = require('../utils/stateMachine');
 const ShadowValidator = require('../utils/ShadowValidator');
 
 class RideService {
@@ -72,7 +71,12 @@ class RideService {
         if (!instance) throw new AppError('Trip instance not found', 404);
         
         // State machine validation via utility
-        await transitionState(instance, 'SEARCHING');
+        const TripStateMachine = require('../state/TripStateMachine');
+        TripStateMachine.validateTransition(instance.status, TripStateMachine.STATES.SEARCHING);
+        instance.status = TripStateMachine.STATES.SEARCHING;
+        instance.stateTimestamps = instance.stateTimestamps || {};
+        instance.stateTimestamps.searchingAt = new Date();
+        await instance.save();
         
         // [Phase 5: Parallel Validation] Shadow match the state transition
         ShadowValidator.validateStateTransition(instance, 'SEARCHING');
@@ -99,7 +103,13 @@ class RideService {
     async cancelRideRequest(instanceId, passengerId) {
         const instance = await TripInstance.findOne({ _id: instanceId, userId: passengerId });
         if (!instance) throw new AppError('Trip instance not found', 404);
-        await transitionState(instance, 'CANCELLED_BY_PASSENGER');
+        const TripStateMachine = require('../state/TripStateMachine');
+        TripStateMachine.validateTransition(instance.status, TripStateMachine.STATES.CANCELLED);
+        instance.status = TripStateMachine.STATES.CANCELLED;
+        instance.cancellationReason = 'Cancelled by passenger';
+        instance.stateTimestamps = instance.stateTimestamps || {};
+        instance.stateTimestamps.cancelledAt = new Date();
+        await instance.save();
 
         // [Phase 5: Parallel Validation] Shadow match the state transition
         ShadowValidator.validateStateTransition(instance, 'CANCELLED_BY_PASSENGER');
@@ -136,7 +146,12 @@ class RideService {
         }
 
         if (instance.status === 'SEARCHING') {
-            await transitionState(instance, 'OFFERS_OPEN');
+            const TripStateMachine = require('../state/TripStateMachine');
+            TripStateMachine.validateTransition(instance.status, TripStateMachine.STATES.OFFERS_OPEN);
+            instance.status = TripStateMachine.STATES.OFFERS_OPEN;
+            instance.stateTimestamps = instance.stateTimestamps || {};
+            instance.stateTimestamps.offersOpenAt = new Date();
+            await instance.save();
             
             // [Phase 5: Parallel Validation] Shadow match the state transition
             ShadowValidator.validateStateTransition(instance, 'OFFERS_OPEN');
@@ -178,7 +193,9 @@ class RideService {
             throw new AppError('Unauthorized', 403);
         }
 
-        offer.status = 'REJECTED';
+        const OfferStateMachine = require('../state/OfferStateMachine');
+        OfferStateMachine.validateTransition(offer.status, OfferStateMachine.STATES.REJECTED);
+        offer.status = OfferStateMachine.STATES.REJECTED;
         await offer.save();
 
         if (this.io) {
