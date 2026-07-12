@@ -35,7 +35,7 @@ export const dispatchActions = {
         } catch (error: any) {
             console.error('[dispatchActions] requestRide failed:', error);
             store.setStatus('ERROR');
-            store.setError(error.message || 'Failed to request ride');
+            store.setError(error.response?.data?.error || error.message || 'Failed to request ride');
         }
     },
 
@@ -56,7 +56,7 @@ export const dispatchActions = {
             }
         } catch (error: any) {
             console.error('[dispatchActions] acceptOffer failed:', error);
-            store.setError(error.message || 'Failed to accept offer');
+            store.setError(error.response?.data?.error || error.message || 'Failed to accept offer');
             // We do not change status to ERROR completely because they can still try another offer
         }
     },

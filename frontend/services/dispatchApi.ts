@@ -1,17 +1,19 @@
 import api from './api';
 
 export interface TripTemplatePayload {
-    pickup: {
+    startPoint: {
         type: 'Point';
         coordinates: [number, number]; // [lng, lat]
         address: string;
     };
-    dropoff: {
+    endPoint: {
         type: 'Point';
         coordinates: [number, number]; // [lng, lat]
         address: string;
     };
-    scheduledTime?: string;
+    schedulingStrategy: 'IMMEDIATE' | 'SCHEDULED' | 'RECURRING';
+    scheduleConfig?: any;
+    waypoints?: any[];
 }
 
 export const dispatchApi = {

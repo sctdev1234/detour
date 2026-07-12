@@ -45,7 +45,7 @@ export default function NotificationsScreen() {
                 subtitle: 'A passenger wants to join your trip',
                 time: new Date(req.createdAt).toLocaleDateString(),
                 color: '#F59E0B',
-                onPress: () => router.push('/(driver)/requests'),
+                onPress: () => router.push('/(driver)/requests' as any),
             });
         });
 

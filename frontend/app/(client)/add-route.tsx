@@ -69,7 +69,16 @@ export default function AddClientRouteScreen() {
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== 'granted') return;
 
-                const location = await Location.getCurrentPositionAsync({});
+                let location;
+                try {
+                    location = await Location.getCurrentPositionAsync({});
+                } catch (err) {
+                    location = await Location.getLastKnownPositionAsync({});
+                    if (!location) {
+                        console.warn('Location unavailable in add-route:', err);
+                        return;
+                    }
+                }
                 const startPoint: LatLng = {
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude

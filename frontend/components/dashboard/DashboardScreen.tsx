@@ -118,10 +118,20 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     // --- Get location ---
     useEffect(() => {
         (async () => {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') return;
-            const loc = await Location.getCurrentPositionAsync({});
-            setCurrentLocation(loc);
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') return;
+                let loc;
+                try {
+                    loc = await Location.getCurrentPositionAsync({});
+                } catch (err) {
+                    loc = await Location.getLastKnownPositionAsync({});
+                    if (!loc) throw err;
+                }
+                setCurrentLocation(loc);
+            } catch (error) {
+                console.warn('Location unavailable in DashboardScreen:', error);
+            }
         })();
     }, []);
 

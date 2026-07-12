@@ -1,7 +1,5 @@
-import { Bell, Bookmark, Calendar, Home, MapPin, User } from 'lucide-react-native';
+import { Stack } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { Footer } from '../../components/Footer';
-import { SwipeableTabs } from '../../components/SwipeableLayout';
 import { Colors } from '../../constants/theme';
 
 export default function ClientLayout() {
@@ -9,76 +7,48 @@ export default function ClientLayout() {
     const theme = Colors[colorScheme];
 
     return (
-        <SwipeableTabs
-            tabBarPosition="bottom"
-            tabBar={(props: any) => <Footer {...props} />}
-
+        <Stack
+            screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: theme.background },
+            }}
         >
-            <SwipeableTabs.Screen
-                name="index"
-                options={{
-                    title: 'Home',
-                    tabBarIcon: ({ color }) => <Home size={24} color={color} />,
-                }}
-            />
+            {/* The singular Home OS */}
+            <Stack.Screen name="index" />
 
-            <SwipeableTabs.Screen
+            {/* Contextual Overlays / Modals */}
+            <Stack.Screen
                 name="requests"
-                options={{
-                    title: 'Offers',
-                    tabBarIcon: ({ color }) => <Bell size={24} color={color} />,
-                }}
+                options={{ presentation: 'modal' }}
             />
-            <SwipeableTabs.Screen
+            <Stack.Screen
                 name="places"
-                options={{
-                    title: 'Places',
-                    tabBarIcon: ({ color }) => <Bookmark size={24} color={color} />,
-                }}
+                options={{ presentation: 'modal' }}
             />
-            <SwipeableTabs.Screen
+            <Stack.Screen
                 name="trips"
-                options={{
-                    title: 'My Trips',
-                    tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
-                }}
+                options={{ presentation: 'modal' }}
             />
-            <SwipeableTabs.Screen
+            <Stack.Screen
                 name="profile"
-                options={{
-                    title: 'Profile',
-                    tabBarIcon: ({ color }) => <User size={24} color={color} />,
-                }}
+                options={{ presentation: 'modal' }}
             />
-            {/* Hidden screens — accessible via navigation but not in tab bar */}
-            <SwipeableTabs.Screen
+            <Stack.Screen
                 name="routes"
-                options={{
-                    // @ts-ignore
-                    href: null,
-                }}
+                options={{ presentation: 'modal' }}
             />
-            <SwipeableTabs.Screen
+            <Stack.Screen
                 name="add-route"
-                options={{
-                    // @ts-ignore
-                    href: null,
-                }}
+                options={{ presentation: 'modal' }}
             />
-            <SwipeableTabs.Screen
+            <Stack.Screen
                 name="trip-details"
-                options={{
-                    // @ts-ignore
-                    href: null,
-                }}
+                options={{ presentation: 'modal' }}
             />
-            <SwipeableTabs.Screen
+            <Stack.Screen
                 name="edit-profile"
-                options={{
-                    // @ts-ignore
-                    href: null,
-                }}
+                options={{ presentation: 'modal' }}
             />
-        </SwipeableTabs>
+        </Stack>
     );
 }

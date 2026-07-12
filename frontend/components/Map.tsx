@@ -427,10 +427,20 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     // Initial Location Request
     React.useEffect(() => {
         (async () => {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') return;
-            let location = await Location.getCurrentPositionAsync({});
-            setLocation(location);
+            try {
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') return;
+                let loc;
+                try {
+                    loc = await Location.getCurrentPositionAsync({});
+                } catch (err) {
+                    loc = await Location.getLastKnownPositionAsync({});
+                    if (!loc) throw err;
+                }
+                setLocation(loc);
+            } catch (error) {
+                console.warn('Location unavailable in Map:', error);
+            }
         })();
     }, []);
 
