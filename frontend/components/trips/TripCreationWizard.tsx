@@ -116,6 +116,25 @@ export default function TripCreationWizard({
     const [isResolvingAddress, setIsResolvingAddress] = useState(false);
     const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
 
+    // Sync with currentLocation once resolved
+    useEffect(() => {
+        if (!pickup && currentLocation) {
+            setPickup(currentLocation);
+        }
+    }, [currentLocation]);
+
+    useEffect(() => {
+        if (!pickupAddress && currentAddress && currentAddress !== 'Current Location') {
+            setPickupAddress(currentAddress);
+        }
+    }, [currentAddress]);
+
+    useEffect(() => {
+        if (!centerAddress && currentAddress && currentAddress !== 'Current Location') {
+            setCenterAddress(currentAddress);
+        }
+    }, [currentAddress]);
+
     // Search State
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
@@ -288,6 +307,18 @@ export default function TripCreationWizard({
             setStep('schedule');
         }
     }, [mapCenter, centerAddress, step]);
+
+    const handleDestinationPress = useCallback(() => {
+        if (step === 'pickup') {
+            const targetPickup = mapCenter || currentLocation;
+            const targetAddress = centerAddress || currentAddress || 'Current Location';
+            if (targetPickup) {
+                setPickup(targetPickup);
+                setPickupAddress(targetAddress);
+            }
+        }
+        setStep('destination_search');
+    }, [step, mapCenter, currentLocation, centerAddress, currentAddress]);
 
     const goBack = useCallback(() => {
         switch (step) {
@@ -601,11 +632,11 @@ export default function TripCreationWizard({
                                         {destSub ? <Text style={[styles.journeySubText, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>{destSub}</Text> : null}
                                     </View>
                                 ) : step === 'schedule' ? (
-                                    <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={() => setStep('destination_search')}>
+                                    <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={handleDestinationPress}>
                                         <Text style={[styles.collapsedInputText, { color: theme.text }]} numberOfLines={1}>{destTitle}</Text>
                                     </TouchableOpacity>
                                 ) : (
-                                    <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={() => setStep('destination_search')}>
+                                    <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={handleDestinationPress}>
                                         <Text style={[styles.collapsedInputText, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>Where to?</Text>
                                     </TouchableOpacity>
                                 )}
