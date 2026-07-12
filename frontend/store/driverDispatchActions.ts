@@ -1,6 +1,7 @@
 import { driverDispatchApi } from '../services/driverDispatchApi';
 import { driverDispatchSocket } from '../services/driverDispatchSocket';
 import { useDriverDispatchStore, DriverOffer } from './useDriverDispatchStore';
+import { useDashboardStore } from './useDashboardStore';
 import driverService from '../services/driverService';
 import { socketLifecycleManager, ConnectionStatus } from '../services/SocketLifecycleManager';
 
@@ -31,6 +32,7 @@ export const driverDispatchActions = {
             await driverService.updateStatus('ONLINE');
             store.setPresence('ONLINE');
             store.setAvailability('AVAILABLE');
+            useDashboardStore.getState().setDriverStatus('ONLINE');
             driverDispatchActions._bindSockets();
         } catch (error: any) {
             store.setError(error.message || 'Failed to go online');
@@ -44,6 +46,7 @@ export const driverDispatchActions = {
         const store = useDriverDispatchStore.getState();
         try {
             await driverService.updateStatus('OFFLINE');
+            useDashboardStore.getState().setDriverStatus('OFFLINE');
             driverDispatchActions._unbindSockets();
             store.reset();
         } catch (error: any) {
@@ -59,6 +62,7 @@ export const driverDispatchActions = {
         try {
             await driverService.updateStatus('BREAK');
             store.setAvailability('BREAK');
+            useDashboardStore.getState().setDriverStatus('OFFLINE');
             // Depending on requirements, we might want to unbind sockets or stay connected to see updates
             driverDispatchActions._unbindSockets();
         } catch (error: any) {

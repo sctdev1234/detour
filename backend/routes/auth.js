@@ -35,6 +35,10 @@ router.post('/resend-otp', otpLimiter, (req, res, next) => authController.resend
 // @desc    Update user profile
 router.put('/update', auth, (req, res, next) => authController.update(req, res, next));
 
+// @route   PUT api/auth/status
+// @desc    Update driver status
+router.put('/status', auth, (req, res, next) => authController.updateStatus(req, res, next));
+
 // @route   POST api/auth/verify
 // @desc    Submit verification documents
 router.post('/verify', auth, (req, res, next) => authController.verify(req, res, next));

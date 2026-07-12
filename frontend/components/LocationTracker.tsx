@@ -47,6 +47,8 @@ export default function LocationTracker() {
     useEffect(() => {
         if (Platform.OS === 'web') return;
 
+        let watcher: Location.LocationSubscription | null = null;
+
         async function startTracking() {
             try {
                 // Request Foreground Permissions
@@ -67,6 +69,27 @@ export default function LocationTracker() {
                 // Get initial location
                 const initialLocation = await Location.getCurrentPositionAsync({});
                 setLocation(initialLocation);
+
+                // Start foreground watcher
+                watcher = await Location.watchPositionAsync({
+                    accuracy: Location.Accuracy.High,
+                    timeInterval: 5000,
+                    distanceInterval: 10,
+                }, (loc) => {
+                    setLocation(loc);
+
+                    // Sync to Backend API in foreground if user is driver
+                    const user = useAuthStore.getState().user;
+                    if (user && user.role === 'driver') {
+                        const { latitude, longitude, heading, speed } = loc.coords;
+                        api.post('/tracking/update', {
+                            latitude,
+                            longitude,
+                            heading,
+                            speed
+                        }).catch(e => console.error('Foreground location sync failed', e));
+                    }
+                });
 
                 // Check if task is already running
                 const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
@@ -101,6 +124,9 @@ export default function LocationTracker() {
         startTracking();
 
         return () => {
+            if (watcher) {
+                watcher.remove();
+            }
             Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).then(started => {
                 if (started) {
                     Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);

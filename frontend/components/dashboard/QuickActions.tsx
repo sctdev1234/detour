@@ -16,15 +16,26 @@ import { useDashboardStore } from '../../store/useDashboardStore';
 interface QuickActionsProps {
     onCenterMap: () => void;
     onCreateRoute: () => void;
+    isOnline?: boolean;
+    onToggleStatus?: () => void;
+    isUpdatingStatus?: boolean;
 }
 
-export default function QuickActions({ onCenterMap, onCreateRoute }: QuickActionsProps) {
+export default function QuickActions({
+    onCenterMap,
+    onCreateRoute,
+    isOnline: propIsOnline,
+    onToggleStatus: propOnToggleStatus,
+    isUpdatingStatus: propIsUpdatingStatus
+}: QuickActionsProps) {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { driverStatus, toggleDriverStatus, isUpdatingStatus } = useDashboardStore();
+    const { driverStatus, toggleDriverStatus, isUpdatingStatus: v1Updating } = useDashboardStore();
 
-    const isOnline = driverStatus === 'ONLINE';
+    const isOnline = propIsOnline !== undefined ? propIsOnline : (driverStatus === 'ONLINE');
+    const onToggle = propOnToggleStatus || toggleDriverStatus;
+    const isUpdating = propIsUpdatingStatus !== undefined ? propIsUpdatingStatus : v1Updating;
 
     const actions = [
         {
@@ -37,8 +48,8 @@ export default function QuickActions({ onCenterMap, onCreateRoute }: QuickAction
         {
             id: 'toggle-status',
             icon: Power,
-            label: isUpdatingStatus ? 'Updating' : isOnline ? 'Online' : 'Offline',
-            onPress: toggleDriverStatus,
+            label: isUpdating ? 'Updating' : isOnline ? 'Online' : 'Offline',
+            onPress: onToggle,
             gradient: isOnline
                 ? ['#34D399', '#10B981'] as [string, string]
                 : ['#9CA3AF', '#6B7280'] as [string, string],

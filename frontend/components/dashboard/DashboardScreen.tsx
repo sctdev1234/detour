@@ -30,6 +30,7 @@ import DriverTripExperience from '../dispatch/driver/DriverTripExperience';
 import { useUIStore } from '../../store/useUIStore';
 import { useDriverDispatchStore } from '../../store/useDriverDispatchStore';
 import { useDispatchStore } from '../../store/useDispatchStore';
+import { driverDispatchActions } from '../../store/driverDispatchActions';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -239,7 +240,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             {/* FULLSCREEN MAP */}
             <DetourMap
                 ref={mapRef}
-                mode={driverStatus === 'ONLINE' ? 'driver-idle' : 'browse'}
+                mode={presence === 'ONLINE' ? 'driver-idle' : 'browse'}
                 theme={theme}
                 fullScreen={true}
                 initialRegion={DEFAULT_REGION}
@@ -256,6 +257,14 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             <QuickActions
                 onCenterMap={centerToMyLocation}
                 onCreateRoute={() => router.push('/(driver)/add-route')}
+                isOnline={presence === 'ONLINE'}
+                onToggleStatus={async () => {
+                    if (presence === 'ONLINE') {
+                        await driverDispatchActions.goOffline();
+                    } else {
+                        await driverDispatchActions.goOnline();
+                    }
+                }}
             />
 
             {/* Driver Dispatch Overlay (handles offline, online idle, and active states) */}

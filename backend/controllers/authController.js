@@ -118,7 +118,10 @@ class AuthController {
             const user = await authService.updateDriverStatus(req.user.id, status);
             
             // Broadcast driver status update via socket if possible
-            req.app.get('io').emit('driver:status_changed', { driverId: user._id, status });
+            const io = req.app.get('socketio');
+            if (io) {
+                io.emit('driver:status_changed', { driverId: user._id, status });
+            }
             
             res.json({ msg: 'Driver status updated successfully', status: user.driverStatus });
         } catch (err) {
