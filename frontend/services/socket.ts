@@ -24,7 +24,10 @@ class SocketService {
     }
 
     public connect(url: string = SOCKET_URL): Socket {
-        if (this.socket?.connected) {
+        if (this.socket) {
+            if (!this.socket.connected) {
+                this.socket.connect();
+            }
             return this.socket;
         }
 

@@ -43,27 +43,33 @@ export const RouteService = {
         return (distanceKm * (perKmRate || 2)).toFixed(2); // Default 2 TND/km?
     },
 
-    reverseGeocode: async (lat: number, lng: number): Promise<string> => {
+    reverseGeocode: async (lat: number, lng: number, signal?: AbortSignal): Promise<string> => {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
                 headers: {
                     'User-Agent': 'DetourApp/1.0'
-                }
+                },
+                signal
             });
             const data = await response.json();
             return data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-        } catch (error) {
-            console.error('Geocoding error:', error);
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                console.log('[RouteService] Reverse geocode aborted');
+            } else {
+                console.error('Geocoding error:', error);
+            }
             return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         }
     },
 
-    geocode: async (query: string): Promise<{ label: string; latitude: number; longitude: number }[]> => {
+    geocode: async (query: string, signal?: AbortSignal): Promise<{ label: string; latitude: number; longitude: number }[]> => {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ma`, {
                 headers: {
                     'User-Agent': 'DetourApp/1.0'
-                }
+                },
+                signal
             });
             const data = await response.json();
             return data.map((item: any) => ({
@@ -71,8 +77,12 @@ export const RouteService = {
                 latitude: parseFloat(item.lat),
                 longitude: parseFloat(item.lon)
             }));
-        } catch (error) {
-            console.error('Geocoding search error:', error);
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                console.log('[RouteService] Geocode search aborted');
+            } else {
+                console.error('Geocoding search error:', error);
+            }
             return [];
         }
     }

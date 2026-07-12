@@ -1,9 +1,10 @@
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Marker, Polyline } from 'react-native-maps';
 
 import DetourMap from '../../components/Map';
 import TripCreationWizard from '../../components/trips/TripCreationWizard';
@@ -17,6 +18,7 @@ import { useClientRequests, useClientTrips, useCreateClientTrip } from '../../ho
 import { useDispatchFlow } from '../../hooks/useDispatchFlow';
 import { RouteService } from '../../services/RouteService';
 import { useAuthStore } from '../../store/useAuthStore';
+import { dispatchActions } from '../../store/dispatchActions';
 import { useTrackingStore } from '../../store/useTrackingStore';
 import { useUIStore } from '../../store/useUIStore';
 import { ClientTrip, LatLng } from '../../types';
@@ -89,6 +91,11 @@ export default function ClientDashboard() {
         })();
     }, []);
 
+    // Recover dispatch state on mount (e.g. if client is already searching for drivers)
+    useEffect(() => {
+        dispatchActions.recoverState();
+    }, []);
+
     const activeTrip = useMemo(() => (clientTrips || []).find(t => t.status === 'active'), [clientTrips]);
 
     const homeState: HomeState = useMemo(() => {
@@ -141,9 +148,47 @@ export default function ClientDashboard() {
         }
     }, [createClientTrip, showToast, v2Flow]);
 
+    const mapRef = useRef<any>(null);
+
+    const [wizardMapCenter, setWizardMapCenter] = useState<LatLng | null>(null);
+    const [isWizardDragging, setIsWizardDragging] = useState(false);
+
+    const handleRegionChange = useCallback((region: any, details?: { isGesture?: boolean }) => {
+        if (details && details.isGesture === false) return;
+        setIsWizardDragging(prev => {
+            if (!prev) return true;
+            return prev;
+        });
+    }, []);
+
+    const handleRegionChangeComplete = useCallback((region: any) => {
+        setWizardMapCenter({ latitude: region.latitude, longitude: region.longitude });
+        setIsWizardDragging(false);
+    }, []);
+
     const handleLocatePress = () => {
-        // Implement map recenter logic via map ref
+        if (currentLoc && mapRef.current) {
+            mapRef.current.animateToRegion({
+                latitude: currentLoc.latitude,
+                longitude: currentLoc.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            }, 1000);
+        }
     };
+
+    const dynamicEdgePadding = useMemo(() => {
+        const top = 140; // SmartHeader height + margin
+        const left = 40;
+        const right = 40;
+        
+        let bottom = 150; // Idle state bottom sheet
+        if (isCreatingTrip) bottom = 450;
+        else if (homeState === 'searching') bottom = 400;
+        else if (homeState === 'active') bottom = 300;
+
+        return { top, right, bottom, left };
+    }, [isCreatingTrip, homeState]);
 
     return (
         <GestureHandlerRootView style={styles.container}>
@@ -151,6 +196,7 @@ export default function ClientDashboard() {
 
             <View style={StyleSheet.absoluteFillObject}>
                 <DetourMap
+                    ref={mapRef}
                     mode={mapMode as any}
                     theme={theme}
                     initialPoints={mapPoints.length > 0 ? mapPoints : undefined}
@@ -159,8 +205,22 @@ export default function ClientDashboard() {
                     height="100%"
                     interactive={true}
                     style={StyleSheet.absoluteFillObject}
-                    edgePadding={CameraConfig.overviewPadding}
-                />
+                    edgePadding={dynamicEdgePadding}
+                    onRegionChange={handleRegionChange}
+                    onRegionChangeComplete={handleRegionChangeComplete}
+                >
+                    {isCreatingTrip && mapPoints.length === 2 && (
+                        <>
+                            <Marker coordinate={mapPoints[0]} pinColor="#10B981" />
+                            <Marker coordinate={mapPoints[1]} pinColor="#FF3B30" />
+                            <Polyline
+                                coordinates={mapPoints}
+                                strokeColor={theme.primary}
+                                strokeWidth={4}
+                            />
+                        </>
+                    )}
+                </DetourMap>
                 <LinearGradient
                     colors={GradientConfig.topColors as unknown as [string, string, ...string[]]}
                     locations={GradientConfig.topLocations as unknown as [number, number, ...number[]]}
@@ -184,7 +244,7 @@ export default function ClientDashboard() {
             />
 
             {isCreatingTrip ? (
-                <View style={styles.wizardContainer}>
+                <View style={styles.wizardContainer} pointerEvents="box-none">
                     <TripCreationWizard
                         theme={theme}
                         colorScheme={colorScheme}
@@ -195,6 +255,9 @@ export default function ClientDashboard() {
                         onCancel={() => setIsCreatingTrip(false)}
                         onConfirm={handleCreateTrip}
                         isSubmitting={isCreating}
+                        mapCenter={wizardMapCenter}
+                        isMapDragging={isWizardDragging}
+                        mapRef={mapRef}
                     />
                 </View>
             ) : (
@@ -222,10 +285,7 @@ const styles = StyleSheet.create({
         zIndex: 5,
     },
     wizardContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        ...StyleSheet.absoluteFillObject,
         zIndex: 100,
     }
 });

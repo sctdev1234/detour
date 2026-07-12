@@ -18,6 +18,8 @@ let unsubCounter: (() => void) | null = null;
 let unsubConnectionStatus: (() => void) | null = null;
 let unsubResume: (() => void) | null = null;
 
+let isRecovering = false;
+
 export const driverDispatchActions = {
     /**
      * Go Online — start accepting dispatch offers.
@@ -60,7 +62,7 @@ export const driverDispatchActions = {
             // Depending on requirements, we might want to unbind sockets or stay connected to see updates
             driverDispatchActions._unbindSockets();
         } catch (error: any) {
-            store.setError(error.message || 'Failed to set break');
+            store.setError(error.message || 'Failed to take break');
         }
     },
 
@@ -154,6 +156,8 @@ export const driverDispatchActions = {
      * Useful on resume or when a sequence gap is detected.
      */
     recoverState: async () => {
+        if (isRecovering) return;
+        isRecovering = true;
         const store = useDriverDispatchStore.getState();
         try {
             const data = await driverDispatchApi.getRecoveryState();
@@ -168,6 +172,8 @@ export const driverDispatchActions = {
             driverDispatchActions._bindSockets();
         } catch (error: any) {
             console.error('[DriverDispatchActions] Recovery failed', error);
+        } finally {
+            isRecovering = false;
         }
     },
 
@@ -182,14 +188,16 @@ export const driverDispatchActions = {
 
         const currentSeq = useDriverDispatchStore.getState().lastSequenceNumber;
 
+        let prevStatus: ConnectionStatus | null = null;
         unsubConnectionStatus = socketLifecycleManager.addStatusListener((status: ConnectionStatus) => {
             const store = useDriverDispatchStore.getState();
             store.setConnectionStatus(status);
             
             // If we just reconnected, trigger a recovery
-            if (status === 'CONNECTED') {
+            if (status === 'CONNECTED' && prevStatus && prevStatus !== 'CONNECTED') {
                 driverDispatchActions.recoverState();
             }
+            prevStatus = status;
         });
 
         unsubResume = socketLifecycleManager.addResumeListener(() => {

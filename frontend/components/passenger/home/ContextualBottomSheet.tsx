@@ -28,7 +28,7 @@ export default function ContextualBottomSheet({ homeState, onSearchPress, onHome
         if (homeState === 'active' || homeState === 'searching' || v2Flow.status !== 'IDLE') {
             return ['35%', '50%'];
         }
-        return ['15%', '40%', '90%'];
+        return ['12%', '45%', '90%'];
     }, [homeState, v2Flow.status]);
 
     const handleSheetChanges = useCallback((index: number) => {
@@ -37,6 +37,26 @@ export default function ContextualBottomSheet({ homeState, onSearchPress, onHome
 
     const renderIdleContent = () => (
         <View style={styles.idleContent}>
+            {/* Dynamic Bottom Nav (Always visible at top of sheet) */}
+            <View style={styles.navBar}>
+                <TouchableOpacity style={styles.navItem} onPress={onHomePress}>
+                    <Home size={24} color={theme.primary} />
+                    <Text style={[styles.navText, { color: theme.primary }]}>Map</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navItem} onPress={() => {}}>
+                    <Clock size={24} color={theme.text + '80'} />
+                    <Text style={[styles.navText, { color: theme.text + '80' }]}>Activity</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navItem} onPress={() => {}}>
+                    <Wallet size={24} color={theme.text + '80'} />
+                    <Text style={[styles.navText, { color: theme.text + '80' }]}>Wallet</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navItem} onPress={() => {}}>
+                    <Navigation size={24} color={theme.text + '80'} />
+                    <Text style={[styles.navText, { color: theme.text + '80' }]}>Profile</Text>
+                </TouchableOpacity>
+            </View>
+
             {/* Search Input Trigger */}
             <TouchableOpacity 
                 style={[styles.searchTrigger, { backgroundColor: isDark ? '#2c2c2e' : '#f2f2f7' }]} 
@@ -136,6 +156,21 @@ const styles = StyleSheet.create({
     idleContent: {
         flex: 1,
         paddingTop: 8,
+    },
+    navBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingVertical: 12,
+        marginBottom: 20,
+    },
+    navItem: {
+        alignItems: 'center',
+        gap: 4,
+    },
+    navText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     searchTrigger: {
         flexDirection: 'row',

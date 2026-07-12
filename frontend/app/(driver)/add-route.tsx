@@ -363,10 +363,19 @@ export default function AddRouteScreen() {
                                         <View style={[styles.carIconBg, { backgroundColor: selectedCarId === car.id ? theme.primary + '20' : theme.background }]}>
                                             <Car size={24} color={selectedCarId === car.id ? theme.primary : theme.icon} />
                                         </View>
-                                        <View>
-                                            <Text style={[styles.carName, { color: theme.text }]}>{car.model}</Text>
-                                            <Text style={{ fontSize: 12, color: theme.textSecondary }}>{car.marque}</Text>
-                                        </View>
+                                        {(() => {
+                                            const parts = car.model.split(' | ');
+                                            const modelName = parts[0] || car.model;
+                                            const plateNumber = parts[1] ? parts[1].replace(/-/g, ' | ') : '';
+                                            return (
+                                                <View>
+                                                    <Text style={[styles.carName, { color: theme.text }]}>{modelName}</Text>
+                                                    <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                                                        {car.marque}{plateNumber ? ` • ${plateNumber}` : ''}
+                                                    </Text>
+                                                </View>
+                                            );
+                                        })()}
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>

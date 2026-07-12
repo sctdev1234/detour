@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import api from './api';
 
-export const uploadImage = async (uri: string, folder: string = 'misc'): Promise<string> => {
+export const uploadImage = async (uri: string, folder: string = 'misc', signal?: AbortSignal): Promise<string> => {
     if (!uri) return '';
     // If it's already a remote URL, return it
     if (uri.startsWith('http')) return uri;
@@ -28,7 +28,7 @@ export const uploadImage = async (uri: string, folder: string = 'misc'): Promise
 
         formData.append('folder', folder);
 
-        const res = await api.post('/upload', formData);
+        const res = await api.post('/upload', formData, { signal });
         return res.data.url;
 
     } catch (error) {

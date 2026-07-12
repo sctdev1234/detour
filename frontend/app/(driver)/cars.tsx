@@ -8,6 +8,18 @@ import { Colors } from '../../constants/theme';
 import { Car, useCars, useRemoveCar, useSetDefaultCar } from '../../hooks/api/useCarQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
+const parseCarModel = (modelStr: string) => {
+    if (!modelStr) return { model: '', plate: '', fuel: '', transmission: '' };
+    const parts = modelStr.split(' | ');
+    if (parts.length < 2) return { model: modelStr, plate: '', fuel: '', transmission: '' };
+    return {
+        model: parts[0] || '',
+        plate: parts[1] || '',
+        fuel: parts[2] || '',
+        transmission: parts[3] || ''
+    };
+};
+
 export default function CarsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
@@ -42,9 +54,30 @@ export default function CarsScreen() {
 
             <View style={styles.cardContent}>
                 <View style={styles.headerRow}>
-                    <View>
-                        <Text style={[styles.carName, { color: theme.text }]}>{item.marque} {item.model}</Text>
-                        <Text style={[styles.carDetails, { color: theme.icon }]}>{item.year} • {item.color}</Text>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                        {(() => {
+                            const parsed = parseCarModel(item.model);
+                            return (
+                                <>
+                                    <Text style={[styles.carName, { color: theme.text }]} numberOfLines={1}>
+                                        {item.marque} {parsed.model}
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                        {parsed.plate ? (
+                                            <View style={[styles.miniPlate, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                                <Text style={[styles.miniPlateText, { color: theme.text }]}>
+                                                    {parsed.plate.replace(/-/g, ' | ')}
+                                                </Text>
+                                            </View>
+                                        ) : null}
+                                        <Text style={[styles.carDetails, { color: theme.icon }]} numberOfLines={1}>
+                                            {item.year} • {item.color}
+                                            {parsed.fuel ? ` • ${parsed.fuel}` : ''}
+                                        </Text>
+                                    </View>
+                                </>
+                            );
+                        })()}
                     </View>
                     {!item.isDefault && (
                         <TouchableOpacity
@@ -300,5 +333,18 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         opacity: 0.7,
         fontWeight: '500',
+    },
+    miniPlate: {
+        borderWidth: 1,
+        borderRadius: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 1.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    miniPlateText: {
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
 });

@@ -6,7 +6,7 @@ import api from './api';
  * @param uri Local URI of the image
  * @param folder Cloud folder to store the image in
  */
-export const uploadImage = async (uri: string, folder: string = 'misc'): Promise<string> => {
+export const uploadImage = async (uri: string, folder: string = 'misc', signal?: AbortSignal): Promise<string> => {
     if (!uri) return '';
     // If it's already a remote URL, return it
     if (uri.startsWith('http')) return uri;
@@ -37,7 +37,12 @@ export const uploadImage = async (uri: string, folder: string = 'misc'): Promise
         formData.append('folder', folder);
 
         /* console.log(`[Storage] Uploading ${uri} to Firebase via Backend...`); */
-        const res = await api.post('/upload', formData);
+        const res = await api.post('/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            signal,
+        });
 
         if (res.data && res.data.url) {
             /* console.log(`[Storage] Upload success: ${res.data.url}`); */

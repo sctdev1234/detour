@@ -81,10 +81,20 @@ export default function AssignCarScreen() {
                 style={{ flex: 1 }}
             >
                 <ScrollView contentContainerStyle={styles.content}>
-                    <View style={[styles.carInfo, { backgroundColor: theme.surface }]}>
-                        <Text style={[styles.carName, { color: theme.text }]}>{car.marque} {car.model}</Text>
-                        <Text style={[styles.carDetail, { color: theme.icon }]}>{car.year} • {car.color}</Text>
-                    </View>
+                    {(() => {
+                        const parts = car.model.split(' | ');
+                        const modelName = parts[0] || car.model;
+                        const plateNumber = parts[1] ? parts[1].replace(/-/g, ' | ') : '';
+                        return (
+                            <View style={[styles.carInfo, { backgroundColor: theme.surface }]}>
+                                <Text style={[styles.carName, { color: theme.text }]}>{car.marque} {modelName}</Text>
+                                <Text style={[styles.carDetail, { color: theme.icon }]}>
+                                    {car.year} • {car.color}
+                                    {plateNumber ? ` • ${plateNumber}` : ''}
+                                </Text>
+                            </View>
+                        );
+                    })()}
 
                     <View style={styles.form}>
                         <PremiumInput

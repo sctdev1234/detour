@@ -9,6 +9,8 @@ let unsubscribeTripStatus: (() => void) | null = null;
 let unsubResume: (() => void) | null = null;
 let unsubConnectionStatus: (() => void) | null = null;
 
+let isRecovering = false;
+
 export const dispatchActions = {
     /**
      * Start a new ride request.
@@ -83,6 +85,8 @@ export const dispatchActions = {
      * Recover missed state from the unified Recovery API on reconnect.
      */
     recoverState: async () => {
+        if (isRecovering) return;
+        isRecovering = true;
         const store = useDispatchStore.getState();
         try {
             const data = await dispatchApi.getRecoveryState();
@@ -99,6 +103,8 @@ export const dispatchActions = {
             }
         } catch (error) {
             console.error('[dispatchActions] recoverState failed', error);
+        } finally {
+            isRecovering = false;
         }
     },
 
@@ -111,10 +117,12 @@ export const dispatchActions = {
         socketLifecycleManager.start();
 
         // Recover state on reconnection (e.g. server restart while app is active)
+        let prevStatus: any = null;
         unsubConnectionStatus = socketLifecycleManager.addStatusListener((status: any) => {
-            if (status === 'CONNECTED') {
+            if (status === 'CONNECTED' && prevStatus && prevStatus !== 'CONNECTED') {
                 dispatchActions.recoverState();
             }
+            prevStatus = status;
         });
 
         // Register resume listener for explicit hydration (app comes to foreground)

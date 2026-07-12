@@ -38,6 +38,11 @@ class SocketLifecycleManager {
         const socket = SocketService.getSocket();
         if (!socket) return;
 
+        // Clean slate to prevent duplicate status transitions or heartbeat intervals
+        socket.off('connect');
+        socket.off('disconnect');
+        socket.off('connect_error');
+
         socket.on('connect', () => {
             this.updateStatus('CONNECTED');
             this.startHeartbeat();
