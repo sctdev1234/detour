@@ -19,9 +19,9 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useUIStore } from '../store/useUIStore';
 
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
+import type { Subscription } from 'expo-notifications';
 import { Platform } from 'react-native';
-import { registerForPushNotificationsAsync } from '../services/notificationService';
+import { Notifications, registerForPushNotificationsAsync } from '../services/notificationService';
 
 // if (Platform.OS === 'web') {
 //   require('leaflet/dist/leaflet.css');
@@ -164,10 +164,10 @@ function AppContent() {
     registerForPushNotificationsAsync();
 
     // Listen for notification interactions
-    let notificationListener: Notifications.Subscription | undefined;
+    let notificationListener: Subscription | undefined;
 
     if (Constants.appOwnership !== 'expo' || Platform.OS !== 'android') {
-      notificationListener = Notifications.addNotificationResponseReceivedListener(response => {
+      notificationListener = Notifications.addNotificationResponseReceivedListener((response: any) => {
         const data = response.notification.request.content.data;
         if (data?.reclamationId) {
           router.push(`/reclamations/${data.reclamationId}`);

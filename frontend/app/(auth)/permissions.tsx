@@ -10,7 +10,7 @@ import { GlassCard } from '../../components/GlassCard';
 import { PremiumButton } from '../../components/PremiumButton';
 import { Colors } from '../../constants/theme';
 import * as Location from 'expo-location';
-import * as Notifications from 'expo-notifications';
+import { Notifications } from '../../services/notificationService';
 
 export default function PermissionsScreen() {
     const router = useRouter();

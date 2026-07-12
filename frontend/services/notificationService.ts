@@ -1,20 +1,41 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+const isExpoGo = Constants.appOwnership === 'expo';
+
+export const Notifications = (!isExpoGo || Platform.OS !== 'android')
+    ? require('expo-notifications')
+    : {
+        setNotificationHandler: () => {},
+        getPermissionsAsync: async () => ({ status: 'undetermined' }),
+        requestPermissionsAsync: async () => ({ status: 'undetermined' }),
+        getExpoPushTokenAsync: async () => ({ data: '' }),
+        setNotificationChannelAsync: async () => {},
+        scheduleNotificationAsync: async () => '',
+        cancelScheduledNotificationAsync: async () => {},
+        addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+        AndroidImportance: { MAX: 4 },
+        SchedulableTriggerInputTypes: {
+            TIME_INTERVAL: 'timeInterval',
+        }
+    };
+
 // Handle notifications when the app is in the foreground
-// Handle notifications when the app is in the foreground
-if (Constants.appOwnership !== 'expo' || Platform.OS !== 'android') {
-    Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-            shouldShowBanner: true,
-            shouldShowList: true,
-        }),
-    });
+if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
+    try {
+        Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+                shouldShowAlert: true,
+                shouldPlaySound: true,
+                shouldSetBadge: false,
+                shouldShowBanner: true,
+                shouldShowList: true,
+            }),
+        });
+    } catch (e) {
+        console.warn('Failed to set notification handler:', e);
+    }
 }
 
 export const registerForPushNotificationsAsync = async () => {
