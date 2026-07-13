@@ -35,7 +35,7 @@ export const dispatchActions = {
             dispatchActions._bindSockets();
 
         } catch (error: any) {
-            console.error('[dispatchActions] requestRide failed:', error);
+            console.warn('[dispatchActions] requestRide failed:', error);
             store.setStatus('ERROR');
             store.setError(error.response?.data?.error || error.message || 'Failed to request ride');
         }
@@ -51,13 +51,13 @@ export const dispatchActions = {
             const data = await dispatchApi.acceptOffer(offerId);
             
             // Server responds with Assignment immediately if atomic
-            if (data.assignment) {
-                store.setAssignment(data.assignment);
+            if (data) {
+                store.setAssignment(data.assignment || data);
                 store.setStatus('ASSIGNED');
                 // Do not unbind sockets yet, we need to track trip progress
             }
         } catch (error: any) {
-            console.error('[dispatchActions] acceptOffer failed:', error);
+            console.warn('[dispatchActions] acceptOffer failed:', error);
             store.setError(error.response?.data?.error || error.message || 'Failed to accept offer');
             // We do not change status to ERROR completely because they can still try another offer
         }
@@ -66,8 +66,25 @@ export const dispatchActions = {
     /**
      * Cancel the ride search and clean up.
      */
-    cancelSearch: () => {
+    cancelSearch: async () => {
         const store = useDispatchStore.getState();
+        const instanceId = store.tripInstance?._id;
+        
+        if (instanceId) {
+            try {
+                await dispatchApi.cancelSearch(instanceId);
+            } catch (error) {
+                console.warn('[dispatchActions] cancelSearch failed:', error);
+            }
+        } else {
+            try {
+                // If there's an active searching trip that was block-loaded/not local in store
+                await dispatchApi.cancelSearch('any');
+            } catch (error) {
+                // Ignore failure if there was no active trip to cancel
+            }
+        }
+        
         store.reset();
         dispatchActions._unbindSockets();
     },

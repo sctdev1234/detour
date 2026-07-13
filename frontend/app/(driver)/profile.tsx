@@ -20,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import React from 'react';
 import {
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -30,6 +31,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../../constants/theme';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDeleteAccount, useLogout } from '../../hooks/api/useAuthQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -38,8 +40,8 @@ export default function DriverProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { user, updateUser } = useAuthStore();
-    const { mutate: logout } = useLogout();
+    const { user, updateUser, logout } = useAuthStore();
+    const queryClient = useQueryClient();
     const { mutateAsync: deleteAccount } = useDeleteAccount();
     const { showConfirm, showToast } = useUIStore();
 
@@ -52,21 +54,34 @@ export default function DriverProfileScreen() {
     };
 
     const handleSignOut = async () => {
-        showConfirm({
-            title: "Sign Out",
-            message: "Are you sure you want to sign out?",
-            confirmText: "Sign Out",
-            cancelText: "Cancel",
-            onConfirm: async () => {
-                try {
-                    logout();
-                    router.replace('/(auth)/login');
-                } catch (error) {
-                    console.error(error);
-                    showToast("Failed to sign out", 'error');
+        console.log('[DriverProfile] handleSignOut triggered');
+        // Using standard native Alert to guarantee it always renders on top of stacks and modals
+        Alert.alert(
+            "Sign Out",
+            "Are you sure you want to sign out?",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel",
+                    onPress: () => console.log('[DriverProfile] Sign out canceled')
+                },
+                {
+                    text: "Sign Out",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            console.log('[DriverProfile] Logging out user and clearing cache');
+                            logout();
+                            queryClient.clear();
+                            router.replace('/(auth)/login');
+                        } catch (error) {
+                            console.error('[DriverProfile] Sign out failed:', error);
+                            showToast("Failed to sign out", 'error');
+                        }
+                    }
                 }
-            }
-        });
+            ]
+        );
     };
 
     const handleDeleteAccount = async () => {
@@ -81,7 +96,6 @@ export default function DriverProfileScreen() {
             onConfirm: async () => {
                 try {
                     await deleteAccount();
-                    router.replace('/(auth)/login');
                     showToast("Account deleted successfully", 'success');
                 } catch (error: any) {
                     console.error(error);

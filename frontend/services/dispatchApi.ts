@@ -22,7 +22,7 @@ export const dispatchApi = {
      */
     requestRide: async (payload: TripTemplatePayload) => {
         const response = await api.post('/v2/dispatch/template', payload);
-        return response.data; // { template, instances }
+        return response.data.data; // Unwraps backend { success, data }
     },
 
     /**
@@ -30,7 +30,7 @@ export const dispatchApi = {
      */
     acceptOffer: async (offerId: string) => {
         const response = await api.post(`/v2/dispatch/offer/${offerId}/accept`);
-        return response.data; // { assignment }
+        return response.data.data; // Unwraps backend { success, data }
     },
 
     /**
@@ -38,6 +38,14 @@ export const dispatchApi = {
      */
     getRecoveryState: async () => {
         const response = await api.get('/v2/dispatch/recovery');
-        return response.data; // { status, tripInstance, offers, assignment }
+        return response.data.data; // Unwraps backend { success, data }
+    },
+
+    /**
+     * Cancels the active ride search for the passenger.
+     */
+    cancelSearch: async (tripInstanceId: string) => {
+        const response = await api.post('/v2/dispatch/cancel', { tripInstanceId });
+        return response.data.data; // Unwraps backend { success, data }
     }
 };

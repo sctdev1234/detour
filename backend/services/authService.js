@@ -230,7 +230,7 @@ class AuthService {
             const Trip = require('../models/Trip');
             const activeTrip = await Trip.findOne({ 
                 driverId: userId, 
-                status: { $nin: ['RIDE_COMPLETED', 'CANCELLED', 'ARCHIVED'] } 
+                status: { $nin: ['CREATED', 'PENDING', 'MATCHING', 'PARTIAL', 'FULL', 'CONFIRMED', 'COMPLETED', 'RIDE_COMPLETED', 'CANCELLED', 'ARCHIVED'] } 
             });
             if (activeTrip) {
                 throw new AppError('Cannot go offline or break during an active trip', 400);

@@ -11,6 +11,7 @@
 const DispatchServiceV2 = require('../services/v2/dispatchService');
 const TripTemplate = require('../models/TripTemplate');
 const TripInstance = require('../models/TripInstance');
+const TripStateMachine = require('../state/TripStateMachine');
 
 exports.createTemplate = async (req, res) => {
     try {
@@ -117,7 +118,7 @@ exports.getRecoveryState = async (req, res) => {
             status = 'ASSIGNED';
             if (instance.status === 'EN_ROUTE') status = 'EN_ROUTE';
             if (instance.status === 'ARRIVED') status = 'ARRIVED';
-            if (instance.status === 'STARTED') status = 'IN_PROGRESS';
+            if (instance.status === 'STARTED') status = 'STARTED';
         } else if (offers.length > 0) {
             status = 'OFFERS_RECEIVED';
         }
@@ -133,6 +134,48 @@ exports.getRecoveryState = async (req, res) => {
         });
     } catch (error) {
         console.error('[DispatchController] getRecoveryState error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+exports.cancelSearch = async (req, res) => {
+    try {
+        const passengerId = req.user.id;
+        
+        // Find the active TripInstance for this passenger
+        const instance = await TripInstance.findOne({ 
+            passengerIds: passengerId,
+            status: { $nin: ['COMPLETED', 'CANCELLED'] }
+        });
+
+        if (!instance) {
+            return res.status(404).json({ success: false, error: 'No active trip found to cancel' });
+        }
+
+        // Enforce valid transition to CANCELLED
+        TripStateMachine.validateTransition(instance.status, TripStateMachine.STATES.CANCELLED);
+        instance.status = TripStateMachine.STATES.CANCELLED;
+        instance.stateTimestamps = instance.stateTimestamps || {};
+        instance.stateTimestamps.cancelledAt = new Date();
+        await instance.save();
+
+        // Reject pending offers
+        const Offer = require('../models/Offer');
+        const OfferStateMachine = require('../state/OfferStateMachine');
+        await Offer.updateMany(
+            { tripInstanceId: instance._id, status: OfferStateMachine.STATES.PENDING },
+            { $set: { status: OfferStateMachine.STATES.REJECTED } }
+        );
+
+        // Notify client and driver via socket
+        const io = req.app.get('socketio');
+        if (io) {
+            io.to(`trip:${instance._id}`).emit('trip_status_updated', { status: 'CANCELLED' });
+        }
+
+        res.status(200).json({ success: true, message: 'Trip search cancelled successfully' });
+    } catch (error) {
+        console.error('[DispatchController] Error cancelling search:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 };

@@ -140,6 +140,7 @@ export default function TripCreationWizard({
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<LocationResult[]>([]);
     const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [focusedInput, setFocusedInput] = useState<'pickup' | 'destination'>('destination');
 
     // Schedule State
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -290,10 +291,18 @@ export default function TripCreationWizard({
     }, [places]);
 
     const selectSearchResult = useCallback((item: LocationResult) => {
-        setDestination({ latitude: item.latitude, longitude: item.longitude });
-        setDestAddress(item.label);
-        setStep('schedule');
-    }, []);
+        if (focusedInput === 'pickup') {
+            setPickup({ latitude: item.latitude, longitude: item.longitude });
+            setPickupAddress(item.label);
+            setFocusedInput('destination');
+            setSearchQuery('');
+            setSearchResults([]);
+        } else {
+            setDestination({ latitude: item.latitude, longitude: item.longitude });
+            setDestAddress(item.label);
+            setStep('schedule');
+        }
+    }, [focusedInput]);
 
     const confirmMapLocation = useCallback(() => {
         if (!mapCenter) return;
@@ -317,6 +326,9 @@ export default function TripCreationWizard({
                 setPickupAddress(targetAddress);
             }
         }
+        setFocusedInput('destination');
+        setSearchQuery('');
+        setSearchResults([]);
         setStep('destination_search');
     }, [step, mapCenter, currentLocation, centerAddress, currentAddress]);
 
@@ -545,11 +557,13 @@ export default function TripCreationWizard({
 
             <LinearGradient colors={['rgba(0,0,0,0.5)', 'transparent']} style={styles.topGradient} pointerEvents="none" />
 
-            <TouchableOpacity style={[styles.mapBackBtn, { top: insets.top + 10 }]} onPress={goBack} activeOpacity={0.8}>
-                <BlurView intensity={80} tint="dark" style={styles.mapBackBtnBlur}>
-                    <ChevronLeft size={22} color="#FFF" />
-                </BlurView>
-            </TouchableOpacity>
+            {step !== 'destination_search' && (
+                <TouchableOpacity style={[styles.mapBackBtn, { top: insets.top + 10 }]} onPress={goBack} activeOpacity={0.8}>
+                    <BlurView intensity={80} tint="dark" style={styles.mapBackBtnBlur}>
+                        <ChevronLeft size={22} color="#FFF" />
+                    </BlurView>
+                </TouchableOpacity>
+            )}
 
             {(step === 'pickup' || step === 'destination_map') && (
                 <TouchableOpacity
@@ -570,88 +584,204 @@ export default function TripCreationWizard({
                 </TouchableOpacity>
             )}
 
-            <View style={[styles.bottomSheetWrapper, { height: currentSheetHeight }]}>
-                <BlurView intensity={95} tint={isDark ? 'dark' : 'light'} style={[styles.sheetInner, { backgroundColor: cardBg }]}>
-                    <View style={[styles.sheetHandle, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)' }]} />
-
-                    <View style={styles.header}>
-                        <Text style={[styles.headerTitle, { color: theme.text }]}>{getHeaderTitle()}</Text>
+            {/* Premium Full Screen Journey Search Panel */}
+            {step === 'destination_search' && (
+                <View style={[styles.searchFullScreen, { backgroundColor: surfaceBg, paddingTop: insets.top + 16 }]}>
+                    <View style={styles.searchHeaderRow}>
+                        <TouchableOpacity style={styles.searchBackBtn} onPress={goBack}>
+                            <ChevronLeft size={24} color={theme.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.searchHeaderTitle, { color: theme.text }]}>Plan your journey</Text>
                     </View>
 
-                    {/* Unified Journey Connector Card */}
-                    <View style={styles.journeyCard}>
-                        {/* Origin */}
-                        <View style={styles.journeyRow}>
-                            <View style={styles.indicatorWrap}>
-                                <View style={[styles.indicatorDot, { backgroundColor: '#10B981' }]} />
-                            </View>
-                            <View style={styles.journeyContent}>
-                                {step === 'pickup' ? (
-                                    <View>
-                                        <Text style={[styles.journeyMainText, { color: theme.text }]} numberOfLines={1}>{pickupTitle || 'Move map to select'}</Text>
-                                        {pickupSub ? <Text style={[styles.journeySubText, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>{pickupSub}</Text> : null}
-                                        {gpsAccuracy && !isMapDragging && !isResolvingAddress && (
-                                            <Text style={[styles.journeyMeta, { color: '#10B981' }]}>Accuracy: {gpsAccuracy} m</Text>
-                                        )}
-                                    </View>
-                                ) : (
-                                    <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={() => setStep('pickup')}>
-                                        <Text style={[styles.collapsedInputText, { color: theme.text }]} numberOfLines={1}>{pickupTitle}</Text>
+                    <View style={[styles.searchInputsContainer, { backgroundColor: inputBg }]}>
+                        {/* Journey Connector Visuals */}
+                        <View style={styles.searchJourneyVisual}>
+                            <View style={[styles.searchVisualDot, { backgroundColor: '#10B981' }]} />
+                            <View style={[styles.searchVisualLine, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
+                            <View style={[styles.searchVisualSquare, { backgroundColor: '#FF3B30' }]} />
+                        </View>
+
+                        <View style={styles.searchInputsFields}>
+                            {/* Pickup Input */}
+                            <View style={styles.searchInputRow}>
+                                <TextInput
+                                    style={[styles.searchInputField, { color: theme.text }]}
+                                    placeholder="Enter pickup location..."
+                                    placeholderTextColor={isDark ? '#636366' : '#9CA3AF'}
+                                    value={focusedInput === 'pickup' ? searchQuery : pickupAddress}
+                                    onFocus={() => {
+                                        setFocusedInput('pickup');
+                                        setSearchQuery('');
+                                        setSearchResults([]);
+                                    }}
+                                    onChangeText={handleSearch}
+                                    autoFocus={focusedInput === 'pickup'}
+                                />
+                                {focusedInput === 'pickup' && searchQuery.length > 0 && (
+                                    <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); }}>
+                                        <X size={16} color={theme.icon} />
                                     </TouchableOpacity>
                                 )}
                             </View>
-                        </View>
 
-                        <View style={[styles.journeyConnector, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA', opacity: step === 'pickup' ? 0.3 : 1 }]} />
+                            <View style={[styles.searchSeparator, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA' }]} />
 
-                        {/* Destination */}
-                        <View style={styles.journeyRow}>
-                            <View style={styles.indicatorWrap}>
-                                <View style={[styles.indicatorDot, { backgroundColor: step === 'pickup' ? (isDark ? '#3A3A3C' : '#D1D5DB') : '#FF3B30' }]} />
-                            </View>
-                            <View style={styles.journeyContent}>
-                                {step === 'destination_search' ? (
-                                    <View style={[styles.searchBox, { backgroundColor: inputBg, borderColor: theme.primary, borderWidth: 1 }]}>
-                                        <TextInput
-                                            style={[styles.searchInput, { color: theme.text }]}
-                                            placeholder="Search destination..."
-                                            placeholderTextColor={isDark ? '#636366' : '#9CA3AF'}
-                                            value={searchQuery}
-                                            onChangeText={handleSearch}
-                                            autoFocus
-                                        />
-                                        {searchQuery.length > 0 && (
-                                            <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                                <X size={18} color={theme.icon || '#888'} />
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                ) : step === 'destination_map' ? (
-                                    <View>
-                                        <Text style={[styles.journeyMainText, { color: theme.text }]} numberOfLines={1}>{destTitle || 'Move map to select'}</Text>
-                                        {destSub ? <Text style={[styles.journeySubText, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>{destSub}</Text> : null}
-                                    </View>
-                                ) : step === 'schedule' ? (
-                                    <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={handleDestinationPress}>
-                                        <Text style={[styles.collapsedInputText, { color: theme.text }]} numberOfLines={1}>{destTitle}</Text>
-                                    </TouchableOpacity>
-                                ) : (
-                                    <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={handleDestinationPress}>
-                                        <Text style={[styles.collapsedInputText, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>Where to?</Text>
+                            {/* Destination Input */}
+                            <View style={styles.searchInputRow}>
+                                <TextInput
+                                    style={[styles.searchInputField, { color: theme.text }]}
+                                    placeholder="Where to?"
+                                    placeholderTextColor={isDark ? '#636366' : '#9CA3AF'}
+                                    value={focusedInput === 'destination' ? searchQuery : destAddress}
+                                    onFocus={() => {
+                                        setFocusedInput('destination');
+                                        setSearchQuery('');
+                                        setSearchResults([]);
+                                    }}
+                                    onChangeText={handleSearch}
+                                    autoFocus={focusedInput === 'destination'}
+                                />
+                                {focusedInput === 'destination' && searchQuery.length > 0 && (
+                                    <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); }}>
+                                        <X size={16} color={theme.icon} />
                                     </TouchableOpacity>
                                 )}
                             </View>
                         </View>
                     </View>
 
-                    {/* Middle Content */}
-                    <View style={styles.middleContent}>
-                        {renderSuggestedPlaces()}
-                        {renderScheduleOptions()}
-                    </View>
+                    {/* Results list */}
+                    <View style={styles.searchResultsContainer}>
+                        <TouchableOpacity 
+                            style={styles.chooseMapRow} 
+                            onPress={() => {
+                                if (focusedInput === 'pickup') {
+                                    setStep('pickup');
+                                } else {
+                                    setStep('destination_map');
+                                }
+                            }}
+                        >
+                            <View style={styles.chooseMapIconBg}>
+                                <Crosshair size={20} color="#0A84FF" />
+                            </View>
+                            <View style={styles.chooseMapTextWrap}>
+                                <Text style={styles.chooseMapTitle}>
+                                    {focusedInput === 'pickup' ? 'Choose departure on map' : 'Choose destination on map'}
+                                </Text>
+                                <Text style={styles.chooseMapSubtitle}>Drag the map to select an exact point</Text>
+                            </View>
+                            <ChevronRight size={20} color={theme.icon || '#888'} />
+                        </TouchableOpacity>
 
-                    {/* Bottom CTA */}
-                    {step !== 'destination_search' && (
+                        <ScrollView style={styles.resultsList} keyboardShouldPersistTaps="handled">
+                            {isSearching && (
+                                <View style={styles.searchingState}>
+                                    <ActivityIndicator size="small" color={theme.primary} />
+                                    <Text style={[styles.searchingText, { color: theme.textSecondary || '#888' }]}>Searching...</Text>
+                                </View>
+                            )}
+
+                            {(searchQuery.trim().length > 0 ? searchResults : places.map(p => ({
+                                label: p.label,
+                                latitude: p.latitude,
+                                longitude: p.longitude,
+                                isSavedPlace: true,
+                                icon: p.icon
+                            }))).map((item, index) => {
+                                const iconColor = item.isSavedPlace ? theme.primary : (theme.icon || '#888');
+                                const Icon = item.icon === 'home' ? Home :
+                                             item.icon === 'briefcase' ? Briefcase :
+                                             item.icon === 'gym' ? Dumbbell :
+                                             item.icon === 'graduation-cap' ? GraduationCap :
+                                             item.isSavedPlace ? Star : MapPin;
+
+                                return (
+                                    <TouchableOpacity key={index} style={[styles.resultItem, { borderBottomColor: isDark ? '#2C2C2E' : '#F2F2F7' }]} onPress={() => selectSearchResult(item)}>
+                                        <View style={[styles.resultIconBg, { backgroundColor: inputBg }]}>
+                                            <Icon size={18} color={iconColor} />
+                                        </View>
+                                        <View style={styles.resultTextWrap}>
+                                            <Text style={[styles.resultTitle, { color: theme.text }]} numberOfLines={1}>{item.label.split(",")[0]}</Text>
+                                            <Text style={[styles.resultSubtitle, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>{item.label}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </View>
+            )}
+
+            {/* Bottom Sheet for other steps */}
+            {step !== 'destination_search' && (
+                <View style={[styles.bottomSheetWrapper, { height: currentSheetHeight }]}>
+                    <BlurView intensity={95} tint={isDark ? 'dark' : 'light'} style={[styles.sheetInner, { backgroundColor: cardBg }]}>
+                        <View style={[styles.sheetHandle, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)' }]} />
+
+                        <View style={styles.header}>
+                            <Text style={[styles.headerTitle, { color: theme.text }]}>{getHeaderTitle()}</Text>
+                        </View>
+
+                        {/* Unified Journey Connector Card */}
+                        <View style={styles.journeyCard}>
+                            {/* Origin */}
+                            <View style={styles.journeyRow}>
+                                <View style={styles.indicatorWrap}>
+                                    <View style={[styles.indicatorDot, { backgroundColor: '#10B981' }]} />
+                                </View>
+                                <View style={styles.journeyContent}>
+                                    {step === 'pickup' ? (
+                                        <TouchableOpacity onPress={() => { setStep('destination_search'); setFocusedInput('pickup'); setSearchQuery(''); setSearchResults([]); }} activeOpacity={0.7}>
+                                            <Text style={[styles.journeyMainText, { color: theme.text }]} numberOfLines={1}>{pickupTitle || 'Move map to select'}</Text>
+                                            {pickupSub ? <Text style={[styles.journeySubText, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>{pickupSub}</Text> : null}
+                                            {gpsAccuracy && !isMapDragging && !isResolvingAddress && (
+                                                <Text style={[styles.journeyMeta, { color: '#10B981' }]}>Accuracy: {gpsAccuracy} m (Tap to type)</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={() => { setFocusedInput('pickup'); setSearchQuery(''); setSearchResults([]); setStep('destination_search'); }}>
+                                            <Text style={[styles.collapsedInputText, { color: theme.text }]} numberOfLines={1}>{pickupTitle}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            </View>
+
+                            <View style={[styles.journeyConnector, { backgroundColor: isDark ? '#3A3A3C' : '#E5E5EA', opacity: step === 'pickup' ? 0.3 : 1 }]} />
+
+                            {/* Destination */}
+                            <View style={styles.journeyRow}>
+                                <View style={styles.indicatorWrap}>
+                                    <View style={[styles.indicatorDot, { backgroundColor: step === 'pickup' ? (isDark ? '#3A3A3C' : '#D1D5DB') : '#FF3B30' }]} />
+                                </View>
+                                <View style={styles.journeyContent}>
+                                    {step === 'destination_map' ? (
+                                        <View>
+                                            <Text style={[styles.journeyMainText, { color: theme.text }]} numberOfLines={1}>{destTitle || 'Move map to select'}</Text>
+                                            {destSub ? <Text style={[styles.journeySubText, { color: theme.textSecondary || '#888' }]} numberOfLines={1}>{destSub}</Text> : null}
+                                        </View>
+                                    ) : step === 'schedule' ? (
+                                        <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={handleDestinationPress}>
+                                            <Text style={[styles.collapsedInputText, { color: theme.text }]} numberOfLines={1}>{destTitle}</Text>
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity style={[styles.collapsedInput, { backgroundColor: inputBg }]} onPress={handleDestinationPress}>
+                                            <Text style={[styles.collapsedInputText, { color: destTitle ? theme.text : (theme.textSecondary || '#888') }]} numberOfLines={1}>
+                                                {destTitle || 'Where to?'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Middle Content */}
+                        <View style={styles.middleContent}>
+                            {renderScheduleOptions()}
+                        </View>
+
+                        {/* Bottom CTA */}
                         <TouchableOpacity
                             style={[styles.ctaBtn, { backgroundColor: btnDisabled ? theme.primary + '40' : theme.primary, marginBottom: Platform.OS === 'ios' ? insets.bottom || 16 : 16 }]}
                             onPress={btnAction}
@@ -664,9 +794,9 @@ export default function TripCreationWizard({
                                 <Text style={styles.ctaText}>{netInfo.isConnected === false && btnText !== 'Confirm Pickup' && btnText !== 'Confirm Destination' ? 'Offline' : btnText}</Text>
                             )}
                         </TouchableOpacity>
-                    )}
-                </BlurView>
-            </View>
+                    </BlurView>
+                </View>
+            )}
 
             {/* Time Picker Modal */}
             <Modal visible={isTimePickerVisible} transparent animationType="fade" onRequestClose={() => setIsTimePickerVisible(false)}>
@@ -786,5 +916,88 @@ const styles = StyleSheet.create({
     timePresetChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
     timePresetText: { fontSize: 14, fontWeight: '700' },
     timeConfirmBtn: { height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-    timeConfirmText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+    timeConfirmText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+    
+    // Premium Full Screen Search View
+    searchFullScreen: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        paddingHorizontal: 20,
+    },
+    searchHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    searchBackBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    searchHeaderTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    searchInputsContainer: {
+        flexDirection: 'row',
+        borderRadius: 16,
+        padding: 16,
+        alignItems: 'center',
+        marginBottom: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+    },
+    searchJourneyVisual: {
+        width: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    searchVisualDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    searchVisualLine: {
+        width: 2,
+        height: 36,
+        marginVertical: 4,
+    },
+    searchVisualSquare: {
+        width: 8,
+        height: 8,
+    },
+    searchInputsFields: {
+        flex: 1,
+        gap: 8,
+    },
+    searchInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 36,
+    },
+    searchInputField: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '600',
+        padding: 0,
+    },
+    searchSeparator: {
+        height: 1,
+        width: '100%',
+    },
+    searchResultsContainer: {
+        flex: 1,
+    },
 });
