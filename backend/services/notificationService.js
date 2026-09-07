@@ -35,6 +35,7 @@ class NotificationService {
         DomainEventBus.on('DriverAcceptedOffer', (event) => this.handleDriverAcceptedOffer(event));
         DomainEventBus.on('DriverRejectedOffer', (event) => this.handleDriverRejectedOffer(event));
         DomainEventBus.on('TripStatusUpdated', (event) => this.handleTripStatusUpdated(event));
+        DomainEventBus.on('TripCompleted', (event) => this.handleTripCompleted(event));
         DomainEventBus.on('RecurringTemplatesLinked', (event) => this.handleRecurringTemplatesLinked(event));
         
         // SPRINT: Finance
@@ -65,25 +66,61 @@ class NotificationService {
         const offer = event.payload;
         // Emit to the specific driver's room using the expected frontend event name
         this.emitToDriver(offer.driverId, 'dispatch:offer_dispatched', offer);
-        // Also emit to the passenger that an offer came in
-        this.emitToPassenger(offer.passengerId, 'dispatch:offer_received', offer);
+        // Note: Passenger will receive the offer only when the driver proposes an invitation!
     }
 
-    static handleTripAssigned(event) {
+    static async handleTripAssigned(event) {
         const assignment = event.payload;
-        // Notify driver
-        this.emitToDriver(assignment.driverId, 'dispatch:trip_assigned_to_driver', assignment);
+        // Notify driver - STRICT SECURITY: NEVER expose OTP to the driver!
+        const driverAssignment = { ...assignment };
+        delete driverAssignment.otp;
+        delete driverAssignment.verificationOtp;
+        this.emitToDriver(assignment.driverId, 'dispatch:trip_assigned_to_driver', driverAssignment);
         
-        // Notify passenger
+        // Notify passenger via trip room and user channel
         if (assignment.tripInstanceId) {
-            this.io.to(`trip:${assignment.tripInstanceId.toString()}`).emit('dispatch:driver_assigned', assignment);
+            this.io.to(`trip:${assignment.tripInstanceId.toString()}`).emit('dispatch:driver_assigned', driverAssignment);
+            try {
+                const TripInstance = require('../models/TripInstance');
+                const instance = await TripInstance.findById(assignment.tripInstanceId).select('passengerIds').lean();
+                if (instance?.passengerIds) {
+                    instance.passengerIds.forEach(pId => {
+                        this.emitToPassenger(pId, 'dispatch:driver_assigned', assignment);
+                    });
+                }
+            } catch (err) {
+                console.error('[NotificationService] Error notifying passenger of assignment:', err);
+            }
         }
     }
 
-    static handleTripSearching(event) {
+    static async handleTripSearching(event) {
         const instance = event.payload;
-        // Broadcast to nearby drivers (simplified for now)
-        this.io.emit('dispatch:trip_searching', { instanceId: instance._id, pickup: instance.pickup });
+        if (!instance) return;
+        try {
+            const Route = require('../models/Route');
+            const User = require('../models/User');
+            const { evaluateCorridorMatch } = require('../utils/corridorMatcher');
+
+            const activeDriverRoutes = await Route.find({ role: 'driver', status: 'active' }).lean();
+            for (const dRoute of activeDriverRoutes) {
+                if (!dRoute.userId) continue;
+                // Verify driver is online
+                const driverUser = await User.findById(dRoute.userId).select('driverStatus').lean();
+                if (driverUser?.driverStatus !== 'ONLINE') continue;
+
+                if (evaluateCorridorMatch(dRoute, instance).isMatch) {
+                    this.emitToDriver(dRoute.userId, 'dispatch:trip_searching', {
+                        instanceId: instance._id,
+                        driverRouteId: dRoute._id,
+                        pickup: instance.pickup,
+                        destination: instance.destination
+                    });
+                }
+            }
+        } catch (err) {
+            console.error('[NotificationService] Error targeting trip searching drivers:', err);
+        }
     }
 
     static handleCounterOffer(event) {
@@ -103,11 +140,55 @@ class NotificationService {
         // Optional passenger notification
     }
 
-    static handleTripStatusUpdated(event) {
+    static async handleTripStatusUpdated(event) {
         const payload = event.payload;
         // Broadcast trip status updates (EN_ROUTE, ARRIVED, STARTED, COMPLETED) to passenger
         if (payload.tripInstanceId) {
             this.io.to(`trip:${payload.tripInstanceId.toString()}`).emit('dispatch:trip_status_updated', payload);
+            if (payload.driverId) {
+                this.emitToDriver(payload.driverId, 'dispatch:trip_status_updated', payload);
+            }
+            try {
+                const TripInstance = require('../models/TripInstance');
+                const instance = await TripInstance.findById(payload.tripInstanceId).select('passengerIds driverId').lean();
+                if (instance?.passengerIds) {
+                    instance.passengerIds.forEach(pId => {
+                        this.emitToPassenger(pId, 'dispatch:trip_status_updated', payload);
+                    });
+                }
+            } catch (err) {
+                console.error('[NotificationService] Error notifying passenger of trip status update:', err);
+            }
+        }
+    }
+
+    static async handleTripCompleted(event) {
+        const payload = event?.payload || event || {};
+        const tripInstanceId = payload.tripInstanceId;
+        const driverId = payload.driverId;
+        const statusPayload = {
+            tripInstanceId,
+            driverId,
+            status: 'COMPLETED',
+            completedAt: payload.completedAt || new Date()
+        };
+
+        if (tripInstanceId) {
+            this.io?.to(`trip:${tripInstanceId.toString()}`).emit('dispatch:trip_status_updated', statusPayload);
+            if (driverId) {
+                this.emitToDriver(driverId, 'dispatch:trip_status_updated', statusPayload);
+            }
+            try {
+                const TripInstance = require('../models/TripInstance');
+                const instance = await TripInstance.findById(tripInstanceId).select('passengerIds').lean();
+                if (instance?.passengerIds) {
+                    instance.passengerIds.forEach(pId => {
+                        this.emitToPassenger(pId, 'dispatch:trip_status_updated', statusPayload);
+                    });
+                }
+            } catch (err) {
+                console.error('[NotificationService] Error notifying passenger of trip completion:', err);
+            }
         }
     }
 

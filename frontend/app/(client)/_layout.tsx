@@ -45,10 +45,6 @@ export default function ClientLayout() {
                 name="trip-details"
                 options={{ presentation: 'modal' }}
             />
-            <Stack.Screen
-                name="edit-profile"
-                options={{ presentation: 'modal' }}
-            />
         </Stack>
     );
 }

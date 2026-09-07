@@ -35,9 +35,21 @@ export const driverDispatchApi = {
         return response.data.data;
     },
 
-    /** Update trip status (EN_ROUTE, ARRIVED, STARTED, COMPLETED). */
-    updateTripStatus: async (tripInstanceId: string, status: string) => {
+    /** Update trip status (EN_ROUTE, ARRIVED). Direct BOARDED/COMPLETED forbidden. */
+    updateTripStatus: async (tripInstanceId: string, status: 'EN_ROUTE' | 'ARRIVED' | string) => {
         const response = await api.patch(`/v2/dispatch/driver/trip/${tripInstanceId}/status`, { status });
+        return response.data.data;
+    },
+
+    /** Canonical boarding: Validate passenger OTP and transition to BOARDED. */
+    boardPassenger: async (tripInstanceId: string, otp: string, journeyId?: string) => {
+        const response = await api.post(`/v2/dispatch/driver/trip/${tripInstanceId}/board`, { otp, journeyId });
+        return response.data.data;
+    },
+
+    /** Canonical dropoff: Drop off passenger and trigger settlement + completion. */
+    dropoffPassenger: async (tripInstanceId: string, journeyId?: string) => {
+        const response = await api.post(`/v2/dispatch/driver/trip/${tripInstanceId}/dropoff`, { journeyId });
         return response.data.data;
     },
 
@@ -45,5 +57,18 @@ export const driverDispatchApi = {
     getRecoveryState: async () => {
         const response = await api.get('/v2/dispatch/driver/recovery');
         return response.data.data;
+    },
+
+    /** Driver proposes/creates an invitation offer to a matched passenger */
+    invitePassenger: async (params: {
+        clientRouteId?: string;
+        tripInstanceId?: string;
+        driverRouteId?: string;
+        tripId?: string;
+        proposedPrice?: number;
+    }) => {
+        const response = await api.post('/v2/dispatch/driver/invite-passenger', params);
+        return response.data;
     }
 };
+

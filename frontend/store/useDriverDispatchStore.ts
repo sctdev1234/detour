@@ -15,6 +15,10 @@ export interface DriverOffer {
     expiresAt: string;
     pickup?: { coordinates: [number, number]; address: string };
     destination?: { coordinates: [number, number]; address: string };
+    counterPrice?: number;
+    isDeclined?: boolean;
+    declinedReason?: string;
+    isCountered?: boolean;
 }
 
 export interface DriverTripSummary {

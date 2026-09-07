@@ -61,7 +61,7 @@ class CronServices {
             try {
                 const fifteenMinsAgo = new Date(Date.now() - 15 * 60000);
                 const updated = await User.updateMany(
-                    { role: 'driver', driverStatus: 'ONLINE', lastHeartbeat: { $lt: fifteenMinsAgo } },
+                    { role: 'driver', driverStatus: 'ONLINE', lastHeartbeat: { $exists: true, $type: 'date', $lt: fifteenMinsAgo } },
                     { $set: { driverStatus: 'OFFLINE' } }
                 );
                 if (updated.modifiedCount > 0) {
@@ -69,6 +69,34 @@ class CronServices {
                 }
             } catch (err) {
                 console.error('[Cron] Driver Inactivity Error:', err);
+            }
+        });
+
+        // 4. Automated Driver Earnings Clearance Worker (DEC-LC-001)
+        // Runs every 5 minutes to clear digital earnings pending for >= 2 hours
+        cron.schedule('*/5 * * * *', async () => {
+            try {
+                const earningsClearanceWorker = require('./earningsClearanceWorker');
+                const result = await earningsClearanceWorker.processEligibleClearances();
+                if (result.clearedCount > 0) {
+                    console.log(`[Cron] Cleared earnings for ${result.clearedCount} journeys (${result.totalClearedMad} MAD total)`);
+                }
+            } catch (err) {
+                console.error('[Cron] Earnings Clearance Error:', err);
+            }
+        });
+
+        // 5. Secondary Trip Completion Reconciliation Worker (DEC-LC-002)
+        // Runs every 2 minutes as fallback repair for unclosed trips
+        cron.schedule('*/2 * * * *', async () => {
+            try {
+                const tripCompletionEngine = require('./tripCompletionEngine');
+                const result = await tripCompletionEngine.reconcileStaleTrips();
+                if (result.completedCount > 0) {
+                    console.log(`[Cron] Reconciled and completed ${result.completedCount} stale trips`);
+                }
+            } catch (err) {
+                console.error('[Cron] Trip Reconciliation Error:', err);
             }
         });
 

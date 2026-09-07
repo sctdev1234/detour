@@ -17,7 +17,7 @@ import Animated, {
     withRepeat,
     withTiming,
 } from 'react-native-reanimated';
-import { useTrips } from '../../hooks/api/useTripQueries';
+import { useMatches, useRoutes, useTrips, useInvitePassenger, useRemoveRoute } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useDashboardStore } from '../../store/useDashboardStore';
 import { useLocationStore } from '../../store/useLocationStore';
@@ -26,11 +26,17 @@ import { decodePolyline } from '../../utils/location';
 import { IN_PROGRESS_STATUSES } from '../../utils/timeUtils';
 import FloatingTopBar from './FloatingTopBar';
 import QuickActions from './QuickActions';
+import { DriverRouteSelector } from './DriverRouteSelector';
+import { DriverRouteDetailsCard } from './DriverRouteDetailsCard';
+import { DriverFindingClientsPanel } from './DriverFindingClientsPanel';
+import { DriverNotificationToast, DriverNotificationData } from './DriverNotificationToast';
 import DriverTripExperience from '../dispatch/driver/DriverTripExperience';
+import { dispatchSocket } from '../../services/dispatchSocket';
 import { useUIStore } from '../../store/useUIStore';
 import { useDriverDispatchStore } from '../../store/useDriverDispatchStore';
 import { useDispatchStore } from '../../store/useDispatchStore';
 import { driverDispatchActions } from '../../store/driverDispatchActions';
+import { LatLng } from '../../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -55,15 +61,28 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     const { user } = useAuthStore();
     const { location: trackedLocation } = useLocationStore();
     const { places, fetchPlaces } = usePlacesStore();
-    const { showSavedPlaces, showSavedRoutes, driverStatus } = useDashboardStore();
-    const { featureFlags } = useUIStore();
+    const { 
+        showSavedPlaces, 
+        showSavedRoutes, 
+        driverStatus,
+        selectedRouteId,
+        setSelectedRouteId,
+        isFindingClientsOpenByRoute,
+        setFindingClientsForRoute
+    } = useDashboardStore();
+    const { featureFlags, showToast } = useUIStore();
+    const { mutateAsync: removeRoute, isPending: isDeletingRoute } = useRemoveRoute();
+    const { mutateAsync: invitePassenger, isPending: isInviting } = useInvitePassenger();
+
     const driverV2Status = useDriverDispatchStore((s) => s.presence === 'ONLINE' ? 'ONLINE' : 'OFFLINE'); // Temporary simplify for Dashboard logic
     const driverV2ActiveTrip = useDriverDispatchStore((s) => s.activeTrip);
+    const currentOffer = useDriverDispatchStore((s) => s.currentOffer);
     const passengerV2ActiveTrip = useDispatchStore((s) => s.assignment || s.tripInstance);
 
     const presence = useDriverDispatchStore((s) => s.presence);
 
     const { data: allTrips } = useTrips();
+    const { data: allRoutes } = useRoutes();
 
     const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
 
@@ -73,6 +92,106 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
         t.driverId?.id === user?.id ||
         t.driverId === user?.id
     ) || [];
+
+    // Filter routes for current driver (All Driver Routes)
+    const driverRoutes = React.useMemo(() => {
+        return (allRoutes || []).filter((r: any) =>
+            r.role === 'driver' || r.userId === user?.id || r.userId?._id === user?.id
+        );
+    }, [allRoutes, user?.id]);
+
+    const activeOrPrimaryRoute = React.useMemo(() => {
+        return driverRoutes.find((r: any) => r.status === 'active') || driverRoutes[0] || null;
+    }, [driverRoutes]);
+
+    // Selected route derived from independent selectedRouteId
+    const selectedRoute = React.useMemo(() => {
+        if (!selectedRouteId) return null;
+        return driverRoutes.find((r: any) => (r.id || r._id) === selectedRouteId) || null;
+    }, [driverRoutes, selectedRouteId]);
+
+    const isFindingOpen = selectedRouteId ? !!isFindingClientsOpenByRoute[selectedRouteId] : false;
+
+    const [notification, setNotification] = useState<DriverNotificationData | null>(null);
+
+    // Route selection handler
+    const handleSelectRoute = useCallback((routeId: string) => {
+        const nextId = selectedRouteId === routeId ? null : routeId;
+        setSelectedRouteId(nextId);
+
+        if (nextId) {
+            const r = driverRoutes.find((dr: any) => (dr.id || dr._id) === nextId);
+            if (r?.status === 'active' || r?.status === 'MATCHING') {
+                setFindingClientsForRoute(nextId, true);
+            }
+            const lat = r?.startPoint?.latitude ?? (r?.startPoint as any)?.coordinates?.[1];
+            const lon = r?.startPoint?.longitude ?? (r?.startPoint as any)?.coordinates?.[0];
+            if (lat && lon && mapRef.current) {
+                mapRef.current.animateToRegion({
+                    latitude: lat,
+                    longitude: lon,
+                    latitudeDelta: 0.06,
+                    longitudeDelta: 0.06,
+                }, 600);
+            }
+        }
+    }, [selectedRouteId, driverRoutes, setSelectedRouteId, setFindingClientsForRoute]);
+
+    // Realtime notification listeners
+    useEffect(() => {
+        const handleTripSearching = (data: any) => {
+            const rId = data.driverRouteId || data.routeId;
+            if (rId) {
+                setNotification({
+                    id: `search-${Date.now()}`,
+                    routeId: rId,
+                    type: 'new_match',
+                    clientName: data.clientName || 'Passenger',
+                    pickup: data.pickup,
+                    fare: data.fare || data.estimatedFare,
+                });
+            }
+        };
+
+        const handleDriverAssigned = (data: any) => {
+            const rId = data.driverRouteId || data.routeId;
+            if (rId) {
+                setNotification({
+                    id: `assigned-${Date.now()}`,
+                    routeId: rId,
+                    type: 'offer_accepted',
+                    clientName: data.clientName || 'Passenger',
+                    pickup: data.pickup,
+                    fare: data.fare,
+                });
+            }
+        };
+
+        const unsubSearching = dispatchSocket.onTripSearching(handleTripSearching);
+        const unsubAssigned = dispatchSocket.onDriverAssigned(handleDriverAssigned);
+
+        return () => {
+            unsubSearching();
+            unsubAssigned();
+        };
+    }, []);
+
+    const handleNotificationView = useCallback((routeId: string) => {
+        setSelectedRouteId(routeId);
+        setFindingClientsForRoute(routeId, true);
+        setNotification(null);
+        const r = driverRoutes.find((dr: any) => (dr.id || dr._id) === routeId);
+        const lat = r?.startPoint?.latitude ?? (r?.startPoint as any)?.coordinates?.[1];
+        const lon = r?.startPoint?.longitude ?? (r?.startPoint as any)?.coordinates?.[0];
+        if (lat && lon && mapRef.current) {
+            mapRef.current.animateToRegion({
+                latitude: lat,
+                longitude: lon,
+                latitudeDelta: 0.06,
+                longitudeDelta: 0.06,
+            }, 600);
+        }
+    }, [driverRoutes, setSelectedRouteId, setFindingClientsForRoute]);
 
     // V1 Active trip
     const v1ActiveTrip = trips.find((t: any) =>
@@ -84,6 +203,30 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                        featureFlags.enableV2Dispatch && passengerV2ActiveTrip ? passengerV2ActiveTrip :
                        v1ActiveTrip;
 
+    // Active route matches strictly scoped to selected route (or primary if none selected)
+    const isDriverSearching = presence === 'ONLINE' && !activeTrip;
+    const targetRouteForMatches = selectedRoute || activeOrPrimaryRoute;
+    const activeRouteId = targetRouteForMatches ? (targetRouteForMatches.id || (targetRouteForMatches as any)._id || null) : null;
+    const { data: rawMatchedClients, refetch: refetchMatches } = useMatches(activeRouteId);
+    const matchedClients = React.useMemo(() => {
+        if (!rawMatchedClients) return [];
+        return rawMatchedClients;
+    }, [rawMatchedClients]);
+
+    // Recover state on mount (e.g. if driver was already ONLINE or has active offer)
+    useEffect(() => {
+        driverDispatchActions.recoverState().then(() => {
+            refetchMatches();
+        });
+    }, [refetchMatches]);
+
+    // Re-fetch matches whenever driver status transitions to ONLINE
+    useEffect(() => {
+        if (presence === 'ONLINE') {
+            refetchMatches();
+        }
+    }, [presence, refetchMatches]);
+
     // Find the primary trip to show on map (active or next scheduled)
     const tripToDisplay = React.useMemo(() => {
         if (activeTrip) return activeTrip;
@@ -93,6 +236,99 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             t.status?.toLowerCase() !== 'cancelled'
         );
     }, [activeTrip, trips]);
+
+    // Display route on map while waiting for clients or active
+    const displayRoute = React.useMemo(() => {
+        const getPt = (p: any): LatLng | undefined => {
+            if (!p) return undefined;
+            if (typeof p.latitude === 'number' && typeof p.longitude === 'number' && p.latitude !== 0) {
+                return { latitude: p.latitude, longitude: p.longitude, address: p.address };
+            }
+            if (Array.isArray(p.coordinates) && p.coordinates.length >= 2) {
+                return { latitude: p.coordinates[1], longitude: p.coordinates[0], address: p.address };
+            }
+            return undefined;
+        };
+
+        // 1. Active trip
+        if (activeTrip) {
+            const r = activeTrip.routeId || activeTrip;
+            const start = getPt(r.startPoint || r.pickup);
+            const end = getPt(r.endPoint || r.destination);
+            if (start && end) {
+                return {
+                    startPoint: start,
+                    endPoint: end,
+                    waypoints: (r.waypoints || []).map(getPt).filter(Boolean) as LatLng[],
+                    trip: activeTrip,
+                };
+            }
+        }
+
+        // 2. Incoming offer
+        if (currentOffer) {
+            const start = getPt(currentOffer.pickup);
+            const end = getPt(currentOffer.destination);
+            if (start && end) {
+                return {
+                    startPoint: start,
+                    endPoint: end,
+                    waypoints: [],
+                    trip: undefined,
+                };
+            }
+        }
+
+        // 3. Next scheduled trip
+        if (tripToDisplay?.routeId) {
+            const r = tripToDisplay.routeId;
+            const start = getPt(r.startPoint);
+            const end = getPt(r.endPoint);
+            if (start && end) {
+                return {
+                    startPoint: start,
+                    endPoint: end,
+                    waypoints: (r.waypoints || []).map(getPt).filter(Boolean) as LatLng[],
+                    trip: tripToDisplay,
+                };
+            }
+        }
+
+        // 4. Driver's created route (when waiting for clients or viewing route)
+        const targetRoute = selectedRoute || activeOrPrimaryRoute;
+        if (targetRoute) {
+            const start = getPt(targetRoute.startPoint);
+            const end = getPt(targetRoute.endPoint);
+            if (start && end) {
+                return {
+                    startPoint: start,
+                    endPoint: end,
+                    waypoints: (targetRoute.waypoints || []).map(getPt).filter(Boolean) as LatLng[],
+                    trip: undefined,
+                };
+            }
+        }
+
+        return {
+            startPoint: undefined,
+            endPoint: undefined,
+            waypoints: [],
+            trip: undefined,
+        };
+    }, [activeTrip, currentOffer, tripToDisplay, activeOrPrimaryRoute]);
+
+    const mapMode = React.useMemo(() => {
+        if (displayRoute.trip) return 'trip';
+        if (displayRoute.startPoint && displayRoute.endPoint) return 'route';
+        return presence === 'ONLINE' ? 'driver-idle' : 'browse';
+    }, [displayRoute, presence]);
+
+    const dynamicEdgePadding = React.useMemo(() => ({
+        top: 140, // Top bar offset
+        right: 40,
+        bottom: 340, // Bottom card offset
+        left: 40,
+    }), []);
 
     // --- Pulsing animation for user location dot ---
     const pulseScale = useSharedValue(1);
@@ -184,45 +420,56 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     ]);
 
     const routePolylines = React.useMemo(() => {
-        return trips
-            .filter((t: any) => {
-                const isActive = IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active';
-                const hasRoute = t.routeId?.routeGeometry || (t.routeId?.startPoint && t.routeId?.endPoint);
-                return (isActive || showSavedRoutes) && hasRoute;
-            })
-            .map((t: any) => {
-                const isActive = IN_PROGRESS_STATUSES.includes(t.status) || t.status === 'active';
-                const r = t.routeId || {};
+        // Render all driver routes simultaneously with selection state
+        return driverRoutes.map((r: any) => {
+            const routeId = r.id || r._id;
+            const isSelected = selectedRouteId === routeId;
+            const isActive = r.status === 'active';
 
-                const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0) ? r.startPoint : null;
-                const endP = (r.endPoint?.latitude !== undefined && r.endPoint.latitude !== 0 && r.endPoint.longitude !== 0) ? r.endPoint : null;
+            const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0)
+                ? r.startPoint
+                : (r.startPoint?.coordinates)
+                    ? { latitude: r.startPoint.coordinates[1], longitude: r.startPoint.coordinates[0], address: r.startPoint.address }
+                    : null;
 
-                let coords: any[] = [];
-                if (r.routeGeometry) {
-                    coords = decodePolyline(r.routeGeometry);
-                } else if (startP && endP) {
-                    coords = [
-                        startP,
-                        ...(r.waypoints || []).filter((wp: any) => wp?.latitude !== undefined),
-                        endP,
-                    ];
-                }
+            const endP = (r.endPoint?.latitude !== undefined && r.endPoint.latitude !== 0 && r.endPoint.longitude !== 0)
+                ? r.endPoint
+                : (r.endPoint?.coordinates)
+                    ? { latitude: r.endPoint.coordinates[1], longitude: r.endPoint.coordinates[0], address: r.endPoint.address }
+                    : null;
 
-                return {
-                    id: t._id || t.id,
-                    coords: coords.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0),
-                    isActive,
-                    color: isActive
-                        ? '#EF4444'
-                        : colorScheme === 'dark'
-                            ? 'rgba(79, 70, 229, 0.6)' // Increased opacity
-                            : 'rgba(79, 70, 229, 0.5)', // Increased opacity
-                    width: isActive ? 6 : 4, // Slightly thicker
-                    startPoint: startP,
-                    endPoint: endP,
-                };
-            });
-    }, [trips, showSavedRoutes, colorScheme]);
+            let coords: any[] = [];
+            if (r.routeGeometry) {
+                coords = decodePolyline(r.routeGeometry);
+            } else if (startP && endP) {
+                coords = [
+                    startP,
+                    ...(r.waypoints || []).map((wp: any) => {
+                        if (wp?.latitude !== undefined) return wp;
+                        if (wp?.coordinates) return { latitude: wp.coordinates[1], longitude: wp.coordinates[0], address: wp.address };
+                        return null;
+                    }).filter(Boolean),
+                    endP,
+                ];
+            }
+
+            return {
+                id: routeId,
+                coords: coords.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0),
+                isActive,
+                isSelected,
+                color: isSelected
+                    ? (theme.primary || '#3b82f6')
+                    : (colorScheme === 'dark'
+                        ? 'rgba(99, 102, 241, 0.75)'
+                        : 'rgba(99, 102, 241, 0.6)'),
+                width: isSelected ? 6 : 4,
+                zIndex: isSelected ? 10 : 2,
+                startPoint: startP,
+                endPoint: endP,
+            };
+        });
+    }, [driverRoutes, selectedRouteId, theme.primary, colorScheme]);
 
     // --- Saved places icons ---
     const getSavedPlaceColor = (icon?: string) => {
@@ -238,20 +485,39 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     return (
         <View style={styles.container}>
             {/* FULLSCREEN MAP */}
-            <DetourMap
-                ref={mapRef}
-                mode={presence === 'ONLINE' ? 'driver-idle' : 'browse'}
-                theme={theme}
-                fullScreen={true}
-                initialRegion={DEFAULT_REGION}
-                trip={tripToDisplay}
-                routePolylines={routePolylines}
-            />
+            <View style={StyleSheet.absoluteFillObject}>
+                <DetourMap
+                    ref={mapRef}
+                    mode={mapMode as any}
+                    theme={theme}
+                    fullScreen={true}
+                    height="100%"
+                    interactive={true}
+                    style={StyleSheet.absoluteFillObject}
+                    initialRegion={DEFAULT_REGION}
+                    trip={displayRoute.trip || tripToDisplay}
+                    startPoint={displayRoute.startPoint}
+                    endPoint={displayRoute.endPoint}
+                    waypoints={displayRoute.waypoints}
+                    matchedClients={matchedClients}
+                    routePolylines={routePolylines}
+                    selectedRouteId={selectedRouteId}
+                    onRouteSelect={handleSelectRoute}
+                    edgePadding={dynamicEdgePadding}
+                />
+            </View>
 
             {/* ===== FLOATING UI LAYERS ===== */}
 
             {/* Top Bar */}
             <FloatingTopBar onMenuPress={onMenuPress} />
+
+            {/* Driver Notification Toast (Top) */}
+            <DriverNotificationToast
+                notification={notification}
+                onView={handleNotificationView}
+                onDismiss={() => setNotification(null)}
+            />
 
             {/* Quick Actions (Right Side) */}
             <QuickActions
@@ -267,10 +533,104 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                 }}
             />
 
-            {/* Driver Dispatch Overlay (handles offline, online idle, and active states) */}
-            <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 50 }}>
-                <DriverTripExperience />
-            </View>
+            {/* Driver Dispatch & Multi-Route Overlay */}
+            {activeTrip || currentOffer ? (
+                <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 50 }}>
+                    <DriverTripExperience matchedClients={matchedClients} activeRoute={selectedRoute || activeOrPrimaryRoute} />
+                </View>
+            ) : (
+                <View style={{ position: 'absolute', bottom: 16, left: 0, right: 0, zIndex: 50, gap: 8 }}>
+                    {selectedRoute && (
+                        isFindingOpen ? (
+                            <DriverFindingClientsPanel
+                                route={selectedRoute}
+                                matchedClients={matchedClients}
+                                onClose={() => {
+                                    if (selectedRouteId) {
+                                        setFindingClientsForRoute(selectedRouteId, false);
+                                    }
+                                }}
+                                onInviteClient={async (clientRouteId, fare) => {
+                                    if (selectedRouteId) {
+                                        try {
+                                            await invitePassenger({
+                                                clientRouteId,
+                                                driverRouteId: selectedRouteId,
+                                                proposedPrice: fare
+                                            });
+                                            showToast('Invitation sent to passenger', 'success');
+                                        } catch (err: any) {
+                                            showToast(err?.message || 'Failed to send invitation', 'error');
+                                        }
+                                    }
+                                }}
+                                isInviting={isInviting}
+                                onBoardPassenger={async (tripInstanceId, otp) => {
+                                    try {
+                                        await driverDispatchActions.boardPassenger(tripInstanceId, otp);
+                                        showToast('Passenger boarded successfully', 'success');
+                                    } catch (err: any) {
+                                        showToast(err?.message || 'Boarding verification failed', 'error');
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <DriverRouteDetailsCard
+                                route={selectedRoute}
+                                onClose={() => setSelectedRouteId(null)}
+                                onDelete={async (id) => {
+                                    try {
+                                        await removeRoute(id);
+                                        setSelectedRouteId(null);
+                                        showToast('Route removed successfully', 'success');
+                                    } catch (err: any) {
+                                        showToast(err?.message || 'Failed to remove route', 'error');
+                                    }
+                                }}
+                                isDeleting={isDeletingRoute}
+                                isOnline={presence === 'ONLINE'}
+                                onToggleStatus={async () => {
+                                    if (presence === 'ONLINE') {
+                                        await driverDispatchActions.goOffline();
+                                    } else {
+                                        await driverDispatchActions.goOnline();
+                                    }
+                                }}
+                                isFindingOpen={isFindingOpen}
+                                onToggleFinding={() => {
+                                    if (selectedRouteId) {
+                                        setFindingClientsForRoute(selectedRouteId, !isFindingOpen);
+                                        refetchMatches();
+                                    }
+                                }}
+                                matchedClients={matchedClients}
+                                onInviteClient={async (clientRouteId, fare) => {
+                                    if (selectedRouteId) {
+                                        try {
+                                            await invitePassenger({
+                                                clientRouteId,
+                                                driverRouteId: selectedRouteId,
+                                                proposedPrice: fare
+                                            });
+                                            showToast('Invitation sent to passenger', 'success');
+                                        } catch (err: any) {
+                                            showToast(err?.message || 'Failed to send invitation', 'error');
+                                        }
+                                    }
+                                }}
+                                isInviting={isInviting}
+                            />
+                        )
+                    )}
+
+                    <DriverRouteSelector
+                        routes={driverRoutes}
+                        selectedRouteId={selectedRouteId}
+                        onSelectRoute={handleSelectRoute}
+                        onCreateRoute={() => router.push('/(driver)/add-route')}
+                    />
+                </View>
+            )}
         </View>
     );
 }

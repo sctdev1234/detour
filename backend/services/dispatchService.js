@@ -75,71 +75,12 @@ class DispatchService {
 
     /**
      * Passenger accepts a specific offer.
-     * Uses atomic findOneAndUpdate to prevent race conditions (e.g., accepting two offers at once).
+     * Delegates to canonical OfferAcceptanceEngine.
      */
     static async acceptOffer(offerId, passengerId) {
-        const offer = await Offer.findById(offerId);
-        if (!offer || offer.status !== 'PENDING') {
-            throw new Error('Offer is no longer available');
-        }
-
-        // 1. Lock the TripInstance by transitioning it from OFFERS_OPEN to OFFER_ACCEPTED atomically
-        const tripInstance = await TripInstance.findOneAndUpdate(
-            { 
-                _id: offer.tripInstanceId, 
-                userId: passengerId,
-                status: 'OFFERS_OPEN' 
-            },
-            { status: 'OFFER_ACCEPTED' },
-            { new: true }
-        );
-
-        if (!tripInstance) {
-            throw new Error('TripInstance is not open for offers or does not belong to user');
-        }
-
-        // 2. Mark this offer as ACCEPTED
-        offer.status = 'ACCEPTED';
-        await offer.save();
-
-        // 3. Mark all other pending offers for this TripInstance as REJECTED
-        await Offer.updateMany(
-            { tripInstanceId: tripInstance._id, status: 'PENDING', _id: { $ne: offer._id } },
-            { $set: { status: 'REJECTED' } }
-        );
-
-        // 4. Create or update the execution Trip for the driver
-        // If the driver already has an active execution trip (e.g., carpooling), add the client.
-        // For simplicity in this dispatch, we create a new Trip.
-        
-        const newTrip = new Trip({
-            driverId: offer.driverId,
-            driverTripInstanceId: null, // Dynamic dispatch, no pre-scheduled template
-            status: 'STARTED',
-            clients: [{
-                userId: passengerId,
-                tripInstanceId: tripInstance._id,
-                price: offer.proposedPrice,
-                status: 'WAITING'
-            }]
-        });
-        await newTrip.save();
-
-        // 5. Update TripInstance to DRIVER_ASSIGNED
-        tripInstance.executionTripId = newTrip._id;
-        TripStateMachine.validateTransition(tripInstance.status, TripStateMachine.STATES.ASSIGNED);
-        tripInstance.status = TripStateMachine.STATES.ASSIGNED;
-        tripInstance.stateTimestamps = tripInstance.stateTimestamps || {};
-        tripInstance.stateTimestamps.assignedAt = new Date();
-        await tripInstance.save();
-        
-        // [Phase 5: Parallel Validation] Shadow match the state transition
-        ShadowValidator.validateStateTransition(tripInstance, 'DRIVER_ASSIGNED');
-
-        // 6. Update Driver Status to BUSY
-        await User.findByIdAndUpdate(offer.driverId, { driverStatus: 'BUSY' });
-
-        return { tripInstance, newTrip };
+        const OfferAcceptanceEngine = require('./offerAcceptanceEngine');
+        const assignment = await OfferAcceptanceEngine.acceptOfferAtomic(offerId, passengerId);
+        return { tripInstance: assignment.tripInstance, tripAssignment: assignment, newTrip: assignment };
     }
 }
 

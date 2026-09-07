@@ -7,10 +7,11 @@ class AuthController {
             const { signupSchema } = require('../validation/authSchemas');
             const validatedData = signupSchema.parse(req.body);
 
-            const { user, token } = await authService.signup(validatedData);
+            const { user, token, refreshToken } = await authService.signup(validatedData);
 
             res.json({
                 token,
+                refreshToken,
                 user: {
                     id: user.id,
                     fullName: user.fullName,
@@ -31,10 +32,11 @@ class AuthController {
             const { loginSchema } = require('../validation/authSchemas');
             const validatedData = loginSchema.parse(req.body);
 
-            const { user, token } = await authService.login(validatedData);
+            const { user, token, refreshToken } = await authService.login(validatedData);
 
             res.json({
                 token,
+                refreshToken,
                 user: {
                     id: user.id,
                     fullName: user.fullName,
@@ -43,6 +45,22 @@ class AuthController {
                     verificationStatus: user.verificationStatus,
                     onboardingStatus: user.onboardingStatus
                 }
+            });
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async refresh(req, res, next) {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken) {
+                return res.status(400).json({ msg: 'Refresh token is required' });
+            }
+            const tokens = await authService.refreshSession(refreshToken);
+            res.json({
+                token: tokens.accessToken,
+                refreshToken: tokens.refreshToken
             });
         } catch (err) {
             next(err);

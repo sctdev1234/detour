@@ -1,5 +1,6 @@
 import { AppState, AppStateStatus } from 'react-native';
 import SocketService from './socket';
+import { useAuthStore } from '../store/useAuthStore';
 
 export type ConnectionStatus = 'CONNECTED' | 'CONNECTING' | 'DISCONNECTED' | 'RECONNECTING';
 
@@ -140,7 +141,8 @@ class SocketLifecycleManager {
         this.heartbeatInterval = setInterval(() => {
             const socket = SocketService.getSocket();
             if (socket && socket.connected) {
-                socket.emit('heartbeat', { timestamp: Date.now() });
+                const userId = useAuthStore.getState().user?.id;
+                socket.emit('heartbeat', { userId, timestamp: Date.now() });
             }
         }, this.config.heartbeatIntervalMs);
     }

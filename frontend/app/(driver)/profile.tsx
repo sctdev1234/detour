@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
     AlertCircle,
+    ArrowLeft,
     Car,
     ChevronLeft,
     ChevronRight,
@@ -154,6 +155,15 @@ export default function DriverProfileScreen() {
                     end={{ x: 0, y: 1 }}
                     style={styles.headerGradient}
                 >
+                    <TouchableOpacity
+                        style={[styles.backButton, { backgroundColor: theme.surface }]}
+                        onPress={handleBack}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Back"
+                    >
+                        <ArrowLeft size={20} color={theme.text} />
+                    </TouchableOpacity>
+
                     <View style={styles.headerContent}>
                         <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.avatarContainer, { shadowColor: theme.primary }]}>
                             <LinearGradient
@@ -315,6 +325,23 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
         marginBottom: 20,
+        position: 'relative',
+    },
+    backButton: {
+        position: 'absolute',
+        top: 50,
+        left: 20,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 5,
     },
     headerContent: {
         alignItems: 'center',

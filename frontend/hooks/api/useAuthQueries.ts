@@ -19,7 +19,7 @@ import { useEffect } from 'react';
 // --- Queries ---
 
 export const useUser = (enabled: boolean = true) => {
-    const { logout, updateUser } = useAuthStore();
+    const { token, refreshToken, logout, updateUser } = useAuthStore();
 
     const query = useQuery({
         queryKey: authKeys.user(),
@@ -27,13 +27,15 @@ export const useUser = (enabled: boolean = true) => {
             try {
                 const { data } = await api.get('/auth/me');
                 return data as User;
-            } catch (error) {
-                // If 401, we should probably logout
-                logout();
+            } catch (error: any) {
+                // If 401 and no refresh token available, logout
+                if (error?.response?.status === 401 && !refreshToken) {
+                    logout();
+                }
                 throw error;
             }
         },
-        enabled,
+        enabled: enabled && !!token,
         staleTime: 1000 * 60 * 5, // 5 minutes
         retry: false,
     });
@@ -61,7 +63,7 @@ export const useLogin = () => {
         },
         onSuccess: (data) => {
             // Update Zustand store with session data
-            useAuthStore.getState().setSession(data.user, data.token);
+            useAuthStore.getState().setSession(data.user, data.token, data.refreshToken);
 
             // Invalidate user query to ensure it's fresh
             queryClient.setQueryData(authKeys.user(), data.user);
@@ -82,7 +84,7 @@ export const useRegister = () => {
             return data;
         },
         onSuccess: (data) => {
-            useAuthStore.getState().setSession(data.user, data.token);
+            useAuthStore.getState().setSession(data.user, data.token, data.refreshToken);
             queryClient.setQueryData(authKeys.user(), data.user);
         },
         onError: () => {
@@ -101,7 +103,7 @@ export const useGuestLogin = () => {
             return data;
         },
         onSuccess: (data) => {
-            useAuthStore.getState().setSession(data.user, data.token);
+            useAuthStore.getState().setSession(data.user, data.token, data.refreshToken);
             queryClient.setQueryData(authKeys.user(), data.user);
         },
         onError: () => {
@@ -120,7 +122,7 @@ export const useOAuthLogin = () => {
             return data;
         },
         onSuccess: (data) => {
-            useAuthStore.getState().setSession(data.user, data.token);
+            useAuthStore.getState().setSession(data.user, data.token, data.refreshToken);
             queryClient.setQueryData(authKeys.user(), data.user);
         },
         onError: () => {

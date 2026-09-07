@@ -44,7 +44,7 @@ export default function Map(props: MapProps) {
 
     if (!MapComponent) {
         return (
-            <View style={[styles.loadingContainer, { height: props.height || 300 }]}>
+            <View style={[styles.loadingContainer, props.fullScreen ? StyleSheet.absoluteFillObject : { height: props.height || 300 }]}>
                 <ActivityIndicator size="large" color={props.theme?.primary || "#007AFF"} />
                 <Text style={[styles.loadingText, { color: props.theme?.icon || "#666" }]}>Loading Map...</Text>
             </View>
@@ -52,7 +52,7 @@ export default function Map(props: MapProps) {
     }
 
     return (
-        <MapErrorBoundary height={props.height} theme={props.theme}>
+        <MapErrorBoundary height={props.fullScreen ? '100%' : props.height} theme={props.theme}>
             <MapComponent {...props} />
         </MapErrorBoundary>
     );

@@ -217,6 +217,7 @@ function AppContent() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(driver)" options={{ headerShown: false }} />
           <Stack.Screen name="(client)" options={{ headerShown: false }} />
+          <Stack.Screen name="profile" options={{ headerShown: false }} />
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
           <Stack.Screen name="change-password" options={{ headerShown: false }} />
           <Stack.Screen name="chat" options={{ headerShown: false }} />
@@ -227,7 +228,6 @@ function AppContent() {
           <Stack.Screen name="reclamations/index" options={{ headerShown: false }} />
           <Stack.Screen name="reclamations/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
-          <Stack.Screen name="active-trip/[id]" options={{ headerShown: false, gestureEnabled: false }} />
         </Stack>
         <LocationTracker />
         <Toast />

@@ -22,7 +22,12 @@ import TripCompletedView from './TripCompletedView';
  * Architecture:
  * Presentation → DriverTripExperience → Lifecycle View → Store → Actions → Services → API/Socket
  */
-export default function DriverTripExperience() {
+interface DriverTripExperienceProps {
+    matchedClients?: any[];
+    activeRoute?: any;
+}
+
+export default function DriverTripExperience({ matchedClients, activeRoute }: DriverTripExperienceProps = {}) {
     const {
         status,
         currentOffer,
@@ -36,6 +41,8 @@ export default function DriverTripExperience() {
         rejectOffer,
         counterOffer,
         updateTripStatus,
+        boardPassenger,
+        dropoffPassenger,
         dismissSummary
     } = useDriverDispatchFlow();
 
@@ -64,6 +71,8 @@ export default function DriverTripExperience() {
                         onGoOffline={goOffline}
                         onTakeBreak={takeBreak}
                         stats={stats}
+                        matchedClients={matchedClients}
+                        activeRoute={activeRoute}
                     />
                 );
 
@@ -96,9 +105,11 @@ export default function DriverTripExperience() {
                 return (
                     <ArrivedView
                         trip={activeTrip}
-                        onStartTrip={() => {
+                        onStartTrip={(otp?: string) => {
                             const tripId = activeTrip?.tripInstanceId?._id || activeTrip?.tripInstanceId;
-                            if (tripId) updateTripStatus(tripId, 'STARTED');
+                            if (tripId && otp) {
+                                boardPassenger(tripId, otp);
+                            }
                         }}
                     />
                 );
@@ -109,7 +120,7 @@ export default function DriverTripExperience() {
                         trip={activeTrip}
                         onComplete={() => {
                             const tripId = activeTrip?.tripInstanceId?._id || activeTrip?.tripInstanceId;
-                            if (tripId) updateTripStatus(tripId, 'COMPLETED');
+                            if (tripId) dropoffPassenger(tripId);
                         }}
                     />
                 );

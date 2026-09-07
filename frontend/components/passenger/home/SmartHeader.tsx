@@ -59,8 +59,8 @@ export default function SmartHeader({ homeState, pendingOffersCount, currentAddr
                         )}
                         {homeState === 'searching' && (
                             <>
-                                <Text style={[styles.greeting, { color: theme.text }]}>Looking for rides...</Text>
-                                <Text style={[styles.address, { color: theme.text + '80' }]}>Broadcasting to nearby drivers</Text>
+                                <Text style={[styles.greeting, { color: theme.text }]}>Searching for drivers...</Text>
+                                <Text style={[styles.address, { color: theme.text + '80' }]}>Finding drivers along your route</Text>
                             </>
                         )}
                         {homeState === 'active' && (
@@ -80,7 +80,7 @@ export default function SmartHeader({ homeState, pendingOffersCount, currentAddr
                 {/* Notifications / Actions */}
                 <TouchableOpacity 
                     style={[styles.actionBtn, { backgroundColor: isDark ? '#2c2c2e80' : '#f2f2f780' }]} 
-                    onPress={() => router.push('/(client)/requests')}
+                    onPress={() => router.push('/notifications')}
                 >
                     <Bell size={20} color={theme.text} />
                     {pendingOffersCount > 0 && (

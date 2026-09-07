@@ -1,10 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
-import { User, Car, Phone, MessageCircle, Shield } from 'lucide-react-native';
-import { Colors } from '../../../constants/theme';
+import { MessageCircle, Phone, Shield, User } from 'lucide-react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { Colors } from '../../../constants/theme';
 
 interface Props {
     driverId: string;
@@ -24,7 +23,7 @@ export default function AssignedView({ driverId, onViewDetails, onCancel }: Prop
     return (
         <Animated.View entering={FadeInUp.springify()} style={styles.container}>
             <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={[styles.card, { backgroundColor: cardBg }]}>
-                
+
                 {/* Status Header */}
                 <View style={styles.statusHeader}>
                     <View style={styles.statusDot} />
@@ -37,7 +36,7 @@ export default function AssignedView({ driverId, onViewDetails, onCancel }: Prop
                         <User size={24} color="#FFF" />
                     </View>
                     <View style={styles.driverDetails}>
-                        <Text style={[styles.driverName, { color: textColor }]}>Driver {driverId.slice(-4)}</Text>
+                        <Text style={[styles.driverName, { color: textColor }]}>Driver {String(driverId).slice(-4)}</Text>
                         <View style={styles.vehicleRow}>
                             <Text style={[styles.vehicleText, { color: subtextColor }]}>Standard Ride</Text>
                             <View style={styles.dotSeparator} />
@@ -60,15 +59,15 @@ export default function AssignedView({ driverId, onViewDetails, onCancel }: Prop
                     <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}>
                         <MessageCircle size={20} color={textColor} />
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                        style={[styles.cancelButton, { backgroundColor: isDark ? 'rgba(255, 69, 58, 0.15)' : 'rgba(255, 59, 48, 0.1)' }]} 
+
+                    <TouchableOpacity
+                        style={[styles.cancelButton, { backgroundColor: isDark ? 'rgba(255, 69, 58, 0.15)' : 'rgba(255, 59, 48, 0.1)' }]}
                         onPress={onCancel}
                     >
                         <Text style={[styles.cancelButtonText, { color: isDark ? '#FF453A' : '#FF3B30' }]}>Cancel</Text>
                     </TouchableOpacity>
                 </View>
-                
+
             </BlurView>
         </Animated.View>
     );

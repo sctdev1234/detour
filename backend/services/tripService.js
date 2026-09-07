@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Route = require('../models/Route');
 const tripRepository = require('../repositories/TripRepository');
 const JoinRequest = require('../models/JoinRequest');
@@ -73,7 +74,7 @@ class TripService {
                 amount: price || 0,
                 type: priceType || 'fix'
             },
-            status: 'pending'
+            status: role === 'driver' ? 'active' : 'pending'
         });
 
         const savedRoute = await newRoute.save();
@@ -113,65 +114,260 @@ class TripService {
         return { msg: 'Route removed' };
     }
 
-    async searchMatches(originId, role = 'client') {
+    async searchMatches(originId, role = 'client', requestingUserId = null) {
         const route = await Route.findById(originId);
-        if (!route) throw new Error('Route not found');
+        if (!route) {
+            const err = new Error('Route not found');
+            err.statusCode = 404;
+            throw err;
+        }
 
-        const maxDistance = 500000; // 500km for testing
-        const pickup = route.startPoint.coordinates;
-        const destination = route.endPoint.coordinates;
+        // Authorization check: route must belong to authenticated requester if specified
+        if (requestingUserId && route.userId && route.userId.toString() !== requestingUserId.toString()) {
+            const err = new Error('Unauthorized route access');
+            err.statusCode = 403;
+            throw err;
+        }
 
-        const targetRole = role === 'driver' ? 'client' : 'driver';
+        const effectiveRole = route.role || role;
+        const { isRouteCompatible } = require('../utils/corridorMatcher');
+        const capacityService = require('./capacityService');
+        const driverEligibilityService = require('./driverEligibilityService');
 
-        // Find Matching Routes
-        const matches = await Route.find({
-            role: targetRole,
-            status: { $in: ['pending', 'active'] }, // Include active for clients waiting? Pending is default.
-            'startPoint': {
-                $near: {
-                    $geometry: { type: "Point", coordinates: pickup },
-                    $maxDistance: maxDistance
+        // Helper: verify schedule / expiration compatibility
+        const isScheduleCompatible = (dRoute, pReq) => {
+            if (pReq.expiresAt && new Date() > new Date(pReq.expiresAt)) {
+                return false;
+            }
+            if (pReq.status === 'CANCELLED' || pReq.isDeleted === true) {
+                return false;
+            }
+            // If it's an immediate on-demand trip instance without a scheduled time
+            if (pReq.isTripInstance && !pReq.schedule?.time) {
+                return true;
+            }
+            const driverTime = dRoute.schedule?.time;
+            const passTime = pReq.schedule?.time;
+            if (driverTime && passTime) {
+                const [dh, dm] = driverTime.split(':').map(Number);
+                const [ph, pm] = passTime.split(':').map(Number);
+                if (!isNaN(dh) && !isNaN(ph)) {
+                    const diffMin = Math.abs((dh * 60 + dm) - (ph * 60 + pm));
+                    if (diffMin > 120) return false;
                 }
-            },
-            'endPoint': {
-                $geoWithin: {
-                    $centerSphere: [destination, maxDistance / 6378100]
-                }
-            },
-            // 'schedule.days': { $in: route.schedule.days } // Optional: relax for now to see results
-        }).populate('userId', 'fullName email photoURL');
+            }
+            const driverDate = dRoute.date || dRoute.scheduledTime;
+            const passDate = pReq.scheduledDeparture || pReq.scheduledTime;
+            if (driverDate && passDate) {
+                const diffHours = Math.abs(new Date(driverDate).getTime() - new Date(passDate).getTime()) / 3600000;
+                if (diffHours > 2) return false;
+            }
+            return true;
+        };
 
         // Logic for Drivers searching Clients
-        if (role === 'driver') {
-            // Check existing requests for these clients (related to this driver's trip)
-            // A Driver Route corresponds to a Trip.
-            const trip = await tripRepository.findOne({ routeId: originId, status: { $ne: 'completed' } });
+        if (effectiveRole === 'driver') {
+            // Driver must be online & eligible
+            if (requestingUserId) {
+                const User = require('../models/User');
+                const driverUser = await User.findById(requestingUserId).select('driverStatus role');
+                if (!driverUser || driverUser.driverStatus !== 'ONLINE') {
+                    return [];
+                }
+                const eligibility = await driverEligibilityService.checkEligibility(requestingUserId);
+                if (!eligibility.isEligible) {
+                    return [];
+                }
+                try {
+                    await driverEligibilityService.assertSingleActiveTrip(requestingUserId);
+                } catch (e) {
+                    return [];
+                }
+            }
 
-            // If no trip yet (shouldn't happen if created on route creation), or just checking matches
-            // We want to see if we already sent a request to this client route
+            if (route.status === 'inactive' || route.isDeleted) {
+                return [];
+            }
+            if (route.status === 'pending') {
+                route.status = 'active';
+                await route.save();
+            }
+
+            // Check existing trip and seat capacity
+            let trip = await tripRepository.findOne({ routeId: originId, status: { $ne: 'completed' } });
+            if (!trip) {
+                trip = await tripRepository.create({
+                    routeId: route._id,
+                    driverId: route.userId,
+                    carId: route.carId,
+                    date: new Date(),
+                    seatsAvailable: route.seatsTotal || 4,
+                    status: 'MATCHING',
+                    clients: []
+                });
+            }
+
+            if (trip.seatsAvailable <= 0) {
+                return [];
+            }
+
+            // Find candidate client routes
+            const clientRoutes = await Route.find({
+                role: 'client',
+                status: { $in: ['pending', 'active', 'searching'] },
+                isDeleted: { $ne: true },
+                userId: { $ne: route.userId }
+            }).populate('userId', 'fullName email photoURL phone').lean();
+
+            // Find candidate TripInstances (V2)
+            let instanceCandidates = [];
+            try {
+                const TripInstance = require('../models/TripInstance');
+                const activeInstances = await TripInstance.find({
+                    status: { $in: ['SEARCHING', 'OFFERS_OPEN'] }
+                }).populate('passengerIds', 'fullName email photoURL phone').lean();
+
+                const existingRouteIds = new Set(
+                    clientRoutes.map(m => m._id.toString())
+                );
+
+                instanceCandidates = activeInstances
+                    .filter(inst => {
+                        const pId = inst.passengerIds?.[0]?._id?.toString() || inst.passengerIds?.[0]?.toString();
+                        if (!pId || pId === route.userId.toString()) return false;
+                        const cRouteId = inst.metadata?.clientRouteId || (inst.metadata?.get && inst.metadata.get('clientRouteId'));
+                        if (cRouteId && existingRouteIds.has(cRouteId.toString())) return false;
+                        return true;
+                    })
+                    .map(inst => ({
+                        _id: inst._id,
+                        userId: inst.passengerIds[0],
+                        role: 'client',
+                        startPoint: inst.pickup,
+                        endPoint: inst.destination,
+                        price: { amount: inst.pricingSnapshot?.baseFare || 15, type: 'fix' },
+                        status: 'searching',
+                        isTripInstance: true
+                    }));
+            } catch (err) {
+                console.warn('[searchMatches] Error querying TripInstances:', err.message);
+            }
+
+            const allCandidates = [...clientRoutes, ...instanceCandidates];
+
+            // Canonical Route Corridor, Directionality, Schedule and Capacity Verification
+            const verifiedMatches = [];
+            for (const candidate of allCandidates) {
+                // 1. Schedule compatibility
+                if (!isScheduleCompatible(route, candidate)) continue;
+
+                // 2. Corridor & Directionality compatibility (<= 25 km regional corridor tolerance)
+                const matchResult = isRouteCompatible(route, candidate, { maxCorridorMeters: 25000 });
+                if (!matchResult.matched) continue;
+
+                // 3. Segment Capacity compatibility
+                const seatsRequested = candidate.requestedSeats || candidate.seats || 1;
+                if (trip.segmentCapacity && trip.segmentCapacity.length > 0) {
+                    const fromIdx = matchResult.pickupSegmentIndex !== undefined ? matchResult.pickupSegmentIndex : 0;
+                    const toIdx = matchResult.dropoffSegmentIndex !== undefined ? (matchResult.dropoffSegmentIndex + 1) : 1;
+                    const capRes = capacityService.checkCapacity(trip.segmentCapacity, fromIdx, toIdx, seatsRequested);
+                    if (!capRes.hasCapacity) continue;
+                } else if (trip.seatsAvailable !== undefined && trip.seatsAvailable < seatsRequested) {
+                    continue;
+                }
+
+                verifiedMatches.push({ candidate, matchResult });
+            }
+
+            // Check existing JoinRequests for these matched clients
             let requestMap = {};
-            if (trip) {
+            if (trip && trip._id && mongoose.connection && mongoose.connection.readyState === 1) {
                 const requests = await JoinRequest.find({ tripId: trip._id });
                 requestMap = requests.reduce((acc, req) => {
-                    acc[req.clientRouteId.toString()] = req.status;
+                    acc[req.clientRouteId ? req.clientRouteId.toString() : ''] = req.status;
                     return acc;
                 }, {});
             }
 
-            return matches.map(clientRoute => {
+            // Check active canonical Offers for these matched clients
+            if (mongoose.connection && mongoose.connection.readyState === 1) {
+                try {
+                    const Offer = require('../models/Offer');
+                    const activeOffers = await Offer.find({
+                        driverId: route.userId,
+                        status: { $in: ['DRIVER_PROPOSED', 'PENDING', 'ACCEPTED'] },
+                        expiresAt: { $gt: new Date() }
+                    }).lean();
+
+                    for (const off of activeOffers) {
+                        if (off.tripInstanceId) {
+                            requestMap[off.tripInstanceId.toString()] = off.status;
+                        }
+                        const cRouteId = off.metadata && (off.metadata.clientRouteId || (off.metadata.get && off.metadata.get('clientRouteId')));
+                        if (cRouteId) {
+                            requestMap[cRouteId.toString()] = off.status;
+                        }
+                        if (off.passengerId) {
+                            requestMap[off.passengerId.toString()] = off.status;
+                        }
+                    }
+                } catch (offerErr) {
+                    console.warn('[searchMatches] Error querying active offers for requestMap:', offerErr.message);
+                }
+            }
+
+            return verifiedMatches.map(({ candidate: clientRoute, matchResult }) => {
+                const cId = clientRoute._id ? clientRoute._id.toString() : '';
+                const pickupCoord = clientRoute.startPoint || clientRoute.pickup;
+                const destCoord = clientRoute.endPoint || clientRoute.destination;
+                const fare = clientRoute.price?.amount || clientRoute.price || 15;
+                const seats = clientRoute.requestedSeats || clientRoute.seats || 1;
+                const pId = clientRoute.userId?._id ? clientRoute.userId._id.toString() : (clientRoute.userId?.toString() || '');
+
                 return {
+                    requestId: cId,
+                    passengerId: pId,
+                    pickup: pickupCoord,
+                    destination: destCoord,
+                    fare,
+                    seatCount: seats,
                     route: clientRoute,
-                    requestStatus: requestMap[clientRoute._id.toString()] || null
+                    tripId: trip?._id || null,
+                    requestStatus: requestMap[cId] || null,
+                    match: {
+                        verified: true,
+                        pickupDistanceMeters: matchResult.pickupDistanceMeters,
+                        dropoffDistanceMeters: matchResult.dropoffDistanceMeters,
+                        pickupSegmentIndex: matchResult.pickupSegmentIndex,
+                        dropoffSegmentIndex: matchResult.dropoffSegmentIndex
+                    }
                 };
             });
         }
 
-        // Logic for Clients searching Drivers (Legacy / Fallback if needed)
-        // Link with their active Trips
-        const routeIds = matches.map(m => m._id);
+        // Logic for Clients searching Drivers
+        const driverRoutes = await Route.find({
+            role: 'driver',
+            status: 'active',
+            isDeleted: { $ne: true },
+            userId: { $ne: route.userId }
+        }).populate('userId', 'fullName email photoURL phone').lean();
+
+        // Check each driver route to verify if client fits along driver route corridor
+        const matchingDriverRoutes = [];
+        for (const dRoute of driverRoutes) {
+            if (!isScheduleCompatible(dRoute, route)) continue;
+            const matchResult = isRouteCompatible(dRoute, route, { maxCorridorMeters: 25000 });
+            if (matchResult.matched) {
+                matchingDriverRoutes.push({ dRoute, matchResult });
+            }
+        }
+
+        const routeIds = matchingDriverRoutes.map(m => m.dRoute._id);
         const trips = await tripRepository.find({
             routeId: { $in: routeIds },
-            status: { $ne: 'completed' }
+            status: { $ne: 'completed' },
+            seatsAvailable: { $gt: 0 }
         });
 
         const tripMap = trips.reduce((acc, trip) => {
@@ -185,14 +381,26 @@ class TripService {
             return acc;
         }, {});
 
-        return matches.map(route => {
-            const trip = tripMap[route._id.toString()] || null;
-            return {
-                route,
-                trip,
-                requestStatus: trip ? requestMap[trip._id.toString()] : null
-            };
-        });
+        return matchingDriverRoutes
+            .filter(({ dRoute }) => tripMap[dRoute._id.toString()])
+            .map(({ dRoute, matchResult }) => {
+                const trip = tripMap[dRoute._id.toString()] || null;
+                const dId = dRoute.userId?._id ? dRoute.userId._id.toString() : (dRoute.userId?.toString() || '');
+                return {
+                    requestId: dRoute._id.toString(),
+                    driverId: dId,
+                    route: dRoute,
+                    trip,
+                    requestStatus: trip ? requestMap[trip._id.toString()] : null,
+                    match: {
+                        verified: true,
+                        pickupDistanceMeters: matchResult.pickupDistanceMeters,
+                        dropoffDistanceMeters: matchResult.dropoffDistanceMeters,
+                        pickupSegmentIndex: matchResult.pickupSegmentIndex,
+                        dropoffSegmentIndex: matchResult.dropoffSegmentIndex
+                    }
+                };
+            });
     }
 
     async sendJoinRequest(senderId, { clientRouteId, tripId, proposedPrice }) {
@@ -207,10 +415,19 @@ class TripService {
         if (trip.driverId.toString() === senderId) {
             // Sender is Driver
             initiatedBy = 'driver';
-            // Find clientId from clientRouteId
+            // Find clientId from clientRouteId or TripInstance
             const clientRoute = await Route.findById(clientRouteId);
-            if (!clientRoute) throw new Error('Client route not found');
-            clientId = clientRoute.userId;
+            if (!clientRoute) {
+                const TripInstance = require('../models/TripInstance');
+                const inst = await TripInstance.findById(clientRouteId);
+                if (inst && inst.passengerIds?.length) {
+                    clientId = inst.passengerIds[0];
+                } else {
+                    throw new Error('Client route not found');
+                }
+            } else {
+                clientId = clientRoute.userId;
+            }
         } else {
             // Sender is Client (Legacy)
             initiatedBy = 'client';
@@ -248,6 +465,85 @@ class TripService {
         });
 
         await joinRequest.save();
+
+        // Canonical V2 Bridge: If driver invited passenger, create canonical Offer and emit to passenger
+        if (initiatedBy === 'driver') {
+            try {
+                const TripInstance = require('../models/TripInstance');
+                const Offer = require('../models/Offer');
+                const NotificationService = require('./notificationService');
+
+                const clientInstance = await TripInstance.findOne({
+                    passengerIds: clientId,
+                    status: { $in: ['SEARCHING', 'OFFERS_OPEN'] }
+                }).sort({ createdAt: -1 });
+
+                if (clientInstance) {
+                    const existingOffer = await Offer.findOne({
+                        tripInstanceId: clientInstance._id,
+                        driverId: senderId,
+                        status: { $in: ['PENDING', 'DRIVER_PROPOSED'] }
+                    });
+
+                    if (!existingOffer) {
+                        const offer = new Offer({
+                            tripInstanceId: clientInstance._id,
+                            driverId: senderId,
+                            passengerId: clientId,
+                            price: proposedPrice || 15,
+                            expiresAt: new Date(Date.now() + 120000),
+                            status: 'DRIVER_PROPOSED'
+                        });
+                        await offer.save();
+
+                        const populatedOffer = await Offer.findById(offer._id)
+                            .populate('driverId', 'fullName photoURL rating vehicle phone')
+                            .lean();
+
+                        NotificationService.emitToPassenger(clientId, 'dispatch:offer_received', {
+                            ...populatedOffer,
+                            price: offer.price
+                        });
+                    }
+                }
+            } catch (bridgeErr) {
+                console.error('[TripService] Error creating canonical offer bridge:', bridgeErr);
+            }
+        } else if (initiatedBy === 'client') {
+            // Canonical V2 Bridge: Client requested to join driver trip
+            try {
+                const TripInstance = require('../models/TripInstance');
+                const Offer = require('../models/Offer');
+
+                const clientInstance = await TripInstance.findOne({
+                    passengerIds: clientId,
+                    status: { $in: ['SEARCHING', 'OFFERS_OPEN', 'DRAFT'] }
+                }).sort({ createdAt: -1 });
+
+                if (clientInstance && trip.driverId) {
+                    const existingOffer = await Offer.findOne({
+                        tripInstanceId: clientInstance._id,
+                        driverId: trip.driverId,
+                        status: { $in: ['PENDING', 'DRIVER_PROPOSED'] }
+                    });
+
+                    if (!existingOffer) {
+                        const offer = new Offer({
+                            tripInstanceId: clientInstance._id,
+                            driverId: trip.driverId,
+                            passengerId: clientId,
+                            price: proposedPrice || 15,
+                            expiresAt: new Date(Date.now() + 120000),
+                            status: 'PENDING'
+                        });
+                        await offer.save();
+                    }
+                }
+            } catch (bridgeErr) {
+                console.error('[TripService] Error bridging client join request to canonical Offer:', bridgeErr);
+            }
+        }
+
         return joinRequest;
     }
 
@@ -279,13 +575,48 @@ class TripService {
         await joinRequest.save();
 
         if (status === 'accepted') {
-            // Update the Trip with the new client
-            await tripRepository.update(trip._id, {
+            // Canonical Lifecycle Gate: Route through atomic OfferAcceptanceEngine
+            const Offer = require('../models/Offer');
+            const offerAcceptanceEngine = require('./offerAcceptanceEngine');
+            const TripInstance = require('../models/TripInstance');
+
+            let offer = await Offer.findOne({
+                passengerId: joinRequest.clientId,
+                status: { $in: ['PENDING', 'DRIVER_PROPOSED'] }
+            }).sort({ createdAt: -1 });
+
+            if (offer) {
+                await offerAcceptanceEngine.acceptOfferAtomic(offer._id, joinRequest.clientId);
+            } else {
+                const clientInstance = await TripInstance.findOne({
+                    passengerIds: joinRequest.clientId,
+                    status: { $in: ['SEARCHING', 'OFFERS_OPEN', 'DRAFT'] }
+                }).sort({ createdAt: -1 });
+
+                if (clientInstance && trip && trip.driverId) {
+                    offer = new Offer({
+                        tripInstanceId: clientInstance._id,
+                        driverId: trip.driverId,
+                        passengerId: joinRequest.clientId,
+                        price: joinRequest.proposedPrice || 15,
+                        expiresAt: new Date(Date.now() + 120000),
+                        status: 'DRIVER_PROPOSED'
+                    });
+                    await offer.save();
+                    await offerAcceptanceEngine.acceptOfferAtomic(offer._id, joinRequest.clientId);
+                } else {
+                    throw new Error('Direct booking via legacy JoinRequest is deprecated. Bookings must flow through canonical Offer acceptance.');
+                }
+            }
+
+            // Sync legacy read-only mirror on Trip for backwards-compatible views
+            const Trip = require('../models/Trip');
+            await Trip.findByIdAndUpdate(trip._id, {
                 $push: {
                     clients: {
                         userId: joinRequest.clientId,
                         routeId: joinRequest.clientRouteId,
-                        price: joinRequest.proposedPrice // Store agreed price
+                        price: joinRequest.proposedPrice
                     }
                 }
             });
@@ -300,20 +631,25 @@ class TripService {
                 { status: 'rejected' }
             );
 
-            // Mark the client route as inactive so it disappears from their Routes list
-            // Or keep it active until the trip is completed? Prompt implies "added to the trip".
-            // If they have other matches? Usually one trip per route.
             await Route.findByIdAndUpdate(joinRequest.clientRouteId, { status: 'inactive' });
 
-            // Ensure trip status is updated
-            const clientsCount = trip.clients.length + 1; // including the new one
+            const clientsCount = (trip.clients?.length || 0) + 1;
             let newTripStatus = 'PARTIAL';
             if (clientsCount >= 4) {
                 newTripStatus = 'CONFIRMED';
             }
             if (trip.status !== 'STARTED' && trip.status !== 'IN_PROGRESS' && trip.status !== 'COMPLETED') {
-                await tripRepository.update(trip._id, { status: newTripStatus });
+                await Trip.findByIdAndUpdate(trip._id, { status: newTripStatus });
             }
+        } else if (status === 'rejected') {
+            const Offer = require('../models/Offer');
+            await Offer.updateMany(
+                {
+                    passengerId: joinRequest.clientId,
+                    status: { $in: ['PENDING', 'DRIVER_PROPOSED'] }
+                },
+                { $set: { status: 'REJECTED' } }
+            );
         }
 
         return joinRequest;
@@ -548,6 +884,12 @@ class TripService {
     }
 
     async completeTrip(userId, tripId) {
+        const TripInstance = require('../models/TripInstance');
+        const instance = await TripInstance.findById(tripId);
+        if (instance) {
+            throw new Error('Direct completion of TripInstance is forbidden. Trip completion is derived from PassengerJourney state.');
+        }
+
         const trip = await tripRepository.findById(tripId);
         if (!trip) throw new Error('Trip not found');
 
@@ -605,6 +947,11 @@ class TripService {
     }
 
     async confirmPickup(driverId, { tripId, clientId, driverLocation }) {
+        const TripInstance = require('../models/TripInstance');
+        if (await TripInstance.findById(tripId)) {
+            throw new Error('Direct pickup on TripInstance is prohibited. Use canonical OTP boarding endpoint.');
+        }
+
         const session = await tripRepository.model.startSession();
         session.startTransaction();
 
@@ -690,6 +1037,11 @@ class TripService {
     }
 
     async confirmDropoff(driverId, { tripId, clientId, driverLocation }) {
+        const TripInstance = require('../models/TripInstance');
+        if (await TripInstance.findById(tripId)) {
+            throw new Error('Direct dropoff on TripInstance is prohibited. Use canonical dropoff endpoint.');
+        }
+
         const trip = await tripRepository.findById(tripId).populate('clients.routeId');
         if (!trip) throw new Error('Trip not found');
 

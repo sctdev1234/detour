@@ -6,6 +6,8 @@ import { useDispatchStore } from './useDispatchStore';
 let unsubscribeOffers: (() => void) | null = null;
 let unsubscribeAssignment: (() => void) | null = null;
 let unsubscribeTripStatus: (() => void) | null = null;
+let unsubscribeBoarded: (() => void) | null = null;
+let unsubscribeDroppedOff: (() => void) | null = null;
 let unsubResume: (() => void) | null = null;
 let unsubConnectionStatus: (() => void) | null = null;
 
@@ -27,8 +29,12 @@ export const dispatchActions = {
         try {
             const data = await dispatchApi.requestRide(payload);
             // Setup Instance
-            if (data.instances && data.instances.length > 0) {
+            if (data?.instance) {
+                store.setTripInstance(data.instance);
+            } else if (data?.instances && data.instances.length > 0) {
                 store.setTripInstance(data.instances[0]);
+            } else if (data?.instanceId) {
+                store.setTripInstance({ _id: data.instanceId, status: 'SEARCHING' } as any);
             }
 
             // Bind Socket Listeners
@@ -38,6 +44,7 @@ export const dispatchActions = {
             console.warn('[dispatchActions] requestRide failed:', error);
             store.setStatus('ERROR');
             store.setError(error.response?.data?.error || error.message || 'Failed to request ride');
+            throw error;
         }
     },
 
@@ -52,7 +59,9 @@ export const dispatchActions = {
             
             // Server responds with Assignment immediately if atomic
             if (data) {
-                store.setAssignment(data.assignment || data);
+                const assignmentObj = data.assignment || data;
+                const otp = data.passengerJourney?.verificationOtp || assignmentObj.otp || data.otp;
+                store.setAssignment({ ...assignmentObj, otp });
                 store.setStatus('ASSIGNED');
                 // Do not unbind sockets yet, we need to track trip progress
             }
@@ -60,6 +69,27 @@ export const dispatchActions = {
             console.warn('[dispatchActions] acceptOffer failed:', error);
             store.setError(error.response?.data?.error || error.message || 'Failed to accept offer');
             // We do not change status to ERROR completely because they can still try another offer
+        }
+    },
+
+    /**
+     * Reject/decline a specific offer or counter-proposition.
+     */
+    rejectOffer: async (offerId: string, reason?: string) => {
+        const store = useDispatchStore.getState();
+        try {
+            await dispatchApi.rejectOffer(offerId, reason);
+            const nextOffers = store.offers.filter(o => (o._id || o.id) !== offerId);
+            const nextByRoute: Record<string, any[]> = {};
+            for (const [rId, list] of Object.entries(store.offersByRoute)) {
+                nextByRoute[rId] = list.filter(o => (o._id || o.id) !== offerId);
+            }
+            useDispatchStore.setState({
+                offers: nextOffers,
+                offersByRoute: nextByRoute
+            });
+        } catch (error: any) {
+            console.warn('[dispatchActions] rejectOffer failed:', error);
         }
     },
 
@@ -111,7 +141,9 @@ export const dispatchActions = {
 
             store.setTripInstance(data.tripInstance);
             store.setOffers(data.offers || []);
-            store.setAssignment(data.assignment);
+            const assignmentObj = data.assignment;
+            const otp = data.journey?.verificationOtp || assignmentObj?.otp;
+            store.setAssignment(assignmentObj ? { ...assignmentObj, otp } : (otp ? { otp } : null));
             store.setStatus(data.status);
             
             // Re-bind sockets if active
@@ -155,15 +187,32 @@ export const dispatchActions = {
 
         unsubscribeAssignment = dispatchSocket.onDriverAssigned((assignment) => {
             // Update Zustand Store
-            useDispatchStore.getState().setAssignment(assignment);
+            const otp = assignment?.passengerJourney?.verificationOtp || assignment?.otp || assignment?.verificationOtp;
+            useDispatchStore.getState().setAssignment({ ...assignment, otp });
             useDispatchStore.getState().setStatus('ASSIGNED');
+        });
+
+        unsubscribeBoarded = dispatchSocket.onPassengerBoarded((data) => {
+            useDispatchStore.getState().setStatus('BOARDED');
+        });
+
+        unsubscribeDroppedOff = dispatchSocket.onPassengerDroppedOff((data) => {
+            useDispatchStore.getState().setStatus('DROPPED_OFF');
         });
 
         unsubscribeTripStatus = dispatchSocket.onTripStatusUpdated((update) => {
             const store = useDispatchStore.getState();
-            if (update.status === 'STARTED') {
-                store.setStatus('STARTED');
-            } else if (update.status === 'EN_ROUTE' || update.status === 'ARRIVED' || update.status === 'COMPLETED' || update.status === 'CANCELLED') {
+            if (update.status === 'ARRIVED') {
+                store.setStatus('DRIVER_ARRIVED');
+            } else if (
+                update.status === 'EN_ROUTE' || 
+                update.status === 'DRIVER_ARRIVED' ||
+                update.status === 'BOARDED' ||
+                update.status === 'STARTED' ||
+                update.status === 'DROPPED_OFF' ||
+                update.status === 'COMPLETED' || 
+                update.status === 'CANCELLED'
+            ) {
                 store.setStatus(update.status as any);
             }
             if (update.status === 'COMPLETED' && update.tripSummary) {
@@ -180,6 +229,14 @@ export const dispatchActions = {
         if (unsubscribeAssignment) {
             unsubscribeAssignment();
             unsubscribeAssignment = null;
+        }
+        if (unsubscribeBoarded) {
+            unsubscribeBoarded();
+            unsubscribeBoarded = null;
+        }
+        if (unsubscribeDroppedOff) {
+            unsubscribeDroppedOff();
+            unsubscribeDroppedOff = null;
         }
         if (unsubscribeTripStatus) {
             unsubscribeTripStatus();

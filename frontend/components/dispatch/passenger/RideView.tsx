@@ -5,7 +5,11 @@ import { Shield, Music, MapPin, Navigation, Share, AlertTriangle } from 'lucide-
 import { Colors } from '../../../constants/theme';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
-export default function RideView() {
+interface Props {
+    status?: 'BOARDED' | 'STARTED' | 'DROPPED_OFF';
+}
+
+export default function RideView({ status = 'STARTED' }: Props) {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const theme = Colors[colorScheme ?? 'light'];
@@ -14,6 +18,18 @@ export default function RideView() {
     const textColor = isDark ? '#FFFFFF' : '#000000';
     const subtextColor = isDark ? '#8E8E93' : '#8E8E93';
     const highlightBg = isDark ? '#1C1C1E' : '#F2F2F7';
+
+    const titleText = status === 'BOARDED' 
+        ? 'Boarded • Starting ride' 
+        : status === 'DROPPED_OFF' 
+        ? 'Dropped off • Finalizing trip' 
+        : 'On your way to destination';
+
+    const subtitleText = status === 'BOARDED'
+        ? 'Driver confirmed boarding verification'
+        : status === 'DROPPED_OFF'
+        ? 'Trip settlement in progress'
+        : 'Location sharing is off';
 
     return (
         <Animated.View entering={FadeInUp.springify()} style={styles.container}>
@@ -33,7 +49,7 @@ export default function RideView() {
 
                 {/* Progress Bar */}
                 <View style={[styles.progressTrack, { backgroundColor: highlightBg }]}>
-                    <View style={[styles.progressFill, { backgroundColor: theme.primary, width: '40%' }]} />
+                    <View style={[styles.progressFill, { backgroundColor: theme.primary, width: status === 'DROPPED_OFF' ? '100%' : status === 'BOARDED' ? '15%' : '40%' }]} />
                 </View>
 
                 <View style={styles.divider} />
@@ -44,8 +60,8 @@ export default function RideView() {
                         <Shield size={24} color={theme.primary} />
                     </View>
                     <View style={styles.safetyTextContainer}>
-                        <Text style={[styles.safetyTitle, { color: textColor }]}>On your way to destination</Text>
-                        <Text style={[styles.safetySubtitle, { color: subtextColor }]}>Location sharing is off</Text>
+                        <Text style={[styles.safetyTitle, { color: textColor }]}>{titleText}</Text>
+                        <Text style={[styles.safetySubtitle, { color: subtextColor }]}>{subtitleText}</Text>
                     </View>
                     <TouchableOpacity style={[styles.actionButton, { backgroundColor: highlightBg }]}>
                         <Share size={18} color={textColor} />

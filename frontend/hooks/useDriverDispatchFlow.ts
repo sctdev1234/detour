@@ -72,6 +72,8 @@ export const useDriverDispatchFlow = () => {
         rejectOffer: driverDispatchActions.rejectOffer,
         counterOffer: driverDispatchActions.counterOffer,
         updateTripStatus: driverDispatchActions.updateTripStatus,
+        boardPassenger: driverDispatchActions.boardPassenger,
+        dropoffPassenger: driverDispatchActions.dropoffPassenger,
         dismissSummary: driverDispatchActions.dismissSummary
     };
 };

@@ -7,8 +7,10 @@ export const dispatchSocket = {
     onOfferReceived: (callback: (offer: any) => void) => {
         const socket = SocketService.connect();
         socket.on('dispatch:offer_received', callback);
+        socket.on('dispatch:counter_received', callback);
         return () => {
             socket.off('dispatch:offer_received', callback);
+            socket.off('dispatch:counter_received', callback);
         };
     },
 
@@ -18,8 +20,10 @@ export const dispatchSocket = {
     onDriverAssigned: (callback: (assignment: any) => void) => {
         const socket = SocketService.connect();
         socket.on('dispatch:driver_assigned', callback);
+        socket.on('dispatch:offer_accepted', callback);
         return () => {
             socket.off('dispatch:driver_assigned', callback);
+            socket.off('dispatch:offer_accepted', callback);
         };
     },
 
@@ -42,6 +46,28 @@ export const dispatchSocket = {
         socket.on('dispatch:trip_status_updated', callback);
         return () => {
             socket.off('dispatch:trip_status_updated', callback);
+        };
+    },
+
+    /**
+     * Subscribes to passenger boarded event.
+     */
+    onPassengerBoarded: (callback: (data: any) => void) => {
+        const socket = SocketService.connect();
+        socket.on('dispatch:passenger_boarded', callback);
+        return () => {
+            socket.off('dispatch:passenger_boarded', callback);
+        };
+    },
+
+    /**
+     * Subscribes to passenger dropped off event.
+     */
+    onPassengerDroppedOff: (callback: (data: any) => void) => {
+        const socket = SocketService.connect();
+        socket.on('dispatch:passenger_dropped_off', callback);
+        return () => {
+            socket.off('dispatch:passenger_dropped_off', callback);
         };
     }
 };

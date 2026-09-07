@@ -13,24 +13,33 @@ export const useRouteGuard = () => {
         if (!navigationState?.key) return;
         if (isLoading) return;
 
-        const segmentsArray = segments as string[];
-        const inAuthGroup = segmentsArray[0] === '(auth)';
-        const isLoginScreen = segmentsArray.length > 1 && segmentsArray[1] === 'login';
-        const isSignupScreen = segmentsArray.length > 1 && segmentsArray[1] === 'signup';
+        const timeoutId = setTimeout(() => {
+            const segmentsArray = segments as string[];
+            const inAuthGroup = segmentsArray[0] === '(auth)';
+            const isLoginScreen = segmentsArray.length > 1 && segmentsArray[1] === 'login';
+            const isSignupScreen = segmentsArray.length > 1 && segmentsArray[1] === 'signup';
 
-        // List of routes that are accessible to authenticated users regardless of role
-        const sharedRoutes = ['change-password', 'edit-profile', 'chat', 'modal', 'finance', 'reclamations', 'active-trip'];
+            // List of routes that are accessible to authenticated users regardless of role
+            const sharedRoutes = ['change-password', 'edit-profile', 'profile', 'chat', 'modal', 'finance', 'reclamations', 'active-trip', 'notifications'];
 
-        if (!user) {
-            const isWelcomeScreen = segmentsArray.length > 1 && segmentsArray[1] === 'welcome';
-            if (!inAuthGroup || (!isLoginScreen && !isSignupScreen && !isWelcomeScreen)) {
-                router.replace('/(auth)/welcome');
-            }
-        } else if (!role) {
-            if (segmentsArray.length > 1 && segmentsArray[1] !== 'role-selection') {
-                router.replace('/(auth)/role-selection');
-            }
-        } else {
+            const safeReplace = (path: string) => {
+                try {
+                    router.replace(path as any);
+                } catch (e) {
+                    console.warn('[RouteGuard] Navigation deferred:', e);
+                }
+            };
+
+            if (!user) {
+                const isWelcomeScreen = segmentsArray.length > 1 && segmentsArray[1] === 'welcome';
+                if (!inAuthGroup || (!isLoginScreen && !isSignupScreen && !isWelcomeScreen)) {
+                    safeReplace('/(auth)/welcome');
+                }
+            } else if (!role) {
+                if (segmentsArray.length > 1 && segmentsArray[1] !== 'role-selection') {
+                    safeReplace('/(auth)/role-selection');
+                }
+            } else {
             // If user has a role, check onboarding status
             const onboardingStatus = user.onboardingStatus;
             const isCompleted = onboardingStatus?.completed;
@@ -47,7 +56,9 @@ export const useRouteGuard = () => {
                 'modal',
                 'chat',
                 'reclamations',
-                'edit-profile'
+                'edit-profile',
+                'profile',
+                'notifications'
             ];
 
             const clientWhitelist = [
@@ -75,7 +86,7 @@ export const useRouteGuard = () => {
                 // If not completed and not on a whitelisted page, force to tasks
                 if (!isWhitelisted && !isTasksPage) {
                     // Prevent loop if already attempting to go there
-                    router.replace('/tasks');
+                    safeReplace('/tasks');
                 }
             } else {
                 // Onboarding completed
@@ -84,16 +95,19 @@ export const useRouteGuard = () => {
                     const hasRoute = onboardingStatus?.steps.find(s => s.id === 'route')?.status === 'completed';
                     // Only redirect if we are on the 'root' or dashboard, to avoid interfering with other navigation
                     if (!hasRoute && (currentRoute === '(driver)' || currentRoute === '(driver)/index')) {
-                        router.replace('/(driver)/add-route');
+                        safeReplace('/(driver)/add-route');
                     } else if (currentGroup !== '(driver)' && !sharedRoutes.includes(currentGroup)) {
-                        router.replace('/(driver)');
+                        safeReplace('/(driver)');
                     }
                 } else if (role === 'client') {
                     if (currentGroup !== '(client)' && !sharedRoutes.includes(currentGroup)) {
-                        router.replace('/(client)');
+                        safeReplace('/(client)');
                     }
                 }
             }
         }
+        }, 50);
+
+        return () => clearTimeout(timeoutId);
     }, [user, role, segments, isLoading, router, navigationState]);
 };

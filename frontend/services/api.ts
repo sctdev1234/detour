@@ -120,11 +120,15 @@ api.interceptors.response.use(
                 
                 const { refreshToken, setSession, logout, user } = useAuthStore.getState();
                 
-                if (refreshToken && user) {
+                if (refreshToken) {
                     try {
                         const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
                         if (res.data && res.data.token) {
-                            setSession(user, res.data.token, res.data.refreshToken);
+                            if (user) {
+                                setSession(user, res.data.token, res.data.refreshToken);
+                            } else {
+                                useAuthStore.setState({ token: res.data.token, refreshToken: res.data.refreshToken || refreshToken });
+                            }
                             originalRequestConfig.headers['x-auth-token'] = res.data.token;
                             return api(originalRequestConfig);
                         }

@@ -77,12 +77,28 @@ const tripInstanceSchema = new mongoose.Schema(
             default: 1,
             required: true
         },
+        driverId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            index: true
+        },
+        vehicleId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Car'
+        },
+        segmentCapacity: [{
+            segmentIndex: { type: Number, required: true },
+            fromWaypointIndex: { type: Number, required: true },
+            toWaypointIndex: { type: Number, required: true },
+            seatsTotal: { type: Number, required: true },
+            seatsOccupied: { type: Number, default: 0 }
+        }],
         status: {
             type: String,
             enum: [
-                'DRAFT', 'SEARCHING', 'OFFERS_OPEN', 'ASSIGNED', 
-                'EN_ROUTE', 'ARRIVED', 'BOARDED', 'STARTED', 
-                'COMPLETED', 'CANCELLED'
+                'DRAFT', 'SEARCHING', 'OFFERS_OPEN', 'ASSIGNED', 'SCHEDULED',
+                'EN_ROUTE', 'EN_ROUTE_TO_ORIGIN', 'ARRIVED', 'BOARDED', 'STARTED', 
+                'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'CLOSED_PENDING_DISPUTES'
             ],
             default: 'DRAFT'
         },
@@ -170,6 +186,7 @@ const tripInstanceSchema = new mongoose.Schema(
 tripInstanceSchema.index({ status: 1, scheduledTime: 1 });
 // Query optimized: Dispatch Matching Engine finding nearby pending requests. Read frequency: High.
 tripInstanceSchema.index({ 'pickup': '2dsphere' });
+tripInstanceSchema.index({ 'destination': '2dsphere' });
 // Query optimized: Passenger fetching their ride history. Read frequency: High.
 tripInstanceSchema.index({ passengerIds: 1 });
 

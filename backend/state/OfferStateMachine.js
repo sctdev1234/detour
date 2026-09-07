@@ -13,7 +13,9 @@
 class OfferStateMachine {
     static STATES = {
         PENDING: 'PENDING',
+        DRIVER_PROPOSED: 'DRIVER_PROPOSED',
         COUNTER_OFFERED: 'COUNTER_OFFERED',
+        COUNTERED: 'COUNTERED',
         ACCEPTED: 'ACCEPTED',
         REJECTED: 'REJECTED',
         EXPIRED: 'EXPIRED',
@@ -22,18 +24,37 @@ class OfferStateMachine {
 
     static VALID_TRANSITIONS = {
         [this.STATES.PENDING]: [
+            this.STATES.DRIVER_PROPOSED,
             this.STATES.ACCEPTED, 
             this.STATES.REJECTED, 
             this.STATES.EXPIRED, 
             this.STATES.WITHDRAWN, 
-            this.STATES.COUNTER_OFFERED
+            this.STATES.COUNTER_OFFERED,
+            'COUNTERED'
+        ],
+        [this.STATES.DRIVER_PROPOSED]: [
+            this.STATES.ACCEPTED, 
+            this.STATES.REJECTED, 
+            this.STATES.EXPIRED, 
+            this.STATES.WITHDRAWN, 
+            this.STATES.COUNTER_OFFERED,
+            'COUNTERED'
         ],
         [this.STATES.COUNTER_OFFERED]: [
             this.STATES.ACCEPTED, 
             this.STATES.REJECTED, 
             this.STATES.EXPIRED, 
             this.STATES.WITHDRAWN, 
-            this.STATES.COUNTER_OFFERED
+            this.STATES.COUNTER_OFFERED,
+            'COUNTERED'
+        ],
+        ['COUNTERED']: [
+            this.STATES.ACCEPTED, 
+            this.STATES.REJECTED, 
+            this.STATES.EXPIRED, 
+            this.STATES.WITHDRAWN, 
+            this.STATES.COUNTER_OFFERED,
+            'COUNTERED'
         ],
         [this.STATES.ACCEPTED]: [],  // Terminal
         [this.STATES.REJECTED]: [],  // Terminal

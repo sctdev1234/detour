@@ -22,6 +22,7 @@ class TripStateMachine {
         BOARDED: 'BOARDED',
         STARTED: 'STARTED',
         COMPLETED: 'COMPLETED',
+        CLOSED_PENDING_DISPUTES: 'CLOSED_PENDING_DISPUTES',
         CANCELLED: 'CANCELLED'
     };
 
@@ -29,11 +30,12 @@ class TripStateMachine {
         [this.STATES.DRAFT]: [this.STATES.SEARCHING, this.STATES.CANCELLED],
         [this.STATES.SEARCHING]: [this.STATES.OFFERS_OPEN, this.STATES.CANCELLED],
         [this.STATES.OFFERS_OPEN]: [this.STATES.ASSIGNED, this.STATES.SEARCHING, this.STATES.CANCELLED], // Can revert to searching if offers expire
-        [this.STATES.ASSIGNED]: [this.STATES.EN_ROUTE, this.STATES.CANCELLED],
-        [this.STATES.EN_ROUTE]: [this.STATES.ARRIVED, this.STATES.CANCELLED],
-        [this.STATES.ARRIVED]: [this.STATES.BOARDED, this.STATES.CANCELLED],
+        [this.STATES.ASSIGNED]: [this.STATES.EN_ROUTE, this.STATES.ARRIVED, this.STATES.CANCELLED],
+        [this.STATES.EN_ROUTE]: [this.STATES.ARRIVED, this.STATES.STARTED, this.STATES.CANCELLED],
+        [this.STATES.ARRIVED]: [this.STATES.BOARDED, this.STATES.STARTED, this.STATES.CANCELLED],
         [this.STATES.BOARDED]: [this.STATES.STARTED, this.STATES.CANCELLED],
-        [this.STATES.STARTED]: [this.STATES.COMPLETED, this.STATES.CANCELLED],
+        [this.STATES.STARTED]: [this.STATES.COMPLETED, this.STATES.CLOSED_PENDING_DISPUTES, this.STATES.CANCELLED],
+        [this.STATES.CLOSED_PENDING_DISPUTES]: [this.STATES.COMPLETED],
         [this.STATES.COMPLETED]: [], // Terminal state
         [this.STATES.CANCELLED]: []  // Terminal state
     };

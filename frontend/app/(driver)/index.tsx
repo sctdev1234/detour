@@ -3,11 +3,17 @@ import React, { useCallback, useEffect } from 'react';
 import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
 import DashboardScreen from '../../components/dashboard/DashboardScreen';
 import { useUIStore } from '../../store/useUIStore';
+import { driverDispatchActions } from '../../store/driverDispatchActions';
 
 export default function DriverDashboard() {
     const navigation = useNavigation();
     const colorScheme = useColorScheme() ?? 'light';
     const { setHideGlobalHeader } = useUIStore();
+
+    // Recover missed dispatch state (active offers, online presence, active trips) on mount / refresh
+    useEffect(() => {
+        driverDispatchActions.recoverState();
+    }, []);
 
     // Hide global header on the dashboard — we use our own floating UI
     useEffect(() => {

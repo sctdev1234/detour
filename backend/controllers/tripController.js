@@ -41,11 +41,16 @@ exports.deleteRoute = async (req, res) => {
 
 exports.searchMatches = async (req, res) => {
     try {
-        const matches = await tripService.searchMatches(req.params.routeId, req.user.role);
+        const matches = await tripService.searchMatches(req.params.routeId, req.user.role, req.user.id);
         res.json(matches);
     } catch (err) {
         console.error("Error in searchMatches:", err.message);
-        if (err.message === 'Client route not found') return res.status(404).json({ msg: err.message });
+        if (err.statusCode === 403 || err.message === 'Unauthorized route access') {
+            return res.status(403).json({ msg: 'Unauthorized route access' });
+        }
+        if (err.statusCode === 404 || err.message === 'Route not found' || err.message === 'Client route not found') {
+            return res.status(404).json({ msg: err.message });
+        }
         res.status(500).send('Server Error');
     }
 };

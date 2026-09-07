@@ -173,7 +173,7 @@ export default function Header() {
                         <TouchableOpacity
                             style={[styles.iconButton, { backgroundColor: 'rgba(0,0,0,0.03)' }]}
                             onPress={() => {
-                                router.push('/requests');
+                                router.push('/notifications');
                             }}
                         >
                             <Bell size={18} color={theme.text} strokeWidth={2} />

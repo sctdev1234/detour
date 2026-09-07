@@ -11,6 +11,7 @@ import { decodePolyline } from '../utils/location';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
 import InteractiveTripRoute from './InteractiveTripRoute';
 import { refinedLightMapStyle, refinedDarkMapStyle, RecenterDesign, CameraConfig } from '../constants/design';
+import { RouteService } from '../services/RouteService';
 
 const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
@@ -45,6 +46,7 @@ export interface MapProps {
 
     // Interactive Routes Mode (Home Screen Browsing)
     interactiveTrips?: any[]; // Reusing existing generic trip type
+    matchedClients?: any[];
     onRoutePress?: (trip: any) => void;
     onAnnotationPress?: (trip: any) => void;
 
@@ -288,20 +290,20 @@ const RouteMarkers = React.memo(({ startPoint, endPoint, waypoints }: any) => {
     return (
         <>
             {startPoint && (
-                <Marker coordinate={startPoint} tracksViewChanges={false}>
-                    <View style={[styles.markerBadge, { backgroundColor: '#10b981' }]}>
-                        <Navigation size={14} color="#fff" />
+                <Marker coordinate={startPoint} anchor={{ x: 0.5, y: 1.0 }} tracksViewChanges={false}>
+                    <View style={styles.teardropPin}>
+                        <View style={styles.teardropDot} />
                     </View>
                 </Marker>
             )}
             {endPoint && (
-                <Marker coordinate={endPoint} tracksViewChanges={false}>
-                    <View style={[styles.markerBadge, { backgroundColor: '#ef4444' }]}>
-                        <MapPin size={14} color="#fff" />
+                <Marker coordinate={endPoint} anchor={{ x: 0.5, y: 1.0 }} tracksViewChanges={false}>
+                    <View style={styles.teardropPin}>
+                        <View style={styles.teardropDot} />
                     </View>
                 </Marker>
             )}
-            {waypoints.map((wp: any, index: number) => (
+            {waypoints?.map((wp: any, index: number) => (
                 <Marker key={index} coordinate={wp} tracksViewChanges={false}>
                     <View style={[styles.waypointMarker, { backgroundColor: '#f59e0b' }]}>
                         <Text style={styles.waypointText}>{index + 1}</Text>
@@ -312,44 +314,82 @@ const RouteMarkers = React.memo(({ startPoint, endPoint, waypoints }: any) => {
     );
 });
 
-const RoutePolylines = React.memo(({ routePolylines }: { routePolylines: any[] }) => {
+const RoutePolylines = React.memo(({ 
+    routePolylines, 
+    selectedRouteId, 
+    onRouteSelect, 
+    theme, 
+    interactive = true 
+}: { 
+    routePolylines: any[]; 
+    selectedRouteId?: string | null; 
+    onRouteSelect?: (routeId: string) => void; 
+    theme?: any; 
+    interactive?: boolean; 
+}) => {
     if (!routePolylines?.length) return null;
     return (
         <>
-            {routePolylines.map((route) => (
-                <React.Fragment key={`route-${route.id}`}>
-                    {route.coords?.length > 1 && (
-                        <Polyline
-                            coordinates={route.coords.filter((c: any) => c.latitude !== 0 && c.longitude !== 0)}
-                            strokeColor={route.color}
-                            strokeWidth={route.width}
-                            lineDashPattern={route.isActive ? [] : [8, 4]}
-                        />
-                    )}
-                    {/* Start Marker */}
-                    {route.startPoint && route.startPoint.latitude !== 0 && route.startPoint.longitude !== 0 && (
-                        <Marker coordinate={route.startPoint} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-                            <View style={[styles.routeEndpoint, {
-                                backgroundColor: route.isActive ? '#10b981' : 'rgba(79, 70, 229, 0.6)',
-                                borderColor: '#fff',
-                            }]}>
-                                <View style={styles.routeEndpointInner} />
-                            </View>
-                        </Marker>
-                    )}
-                    {/* End Marker */}
-                    {route.endPoint && route.endPoint.latitude !== 0 && route.endPoint.longitude !== 0 && (
-                        <Marker coordinate={route.endPoint} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-                            <View style={[styles.routeEndpoint, {
-                                backgroundColor: route.isActive ? '#ef4444' : 'rgba(239, 68, 68, 0.5)',
-                                borderColor: '#fff',
-                            }]}>
-                                <View style={styles.routeEndpointInner} />
-                            </View>
-                        </Marker>
-                    )}
-                </React.Fragment>
-            ))}
+            {routePolylines.map((route) => {
+                const isSelected = selectedRouteId === route.id || route.isSelected;
+                const routeColor = isSelected ? (theme?.primary || '#3b82f6') : (route.color || '#6366f1');
+                const strokeWidth = isSelected ? 6 : (route.width || 4);
+                const zIndex = isSelected ? 10 : 2;
+
+                return (
+                    <React.Fragment key={`route-${route.id}`}>
+                        {route.coords?.length > 1 && (
+                            <Polyline
+                                coordinates={route.coords.filter((c: any) => c.latitude !== 0 && c.longitude !== 0)}
+                                strokeColor={routeColor}
+                                strokeWidth={strokeWidth}
+                                lineDashPattern={isSelected ? [] : (route.isActive ? [] : [8, 4])}
+                                tappable={interactive}
+                                onPress={() => onRouteSelect?.(route.id)}
+                                zIndex={zIndex}
+                            />
+                        )}
+                        {/* Start Marker */}
+                        {route.startPoint && route.startPoint.latitude !== 0 && route.startPoint.longitude !== 0 && (
+                            <Marker 
+                                coordinate={route.startPoint} 
+                                anchor={{ x: 0.5, y: 0.5 }} 
+                                tracksViewChanges={false}
+                                onPress={() => onRouteSelect?.(route.id)}
+                                zIndex={zIndex + 1}
+                            >
+                                <View style={[styles.routeEndpoint, {
+                                    backgroundColor: isSelected ? '#10b981' : (route.isActive ? '#10b981' : 'rgba(79, 70, 229, 0.6)'),
+                                    borderColor: '#fff',
+                                    borderWidth: isSelected ? 3 : 2.5,
+                                    transform: [{ scale: isSelected ? 1.2 : 1.0 }]
+                                }]}>
+                                    <View style={styles.routeEndpointInner} />
+                                </View>
+                            </Marker>
+                        )}
+                        {/* End Marker */}
+                        {route.endPoint && route.endPoint.latitude !== 0 && route.endPoint.longitude !== 0 && (
+                            <Marker 
+                                coordinate={route.endPoint} 
+                                anchor={{ x: 0.5, y: 0.5 }} 
+                                tracksViewChanges={false}
+                                onPress={() => onRouteSelect?.(route.id)}
+                                zIndex={zIndex + 1}
+                            >
+                                <View style={[styles.routeEndpoint, {
+                                    backgroundColor: isSelected ? '#ef4444' : (route.isActive ? '#ef4444' : 'rgba(239, 68, 68, 0.5)'),
+                                    borderColor: '#fff',
+                                    borderWidth: isSelected ? 3 : 2.5,
+                                    transform: [{ scale: isSelected ? 1.2 : 1.0 }]
+                                }]}>
+                                    <View style={styles.routeEndpointInner} />
+                                </View>
+                            </Marker>
+                        )}
+                    </React.Fragment>
+                );
+            })}
         </>
     );
 });
@@ -373,6 +413,7 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     startPoint,
     endPoint,
     waypoints = [],
+    matchedClients,
     maxPoints,
     savedPlaces: propSavedPlaces,
     driverLocation,
@@ -405,6 +446,7 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     const internalMapRef = useRef<any>(null);
     const mapRef = (forwardedRef as React.MutableRefObject<any>) || internalMapRef;
     const hasFitPickerRef = useRef(false);
+    const fetchedRouteKeyRef = useRef<string>('');
     const [points, setPoints] = useState<LatLng[]>(initialPoints);
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [routeCoordinates, setRouteCoordinates] = useState<LatLng[]>([]);
@@ -447,56 +489,84 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     // Sync initial points
     React.useEffect(() => {
         if (initialPoints) {
-            const isDifferent = initialPoints.length !== points.length ||
-                initialPoints.some((p, idx) => p.latitude !== points[idx]?.latitude || p.longitude !== points[idx]?.longitude);
-            if (isDifferent) {
-                setPoints(initialPoints);
-                if (initialPoints.length === 0) {
-                    hasFitPickerRef.current = false;
+            setPoints(prev => {
+                const isDifferent = initialPoints.length !== prev.length ||
+                    initialPoints.some((p, idx) => p.latitude !== prev[idx]?.latitude || p.longitude !== prev[idx]?.longitude);
+                if (isDifferent) {
+                    if (initialPoints.length === 0) {
+                        hasFitPickerRef.current = false;
+                    }
+                    return initialPoints;
                 }
-            }
+                return prev;
+            });
         }
     }, [initialPoints]);
 
     // Calculate Trip/Route Data (synced with MapLeaflet)
     React.useEffect(() => {
+        let start: LatLng | undefined;
+        let end: LatLng | undefined;
+        let wps: LatLng[] = [];
+        let geom: string | undefined;
+
         if (mode === 'trip' && trip) {
-            const driverRoute = trip.routeId;
+            const driverRoute = trip.routeId || trip;
+            geom = driverRoute?.routeGeometry;
+            start = driverRoute?.startPoint || (driverRoute as any)?.pickup;
+            end = driverRoute?.endPoint || (driverRoute as any)?.destination;
+            wps = driverRoute?.waypoints || [];
+
             const clients = trip.clients || [];
-
-            // Decode driver route geometry for visual polyline (road-following)
-            if (driverRoute?.routeGeometry) {
-                const decoded = decodePolyline(driverRoute.routeGeometry);
-                setRouteCoordinates(decoded);
-            } else if (driverRoute?.startPoint && driverRoute?.endPoint) {
-                setRouteCoordinates([
-                    driverRoute.startPoint,
-                    ...(driverRoute.waypoints || []),
-                    driverRoute.endPoint
-                ].filter(p => p && p.latitude));
-            }
-
-            // Compute intermediate points for optimized stop ordering
             if (customStopOrder && customStopOrder.length > 0) {
                 const coords = customStopOrder.map(s => ({
                     latitude: s.latitude,
                     longitude: s.longitude
                 }));
-                setRouteCoordinates(coords);
-            } else {
+                setRouteCoordinates(prev => {
+                    const isSame = prev.length === coords.length && prev.every((p, i) => p.latitude === coords[i].latitude && p.longitude === coords[i].longitude);
+                    return isSame ? prev : coords;
+                });
+            } else if (driverRoute?.startPoint && driverRoute?.endPoint) {
                 const { sortedPoints } = optimizeRoute(
-                    driverRoute?.startPoint,
-                    driverRoute?.endPoint,
-                    driverRoute?.waypoints,
+                    driverRoute.startPoint,
+                    driverRoute.endPoint,
+                    driverRoute.waypoints,
                     clients
                 );
                 setIntermediatePoints(sortedPoints);
             }
-        } else if (mode === 'route' && startPoint && endPoint) {
-            const coords: LatLng[] = [startPoint, ...waypoints, endPoint];
-            setRouteCoordinates(coords);
+        } else if (startPoint && endPoint) {
+            start = startPoint;
+            end = endPoint;
+            wps = waypoints || [];
         }
-    }, [mode, trip, customStopOrder, startPoint, endPoint, waypoints]);
+
+        if (geom) {
+            const decoded = decodePolyline(geom);
+            if (decoded.length > 0) {
+                setRouteCoordinates(decoded);
+                return;
+            }
+        }
+
+        if (start && end && typeof start.latitude === 'number' && typeof end.latitude === 'number') {
+            const routeKey = `${start.latitude.toFixed(5)},${start.longitude.toFixed(5)}-${end.latitude.toFixed(5)},${end.longitude.toFixed(5)}`;
+            if (fetchedRouteKeyRef.current === routeKey && routeCoordinates.length > 2) {
+                return;
+            }
+
+            let active = true;
+            fetchedRouteKeyRef.current = routeKey;
+
+            RouteService.fetchRoadRoute(start, end, wps).then(roadCoords => {
+                if (active && roadCoords && roadCoords.length > 1) {
+                    setRouteCoordinates(roadCoords);
+                }
+            });
+            return () => { active = false; };
+        }
+    }, [mode, trip, customStopOrder, startPoint?.latitude, startPoint?.longitude, endPoint?.latitude, endPoint?.longitude]);
 
     // --- Optimized Auto-Center (Fit Bounds) ---
     // NO driverLocation in dependency array to avoid constant zooming
@@ -521,6 +591,13 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
             if (endPoint) markersToFit.push(endPoint);
             if (waypoints) markersToFit.push(...waypoints);
             if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+            if (matchedClients && matchedClients.length > 0) {
+                matchedClients.forEach((m: any) => {
+                    const r = m.route || m;
+                    if (r.startPoint && typeof r.startPoint.latitude === 'number') markersToFit.push(r.startPoint);
+                    if (r.endPoint && typeof r.endPoint.latitude === 'number') markersToFit.push(r.endPoint);
+                });
+            }
         } else if (mode === 'trip' && trip) {
             // Use getAllPointsFromTrip (synced with MapLeaflet)
             const tripPoints = getAllPointsFromTrip(trip);
@@ -726,21 +803,28 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                     />
                 )}
 
-                {/* Driver Route Polyline */}
+                {/* Driver Route Polyline (Leaflet style red road line with casing) */}
                 {((mode === 'trip' || mode === 'route') && routeCoordinates.length > 1) && (
-                    <AnimatedPolyline
-                        coordinates={routeCoordinates}
-                        animatedProps={animatedPolylineProps}
-                        strokeWidth={6}
-                        tappable={true}
-                        onPress={() => {
-                            if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
-                                const firstClient = trip.clients[0];
-                                const routeId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
-                                if (routeId) onRouteSelect(routeId);
-                            }
-                        }}
-                    />
+                    <>
+                        <Polyline
+                            coordinates={routeCoordinates}
+                            strokeColor="rgba(15, 23, 42, 0.35)"
+                            strokeWidth={8}
+                        />
+                        <Polyline
+                            coordinates={routeCoordinates}
+                            strokeColor="#ef4444"
+                            strokeWidth={5}
+                            tappable={true}
+                            onPress={() => {
+                                if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
+                                    const firstClient = trip.clients[0];
+                                    const routeId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
+                                    if (routeId) onRouteSelect(routeId);
+                                }
+                            }}
+                        />
+                    </>
                 )}
 
                 {/* Client Route Polylines (Dashed/Thinner) */}
@@ -787,10 +871,69 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                     );
                 })}
 
-                {/* Dashboard Saved Routes */}
-                {(mode === 'browse' || mode === 'driver-idle') && routePolylines && routePolylines.length > 0 && (
-                    <RoutePolylines routePolylines={routePolylines} />
+                {/* Saved & Personal Routes (Driver idle, browse, client view) */}
+                {routePolylines && routePolylines.length > 0 && (
+                    <RoutePolylines 
+                        routePolylines={routePolylines} 
+                        selectedRouteId={selectedRouteId}
+                        onRouteSelect={onRouteSelect}
+                        theme={theme}
+                        interactive={interactive}
+                    />
                 )}
+
+                {/* Matched Clients on Driver Route */}
+                {matchedClients && matchedClients.length > 0 && matchedClients.map((matchItem: any, idx: number) => {
+                    const r = matchItem.route || matchItem;
+                    const clientUser = r.userId;
+                    const pickupPt = r.startPoint;
+                    const destPt = r.endPoint;
+                    const clientFare = r.price?.amount ?? r.price ?? 0;
+                    const clientName = clientUser?.fullName || `Client #${idx + 1}`;
+
+                    const pickupValid = pickupPt && typeof pickupPt.latitude === 'number' && typeof pickupPt.longitude === 'number';
+                    const destValid = destPt && typeof destPt.latitude === 'number' && typeof destPt.longitude === 'number';
+
+                    let clientRouteCoords: LatLng[] = [];
+                    if (r.routeGeometry) {
+                        clientRouteCoords = decodePolyline(r.routeGeometry).filter((p: any) => p && typeof p.latitude === 'number');
+                    } else if (pickupValid && destValid) {
+                        clientRouteCoords = [pickupPt, destPt];
+                    }
+
+                    return (
+                        <React.Fragment key={`matched-client-native-${r.id || idx}`}>
+                            {clientRouteCoords.length > 1 && (
+                                <Polyline
+                                    coordinates={clientRouteCoords}
+                                    strokeColor="#06b6d4"
+                                    strokeWidth={4}
+                                    lineDashPattern={[8, 6]}
+                                />
+                            )}
+                            {pickupValid && (
+                                <Marker coordinate={pickupPt}>
+                                    <View style={[styles.markerBadge, { backgroundColor: '#10b981' }]}>
+                                        <User size={14} color="#fff" />
+                                    </View>
+                                    <Callout>
+                                        <View style={styles.callout}>
+                                            <Text style={[styles.calloutTitle, { color: theme.text }]}>{clientName}</Text>
+                                            <Text style={[styles.calloutSubtitle, { color: theme.icon }]}>Pickup • {clientFare} MAD</Text>
+                                        </View>
+                                    </Callout>
+                                </Marker>
+                            )}
+                            {destValid && (
+                                <Marker coordinate={destPt}>
+                                    <View style={[styles.markerBadge, { backgroundColor: '#8b5cf6' }]}>
+                                        <MapPin size={12} color="#fff" />
+                                    </View>
+                                </Marker>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
 
                 {/* Additional custom overlays */}
                 {children}
@@ -1042,5 +1185,41 @@ const styles = StyleSheet.create({
         height: 6,
         borderRadius: 3,
         backgroundColor: '#fff',
+    },
+    pinBubble: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+        elevation: 6,
+        // @ts-ignore
+        boxShadow: '0px 3px 8px rgba(0,0,0,0.3)',
+    },
+    teardropPin: {
+        width: 30,
+        height: 36,
+        backgroundColor: '#2563eb',
+        borderTopLeftRadius: 15,
+        borderTopRightRadius: 15,
+        borderBottomLeftRadius: 15,
+        borderBottomRightRadius: 3,
+        transform: [{ rotate: '-45deg' }],
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        // @ts-ignore
+        boxShadow: '0px 3px 8px rgba(0,0,0,0.3)',
+        borderWidth: 2,
+        borderColor: '#ffffff',
+    },
+    teardropDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#ffffff',
+        transform: [{ rotate: '45deg' }],
     },
 });

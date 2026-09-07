@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Platform, ScrollView, Image } from 'react-native';
 import Animated, { useSharedValue, withRepeat, withTiming, useAnimatedStyle, Easing } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { Wifi, Coffee, Star, Wallet, Calendar } from 'lucide-react-native';
+import { Wifi, Coffee, Star, Wallet, Calendar, Users, User, Send, Check } from 'lucide-react-native';
 import { Colors } from '../../../constants/theme';
 import { useCountdownDate } from '../../../hooks/useCountdown';
+import { useInvitePassenger } from '../../../hooks/api/useTripQueries';
 
 interface Props {
     onGoOffline: () => void;
@@ -15,12 +16,15 @@ interface Props {
         nextTripDate: Date | null;
         nextTripRef: any;
     };
+    matchedClients?: any[];
+    activeRoute?: any;
 }
 
-export default function OnlineIdleView({ onGoOffline, onTakeBreak, stats }: Props) {
+export default function OnlineIdleView({ onGoOffline, onTakeBreak, stats, matchedClients, activeRoute }: Props) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const nextTripCountdown = useCountdownDate(stats?.nextTripDate || null);
+    const invitePassenger = useInvitePassenger();
 
     // Pulsing animation for "listening" indicator
     const pulseScale = useSharedValue(1);
@@ -82,16 +86,109 @@ export default function OnlineIdleView({ onGoOffline, onTakeBreak, stats }: Prop
                     </View>
                 </View>
 
-                {/* Next Trip Alert */}
+                {/* Next Trip / Active Route Alert */}
                 {stats?.nextTripRef && (
                     <View style={[styles.nextTripCard, { backgroundColor: theme.surfaceHighlight + '40' }]}>
                         <Calendar size={18} color={theme.primary} />
                         <View style={styles.nextTripInfo}>
-                            <Text style={[styles.nextTripTitle, { color: theme.text }]}>Next Trip in {nextTripCountdown}</Text>
+                            <Text style={[styles.nextTripTitle, { color: theme.text }]}>
+                                {stats.nextTripRef.isRouteOnly ? 'Active Route • Waiting for Clients' : `Next Trip in ${nextTripCountdown}`}
+                            </Text>
                             <Text style={[styles.nextTripSub, { color: theme.textSecondary }]} numberOfLines={1}>
-                                {stats.nextTripRef.routeId?.startPoint?.address?.split(',')[0]} → {stats.nextTripRef.routeId?.endPoint?.address?.split(',')[0]}
+                                {(stats.nextTripRef.routeId?.startPoint?.address || 'Start').split(',')[0]} → {(stats.nextTripRef.routeId?.endPoint?.address || 'Destination').split(',')[0]}
                             </Text>
                         </View>
+                    </View>
+                )}
+
+                {/* Clients on Route Section */}
+                {matchedClients !== undefined && (
+                    <View style={styles.clientsSection}>
+                        <View style={styles.clientsHeader}>
+                            <Users size={16} color={theme.primary} />
+                            <Text style={[styles.clientsTitle, { color: theme.text }]}>
+                                Clients on Your Route ({matchedClients.length})
+                            </Text>
+                        </View>
+
+                        {matchedClients.length === 0 ? (
+                            <View style={styles.noClientsBox}>
+                                <Text style={[styles.noClientsText, { color: theme.textSecondary }]}>
+                                    Scanning for passengers along your route...
+                                </Text>
+                            </View>
+                        ) : (
+                            <ScrollView style={styles.clientsList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                                {matchedClients.map((matchItem: any, idx: number) => {
+                                    const r = matchItem.route || matchItem;
+                                    const clientUser = r.userId;
+                                    const clientName = clientUser?.fullName || `Passenger #${idx + 1}`;
+                                    const pickupAddr = r.startPoint?.address ? r.startPoint.address.split(',')[0] : 'Current location';
+                                    const dropoffAddr = r.endPoint?.address ? r.endPoint.address.split(',')[0] : 'Destination';
+                                    const fare = r.price?.amount ?? r.price ?? 15;
+                                    const isPending = matchItem.requestStatus === 'pending' || matchItem.requestStatus === 'DRIVER_PROPOSED';
+                                    const isAccepted = matchItem.requestStatus === 'accepted' || matchItem.requestStatus === 'ACCEPTED';
+                                    const clientRouteId = r.id || r._id;
+                                    const tripId = matchItem.tripId || matchItem.trip?.id;
+
+                                    return (
+                                        <View key={clientRouteId || idx} style={[styles.clientCard, { backgroundColor: theme.surfaceHighlight + '20', borderColor: theme.border }]}>
+                                            <View style={styles.clientCardHeader}>
+                                                <View style={[styles.clientAvatar, { backgroundColor: theme.primary }]}>
+                                                    {clientUser?.photoURL ? (
+                                                        <Image source={{ uri: clientUser.photoURL }} style={styles.avatarImg} />
+                                                    ) : (
+                                                        <User size={16} color="#fff" />
+                                                    )}
+                                                </View>
+                                                <View style={{ flex: 1, marginLeft: 10 }}>
+                                                    <Text style={[styles.clientName, { color: theme.text }]} numberOfLines={1}>
+                                                        {clientName}
+                                                    </Text>
+                                                    <Text style={[styles.clientAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                        {pickupAddr} → {dropoffAddr}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.clientFareBadge}>
+                                                    <Text style={styles.clientFareText}>{fare} MAD</Text>
+                                                </View>
+                                            </View>
+
+                                            <View style={styles.clientCardActions}>
+                                                {isAccepted ? (
+                                                    <View style={[styles.statusBadge, { backgroundColor: '#dcfce7' }]}>
+                                                        <Check size={12} color="#15803d" />
+                                                        <Text style={{ color: '#15803d', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>Joined Trip</Text>
+                                                    </View>
+                                                ) : isPending ? (
+                                                    <View style={[styles.statusBadge, { backgroundColor: '#fef3c7' }]}>
+                                                        <Text style={{ color: '#b45309', fontWeight: '700', fontSize: 12 }}>Invitation Sent</Text>
+                                                    </View>
+                                                ) : (
+                                                    <TouchableOpacity
+                                                        style={[styles.inviteBtn, { backgroundColor: theme.primary }]}
+                                                        disabled={invitePassenger.isPending}
+                                                        onPress={() => {
+                                                            if (clientRouteId) {
+                                                                invitePassenger.mutate({
+                                                                    clientRouteId,
+                                                                    tripId,
+                                                                    driverRouteId: activeRoute?._id || activeRoute?.id,
+                                                                    proposedPrice: fare
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Send size={12} color="#fff" />
+                                                        <Text style={styles.inviteBtnText}>Invite Passenger</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </ScrollView>
+                        )}
                     </View>
                 )}
 
@@ -222,5 +319,103 @@ const styles = StyleSheet.create({
     actionText: {
         fontWeight: '700',
         fontSize: 14,
-    }
+    },
+    // Clients Section Styles
+    clientsSection: {
+        width: '100%',
+        marginBottom: 20,
+    },
+    clientsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 10,
+    },
+    clientsTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    noClientsBox: {
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: 'rgba(156, 163, 175, 0.08)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noClientsText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    clientsList: {
+        maxHeight: 180,
+        width: '100%',
+    },
+    clientCard: {
+        borderRadius: 14,
+        borderWidth: 1,
+        padding: 12,
+        marginBottom: 8,
+        gap: 10,
+    },
+    clientCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    clientAvatar: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    avatarImg: {
+        width: '100%',
+        height: '100%',
+    },
+    clientName: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    clientAddress: {
+        fontSize: 11,
+        marginTop: 2,
+    },
+    clientFareBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    },
+    clientFareText: {
+        color: '#10b981',
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    clientCardActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    inviteBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    inviteBtnText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '700',
+    },
 });

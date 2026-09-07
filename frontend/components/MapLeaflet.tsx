@@ -11,6 +11,7 @@ import { useLocationStore } from '../store/useLocationStore';
 import { LatLng } from '../types';
 import { decodePolyline } from '../utils/location';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
+import { RouteService } from '../services/RouteService';
 import { MapProps } from './Map';
 
 // Inject Leaflet CSS
@@ -71,10 +72,39 @@ const MapBoundsUpdater = ({ points, edgePadding, fullScreen }: { points: LatLng[
     return null;
 };
 
-// Helper to handle map clicks for Picker
-const MapEvents = ({ onMapClick }: { onMapClick: (e: L.LeafletMouseEvent) => void }) => {
+// Helper to handle map clicks and region changes for Picker
+const MapEvents = ({ 
+    onMapClick, 
+    onRegionChange, 
+    onRegionChangeComplete 
+}: { 
+    onMapClick?: (e: L.LeafletMouseEvent) => void;
+    onRegionChange?: (region: any) => void;
+    onRegionChangeComplete?: (region: any) => void;
+}) => {
+    const map = useMap();
+
+    useEffect(() => {
+        if (onRegionChangeComplete) {
+            const center = map.getCenter();
+            onRegionChangeComplete({ latitude: center.lat, longitude: center.lng });
+        }
+    }, [map, onRegionChangeComplete]);
+
     useMapEvents({
-        click: onMapClick,
+        click: onMapClick || (() => {}),
+        movestart: () => {
+            const center = map.getCenter();
+            onRegionChange?.({ latitude: center.lat, longitude: center.lng });
+        },
+        move: () => {
+            const center = map.getCenter();
+            onRegionChange?.({ latitude: center.lat, longitude: center.lng });
+        },
+        moveend: () => {
+            const center = map.getCenter();
+            onRegionChangeComplete?.({ latitude: center.lat, longitude: center.lng });
+        }
     });
     return null;
 };
@@ -164,6 +194,7 @@ const MapLeaflet = React.memo(({
     startPoint: propStartPoint,
     endPoint: propEndPoint,
     waypoints: propWaypoints = EMPTY_POINTS,
+    matchedClients,
     driverLocation,
     maxPoints,
     savedPlaces: propSavedPlaces,
@@ -175,7 +206,9 @@ const MapLeaflet = React.memo(({
     onMapPress,
     edgePadding,
     boundsPoints,
-    fullScreen = false
+    fullScreen = false,
+    onRegionChange,
+    onRegionChangeComplete
 }: MapProps) => {
     const { location } = useLocationStore();
     const { user } = useAuthStore();
@@ -195,7 +228,7 @@ const MapLeaflet = React.memo(({
 
     useEffect(() => {
         if (mode === 'trip' && trip) {
-            const driverRoute = trip.routeId;
+            const driverRoute = trip.routeId || trip;
             const clients = trip.clients || [];
             if (customStopOrder && customStopOrder.length > 0) {
                 const coords = customStopOrder.map(s => ({
@@ -203,19 +236,29 @@ const MapLeaflet = React.memo(({
                     longitude: s.longitude
                 }));
                 setRouteCoordinates(coords);
-            } else {
+            } else if (driverRoute?.routeGeometry) {
+                const decoded = decodePolyline(driverRoute.routeGeometry);
+                if (decoded.length > 0) {
+                    setRouteCoordinates(decoded);
+                }
+            } else if (driverRoute?.startPoint && driverRoute?.endPoint) {
                 const { sortedPoints, routeCoordinates: computedRoute } = optimizeRoute(
-                    driverRoute?.startPoint,
-                    driverRoute?.endPoint,
-                    driverRoute?.waypoints,
+                    driverRoute.startPoint,
+                    driverRoute.endPoint,
+                    driverRoute.waypoints,
                     clients
                 );
                 setIntermediatePoints(sortedPoints);
                 setRouteCoordinates(computedRoute);
             }
         } else if (mode === 'route' && propStartPoint && propEndPoint) {
-            const coords: LatLng[] = [propStartPoint, ...propWaypoints, propEndPoint];
-            setRouteCoordinates(coords);
+            let active = true;
+            RouteService.fetchRoadRoute(propStartPoint, propEndPoint, propWaypoints).then(roadCoords => {
+                if (active && roadCoords && roadCoords.length > 1) {
+                    setRouteCoordinates(roadCoords);
+                }
+            });
+            return () => { active = false; };
         }
     }, [mode, trip, customStopOrder, propStartPoint, propEndPoint, propWaypoints]);
 
@@ -233,6 +276,13 @@ const MapLeaflet = React.memo(({
             if (propEndPoint) markersToFit.push(propEndPoint);
             if (propWaypoints) markersToFit.push(...propWaypoints);
             if (routeCoordinates.length > 0) markersToFit.push(...routeCoordinates);
+        }
+        if (matchedClients && matchedClients.length > 0) {
+            matchedClients.forEach((m: any) => {
+                const r = m.route || m;
+                if (r.startPoint && typeof r.startPoint.latitude === 'number') markersToFit.push(r.startPoint);
+                if (r.endPoint && typeof r.endPoint.latitude === 'number') markersToFit.push(r.endPoint);
+            });
         }
         if (mode === 'trip' && trip) {
             if (boundsPoints && boundsPoints.length > 0) {
@@ -255,7 +305,7 @@ const MapLeaflet = React.memo(({
             typeof p.longitude === 'number' && !isNaN(p.longitude) && p.longitude !== 0
         );
         if (markersToFit.length > 0) setAllPointsToFit(markersToFit);
-    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, savedPlaces, routeCoordinates, boundsPoints, propRoutePolylines]);
+    }, [points, trip, mode, propStartPoint, propEndPoint, propWaypoints, savedPlaces, routeCoordinates, boundsPoints, propRoutePolylines, matchedClients]);
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         onMapPress?.();
@@ -287,7 +337,7 @@ const MapLeaflet = React.memo(({
     const defaultCenter: [number, number] = [33.5731, -7.5898];
 
     return (
-        <View style={[styles.container, style, fullScreen && { borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' }]}>
+        <View style={[styles.container, style, fullScreen && { borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent', height: '100%', width: '100%' }]}>
             <LeafletStyles />
             <div style={{
                 height: fullScreen ? '100%' : (typeof height === 'number' ? `${height}px` : (height as string || '300px')),
@@ -300,7 +350,11 @@ const MapLeaflet = React.memo(({
                 <MapContainer center={defaultCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
                     <TileLayer attribution='&copy; Detour.ma' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <MapBoundsUpdater points={allPointsToFit} edgePadding={edgePadding} fullScreen={fullScreen} />
-                    <MapEvents onMapClick={handleMapClick} />
+                    <MapEvents 
+                        onMapClick={handleMapClick} 
+                        onRegionChange={onRegionChange}
+                        onRegionChangeComplete={onRegionChangeComplete}
+                    />
                     <MapCenterUpdater center={mapCenter} />
 
                     {savedPlaces?.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && typeof p.longitude === 'number' && p.longitude !== 0).map((place: any, index: number) => (
@@ -345,13 +399,16 @@ const MapLeaflet = React.memo(({
                         // @ts-ignore
                         const firstClientRouteId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
                         const handleDriverRouteClick = () => { if (firstClientRouteId && onRouteSelect) onRouteSelect(firstClientRouteId); };
+                        const driverRoute: any = trip.routeId || trip;
+                        const startPt = driverRoute?.startPoint || driverRoute?.pickup;
+                        const endPt = driverRoute?.endPoint || driverRoute?.destination;
                         return (
                             <>
-                                {trip.routeId?.startPoint?.latitude !== undefined && trip.routeId?.startPoint?.longitude !== undefined && (
-                                    <Marker position={[trip.routeId.startPoint.latitude, trip.routeId.startPoint.longitude]} icon={createGenericIcon(<Car size={14} color="#fff" />, '#10b981')} eventHandlers={{ click: handleDriverRouteClick }} />
+                                {startPt?.latitude !== undefined && startPt?.longitude !== undefined && (
+                                    <Marker position={[startPt.latitude, startPt.longitude]} icon={createGenericIcon(<Car size={14} color="#fff" />, '#10b981')} eventHandlers={{ click: handleDriverRouteClick }} />
                                 )}
-                                {trip.routeId?.endPoint?.latitude !== undefined && trip.routeId?.endPoint?.longitude !== undefined && (
-                                    <Marker position={[trip.routeId.endPoint.latitude, trip.routeId.endPoint.longitude]} icon={createGenericIcon(<MapPin size={14} color="#fff" />, '#ef4444')} eventHandlers={{ click: handleDriverRouteClick }} />
+                                {endPt?.latitude !== undefined && endPt?.longitude !== undefined && (
+                                    <Marker position={[endPt.latitude, endPt.longitude]} icon={createGenericIcon(<MapPin size={14} color="#fff" />, '#ef4444')} eventHandlers={{ click: handleDriverRouteClick }} />
                                 )}
                                 {intermediatePoints.filter(p => p.type === 'waypoint').map((wp, i) => (
                                     <Marker key={`wp-${i}`} position={[wp.lat, wp.lon]} icon={createGenericIcon(<Text style={{ color: 'white', fontWeight: 'bold', fontSize: 10 }}>{i + 1}</Text>, theme.primary || '#007AFF', 22)} eventHandlers={{ click: handleDriverRouteClick }} />
@@ -410,19 +467,25 @@ const MapLeaflet = React.memo(({
                         />
                     )}
                     {((mode === 'trip' || mode === 'route') && routeCoordinates.length > 1) && (
-                        <Polyline 
-                            positions={routeCoordinates.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).map(p => [p.latitude, p.longitude])} 
-                            pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }} 
-                            eventHandlers={{
-                            click: () => {
-                                if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
-                                    const firstClient = trip.clients[0];
-                                    // @ts-ignore
-                                    const routeId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
-                                    if (routeId) onRouteSelect(routeId);
+                        <>
+                            <Polyline 
+                                positions={routeCoordinates.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).map(p => [p.latitude, p.longitude])} 
+                                pathOptions={{ color: '#0f172a', weight: 8, opacity: 0.35 }} 
+                            />
+                            <Polyline 
+                                positions={routeCoordinates.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).map(p => [p.latitude, p.longitude])} 
+                                pathOptions={{ color: '#ef4444', weight: 5, opacity: 0.9 }} 
+                                eventHandlers={{
+                                click: () => {
+                                    if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {
+                                        const firstClient = trip.clients[0];
+                                        // @ts-ignore
+                                        const routeId = (firstClient?.routeId as any)?._id || firstClient?.routeId?.id;
+                                        if (routeId) onRouteSelect(routeId);
+                                    }
                                 }
-                            }
-                        }} />
+                            }} />
+                        </>
                     )}
 
                     {mode === 'trip' && trip?.clients?.map((client: any, index: number) => {
@@ -450,16 +513,33 @@ const MapLeaflet = React.memo(({
                         const startPoint = route.startPoint && typeof route.startPoint.latitude === 'number' ? route.startPoint : null;
                         const endPoint = route.endPoint && typeof route.endPoint.latitude === 'number' ? route.endPoint : null;
 
+                        const isSelected = selectedRouteId === route.id || route.isSelected;
+                        const routeColor = route.isDriverRoute 
+                            ? (route.color || '#f59e0b') 
+                            : (isSelected ? (theme?.primary || '#3b82f6') : (route.color || '#6366f1'));
+                        const routeWeight = route.isDriverRoute 
+                            ? (route.width || 5) 
+                            : (isSelected ? 6 : (route.width || 4));
+                        const routeOpacity = route.isDriverRoute 
+                            ? 0.95 
+                            : (isSelected ? 1.0 : (route.isActive ? 0.85 : 0.6));
+                        const routeDash = route.isDriverRoute 
+                            ? (route.dashArray || undefined) 
+                            : (isSelected ? undefined : (route.isActive ? undefined : '8, 8'));
+
                         return (
                             <React.Fragment key={`route-polyline-${route.id}`}>
                                 {validCoords && validCoords.length > 1 && (
                                     <Polyline
                                         positions={validCoords.map((p: any) => [p.latitude, p.longitude])}
                                         pathOptions={{
-                                            color: route.color,
-                                            weight: route.width || 4,
-                                            opacity: route.isActive ? 0.9 : 0.6,
-                                            dashArray: route.isActive ? undefined : '10, 10'
+                                            color: routeColor,
+                                            weight: routeWeight,
+                                            opacity: routeOpacity,
+                                            dashArray: routeDash,
+                                        }}
+                                        eventHandlers={{
+                                            click: () => onRouteSelect?.(route.id)
                                         }}
                                     />
                                 )}
@@ -467,15 +547,108 @@ const MapLeaflet = React.memo(({
                                 {startPoint && (
                                     <Marker
                                         position={[startPoint.latitude, startPoint.longitude]}
-                                        icon={createDotIcon(route.isActive ? '#10b981' : '#ccc')}
+                                        icon={createDotIcon(isSelected ? '#10b981' : (route.isActive ? '#10b981' : '#94a3b8'))}
+                                        eventHandlers={{
+                                            click: () => onRouteSelect?.(route.id)
+                                        }}
                                     />
                                 )}
                                 {/* End Marker */}
                                 {endPoint && (
                                     <Marker
                                         position={[endPoint.latitude, endPoint.longitude]}
-                                        icon={createDotIcon(route.isActive ? '#ef4444' : '#ccc')}
+                                        icon={createDotIcon(isSelected ? '#ef4444' : (route.isActive ? '#ef4444' : '#94a3b8'))}
+                                        eventHandlers={{
+                                            click: () => onRouteSelect?.(route.id)
+                                        }}
                                     />
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+
+                    {/* Matched Clients on Driver's Route */}
+                    {matchedClients && matchedClients.length > 0 && matchedClients.map((matchItem: any, idx: number) => {
+                        const r = matchItem.route || matchItem;
+                        const clientUser = r.userId;
+                        const pickupPt = r.startPoint;
+                        const destPt = r.endPoint;
+                        const clientFare = r.price?.amount ?? r.price ?? 0;
+                        const clientName = clientUser?.fullName || `Client #${idx + 1}`;
+                        const photoURL = clientUser?.photoURL;
+                        const isPending = matchItem.requestStatus === 'pending';
+
+                        const pickupValid = pickupPt && typeof pickupPt.latitude === 'number' && typeof pickupPt.longitude === 'number';
+                        const destValid = destPt && typeof destPt.latitude === 'number' && typeof destPt.longitude === 'number';
+
+                        let clientRouteCoords: LatLng[] = [];
+                        if (r.routeGeometry) {
+                            clientRouteCoords = decodePolyline(r.routeGeometry).filter((p: any) => p && typeof p.latitude === 'number');
+                        } else if (pickupValid && destValid) {
+                            clientRouteCoords = [pickupPt, destPt];
+                        }
+
+                        return (
+                            <React.Fragment key={`matched-client-${r.id || idx}`}>
+                                {/* Dashed Route for Client */}
+                                {clientRouteCoords.length > 1 && (
+                                    <Polyline
+                                        positions={clientRouteCoords.map((p: any) => [p.latitude, p.longitude])}
+                                        pathOptions={{
+                                            color: '#06b6d4',
+                                            weight: 4,
+                                            dashArray: '8, 6',
+                                            opacity: 0.9
+                                        }}
+                                    />
+                                )}
+
+                                {/* Client Pickup Marker */}
+                                {pickupValid && (
+                                    <Marker
+                                        position={[pickupPt.latitude, pickupPt.longitude]}
+                                        icon={photoURL ? createProfileIcon(photoURL, '#10b981') : createGenericIcon(<User size={14} color="#fff" />, '#10b981', 28)}
+                                        zIndexOffset={200}
+                                    >
+                                        <Popup>
+                                            <div style={{ minWidth: '150px', padding: '4px', fontFamily: 'sans-serif' }}>
+                                                <div style={{ fontWeight: '700', fontSize: '14px', color: '#1e293b' }}>
+                                                    {clientName}
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                                                    Pickup: {pickupPt.address ? pickupPt.address.split(',')[0] : 'Current location'}
+                                                </div>
+                                                {destValid && (
+                                                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                                        Dropoff: {destPt.address ? destPt.address.split(',')[0] : 'Destination'}
+                                                    </div>
+                                                )}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                                                    <span style={{ fontWeight: '800', color: '#10b981', fontSize: '13px' }}>
+                                                        {clientFare} MAD
+                                                    </span>
+                                                    <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', backgroundColor: isPending ? '#fef3c7' : '#e0f2fe', color: isPending ? '#b45309' : '#0369a1', fontWeight: '600' }}>
+                                                        {isPending ? 'Invitation Sent' : 'On Your Route'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                )}
+
+                                {/* Client Destination Marker */}
+                                {destValid && (
+                                    <Marker
+                                        position={[destPt.latitude, destPt.longitude]}
+                                        icon={createGenericIcon(<MapPin size={12} color="#fff" />, '#8b5cf6', 22)}
+                                        zIndexOffset={190}
+                                    >
+                                        <Popup>
+                                            <div style={{ fontSize: '12px', fontWeight: '600' }}>
+                                                Dropoff for {clientName}
+                                            </div>
+                                        </Popup>
+                                    </Marker>
                                 )}
                             </React.Fragment>
                         );

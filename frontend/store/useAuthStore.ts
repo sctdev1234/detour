@@ -14,17 +14,28 @@ interface RetryAction {
 }
 
 const secureStorage: StateStorage = {
-    getItem: async (name: string): Promise<string | null> => {
-        if (Platform.OS === 'web') return localStorage.getItem(name);
-        return (await SecureStore.getItemAsync(name)) || null;
+    getItem: (name: string): string | null | Promise<string | null> => {
+        if (Platform.OS === 'web') {
+            if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+            return localStorage.getItem(name);
+        }
+        return SecureStore.getItemAsync(name);
     },
-    setItem: async (name: string, value: string): Promise<void> => {
-        if (Platform.OS === 'web') return localStorage.setItem(name, value);
-        await SecureStore.setItemAsync(name, value);
+    setItem: (name: string, value: string): void | Promise<void> => {
+        if (Platform.OS === 'web') {
+            if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+            localStorage.setItem(name, value);
+            return;
+        }
+        return SecureStore.setItemAsync(name, value);
     },
-    removeItem: async (name: string): Promise<void> => {
-        if (Platform.OS === 'web') return localStorage.removeItem(name);
-        await SecureStore.deleteItemAsync(name);
+    removeItem: (name: string): void | Promise<void> => {
+        if (Platform.OS === 'web') {
+            if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+            localStorage.removeItem(name);
+            return;
+        }
+        return SecureStore.deleteItemAsync(name);
     },
 };
 
@@ -49,9 +60,11 @@ interface AuthState {
 }
 
 // Start network listener
-NetInfo.addEventListener(state => {
-    useAuthStore.getState().setOffline(!state.isConnected);
-});
+if (Platform.OS !== 'web' || typeof window !== 'undefined') {
+    NetInfo.addEventListener(state => {
+        useAuthStore.getState().setOffline(!state.isConnected);
+    });
+}
 
 export const useAuthStore = create<AuthState>()(
     persist(
@@ -78,7 +91,7 @@ export const useAuthStore = create<AuthState>()(
             }),
 
             updateUser: (updates) => set((state) => ({
-                user: state.user ? { ...state.user, ...updates } : null
+                user: state.user ? { ...state.user, ...updates } : (updates as User)
             })),
 
             setLoading: (isLoading) => set({ isLoading }),
@@ -143,7 +156,14 @@ export const useAuthStore = create<AuthState>()(
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => secureStorage),
-            partialize: (state) => ({ token: state.token, refreshToken: state.refreshToken }), // Persist tokens. Fetch user on boot.
+            partialize: (state) => ({ 
+                user: state.user,
+                token: state.token, 
+                refreshToken: state.refreshToken 
+            }),
+            onRehydrateStorage: () => (state) => {
+                state?.setLoading(false);
+            }
         }
     )
 );

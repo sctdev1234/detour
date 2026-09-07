@@ -80,12 +80,16 @@ export const driverDispatchSocket = {
         return () => socket.off('dispatch:trip_cancelled', handler);
     },
 
-    /** Passenger counter-offer response. */
-    onCounterResponse: (currentSeq: number, callback: (data: { offerId: string; accepted: boolean; finalPrice?: number }) => void) => {
+    /** Passenger counter-offer response or rejection. */
+    onCounterResponse: (currentSeq: number, callback: (data: { offerId: string; accepted: boolean; finalPrice?: number; declined?: boolean; reason?: string }) => void) => {
         const socket = SocketService.connect();
         const handler = (data: any) => driverDispatchSocket._validateSequence(data, currentSeq, callback);
         socket.on('dispatch:counter_response', handler);
-        return () => socket.off('dispatch:counter_response', handler);
+        socket.on('dispatch:offer_rejected', handler);
+        return () => {
+            socket.off('dispatch:counter_response', handler);
+            socket.off('dispatch:offer_rejected', handler);
+        };
     },
 
     /** Emit driver location update to backend. */

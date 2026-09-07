@@ -8,14 +8,55 @@ import { Colors } from '../../../constants/theme';
 import { useDispatchFlow } from '../../../hooks/useDispatchFlow';
 import TripExperience from '../../dispatch/passenger/TripExperience';
 
+import { Route } from '../../../types';
+import { RouteDetailsCard } from './RouteDetailsCard';
+import { FindingDriversPanel } from './FindingDriversPanel';
+
 interface ContextualBottomSheetProps {
     homeState: 'idle' | 'searching' | 'active';
     onSearchPress: () => void;
     onHomePress: () => void;
     onWorkPress: () => void;
+    selectedRoute?: Route | null;
+    onDeselectRoute?: () => void;
+    onDeleteRoute?: (routeId: string) => void;
+    isDeletingRoute?: boolean;
+
+    // Route-scoped Finding Drivers Props
+    routeOffers?: any[];
+    isFindingDrivers?: boolean;
+    isPanelDismissed?: boolean;
+    onAcceptOffer?: (offerId: string) => void;
+    onRejectOffer?: (offerId: string) => void;
+    isAcceptingOffer?: boolean;
+    onCloseFindingPanel?: () => void;
+    onOpenFindingPanel?: () => void;
+    onHoverOffer?: (offer: any | null) => void;
+    selectedOfferId?: string | null;
+    isAssigned?: boolean;
 }
 
-export default function ContextualBottomSheet({ homeState, onSearchPress, onHomePress, onWorkPress }: ContextualBottomSheetProps) {
+export default function ContextualBottomSheet({ 
+    homeState, 
+    onSearchPress, 
+    onHomePress, 
+    onWorkPress,
+    selectedRoute,
+    onDeselectRoute,
+    onDeleteRoute,
+    isDeletingRoute,
+    routeOffers = [],
+    isFindingDrivers = false,
+    isPanelDismissed = false,
+    onAcceptOffer,
+    onRejectOffer,
+    isAcceptingOffer = false,
+    onCloseFindingPanel,
+    onOpenFindingPanel,
+    onHoverOffer,
+    selectedOfferId,
+    isAssigned = false,
+}: ContextualBottomSheetProps) {
     const bottomSheetRef = useRef<BottomSheet>(null);
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -24,16 +65,36 @@ export default function ContextualBottomSheet({ homeState, onSearchPress, onHome
     const v2Flow = useDispatchFlow();
 
     // Snap points based on state
+    const isFinding = isFindingDrivers || routeOffers.length > 0;
+    const showFindingDrivers = Boolean(selectedRoute && !isAssigned && isFinding && !isPanelDismissed);
+
     const snapPoints = useMemo(() => {
-        if (homeState === 'active' || homeState === 'searching' || v2Flow.status !== 'IDLE') {
+        if (selectedRoute) {
+            if (isAssigned) {
+                return ['35%', '55%'];
+            }
+            if (showFindingDrivers) {
+                return ['45%', '72%'];
+            }
+            return ['38%', '65%'];
+        }
+        if (homeState === 'active') {
             return ['35%', '50%'];
         }
         return ['12%', '45%', '90%'];
-    }, [homeState, v2Flow.status]);
+    }, [selectedRoute, isAssigned, showFindingDrivers, homeState]);
 
     const handleSheetChanges = useCallback((index: number) => {
         // Handle snap changes if needed
     }, []);
+
+    React.useEffect(() => {
+        if (selectedRoute) {
+            bottomSheetRef.current?.snapToIndex(0);
+        } else if (homeState === 'active') {
+            bottomSheetRef.current?.snapToIndex(0);
+        }
+    }, [selectedRoute, showFindingDrivers, homeState]);
 
     const renderIdleContent = () => (
         <View style={styles.idleContent}>
@@ -131,8 +192,34 @@ export default function ContextualBottomSheet({ homeState, onSearchPress, onHome
             style={styles.sheet}
         >
             <BottomSheetView style={[styles.contentContainer, { paddingBottom: insets.bottom }]}>
-                {v2Flow.status !== 'IDLE' ? (
-                    <TripExperience onClose={() => v2Flow.cancelSearch()} />
+                {selectedRoute ? (
+                    isAssigned ? (
+                        <TripExperience onClose={() => v2Flow.cancelSearch()} />
+                    ) : showFindingDrivers ? (
+                        <FindingDriversPanel
+                            route={selectedRoute}
+                            offers={routeOffers}
+                            onAcceptOffer={onAcceptOffer || v2Flow.acceptOffer}
+                            onRejectOffer={onRejectOffer || v2Flow.rejectOffer}
+                            isAcceptingOffer={isAcceptingOffer}
+                            onClose={onCloseFindingPanel || (() => {})}
+                            onHoverOffer={onHoverOffer}
+                            selectedOfferId={selectedOfferId}
+                        />
+                    ) : (
+                        <View style={styles.idleContent}>
+                            <RouteDetailsCard 
+                                route={selectedRoute} 
+                                onClose={onDeselectRoute || (() => {})}
+                                onDelete={onDeleteRoute}
+                                isDeleting={isDeletingRoute}
+                                isFinding={isFinding}
+                                offersCount={routeOffers.length}
+                                onOpenFindingPanel={onOpenFindingPanel}
+                            />
+                            {renderIdleContent()}
+                        </View>
+                    )
                 ) : (
                     renderIdleContent()
                 )}

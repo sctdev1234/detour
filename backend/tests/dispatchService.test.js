@@ -4,6 +4,7 @@ const DispatchServiceV2 = require('../services/v2/dispatchService');
 const TripInstance = require('../models/TripInstance');
 const Offer = require('../models/Offer');
 const TripAssignment = require('../models/TripAssignment');
+const User = require('../models/User');
 
 let mongoServer;
 
@@ -12,27 +13,57 @@ beforeAll(async () => {
     mongoServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     const mongoUri = mongoServer.getUri();
     await mongoose.connect(mongoUri);
-});
+    await TripInstance.createCollection();
+    await Offer.createCollection();
+    await TripAssignment.createCollection();
+    await User.createCollection();
+}, 120000);
 
 afterAll(async () => {
-    await mongoose.disconnect();
-    await mongoServer.stop();
-});
+    if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+    }
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
+}, 60000);
 
 afterEach(async () => {
     await TripInstance.deleteMany({});
     await Offer.deleteMany({});
     await TripAssignment.deleteMany({});
+    await User.deleteMany({});
 });
 
 describe('DispatchServiceV2 Concurrency', () => {
     it('should handle concurrent offer acceptances idempotently and atomicly', async () => {
+        // Setup passenger & driver
+        const passenger = new User({
+            fullName: 'Test Passenger',
+            email: 'concur_p@test.com',
+            password: 'hash',
+            role: 'client',
+            walletBalance: 100,
+            heldBalance: 0
+        });
+        await passenger.save();
+
+        const driver = new User({
+            fullName: 'Test Driver',
+            email: 'concur_d@test.com',
+            password: 'hash',
+            role: 'driver',
+            walletBalance: 200,
+            driverStatus: 'ONLINE'
+        });
+        await driver.save();
+
         // Setup mock instance and offer
         const instance = new TripInstance({
             templateId: new mongoose.Types.ObjectId(),
-            passengerIds: [new mongoose.Types.ObjectId()],
-            pickup: { type: 'Point', coordinates: [0, 0] },
-            destination: { type: 'Point', coordinates: [1, 1] },
+            passengerIds: [passenger._id],
+            pickup: { type: 'Point', coordinates: [0, 0], address: 'Pickup Address' },
+            destination: { type: 'Point', coordinates: [1, 1], address: 'Destination Address' },
             scheduledTime: new Date(),
             status: 'OFFERS_OPEN'
         });
@@ -40,10 +71,11 @@ describe('DispatchServiceV2 Concurrency', () => {
 
         const offer = new Offer({
             tripInstanceId: instance._id,
-            driverId: new mongoose.Types.ObjectId(),
-            passengerId: instance.passengerIds[0],
+            driverId: driver._id,
+            passengerId: passenger._id,
             price: 10,
-            status: 'PENDING'
+            status: 'PENDING',
+            expiresAt: new Date(Date.now() + 60000)
         });
         await offer.save();
 

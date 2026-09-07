@@ -11,6 +11,7 @@ export const useDispatchFlow = () => {
     // Select specific state
     const status = useDispatchStore((state) => state.status);
     const offers = useDispatchStore((state) => state.offers);
+    const addOffer = useDispatchStore((state) => state.addOffer);
     const assignment = useDispatchStore((state) => state.assignment);
     const tripSummary = useDispatchStore((state) => state.tripSummary);
     const error = useDispatchStore((state) => state.error);
@@ -24,6 +25,10 @@ export const useDispatchFlow = () => {
         await dispatchActions.acceptOffer(offerId);
     };
 
+    const rejectOffer = async (offerId: string, reason?: string) => {
+        await dispatchActions.rejectOffer(offerId, reason);
+    };
+
     const cancelSearch = () => {
         dispatchActions.cancelSearch();
     };
@@ -34,34 +39,62 @@ export const useDispatchFlow = () => {
 
     // Derived State
     const isSearching = status === 'SEARCHING';
+    const isOffersOpen = status === 'OFFERS_OPEN' || (status === 'SEARCHING' && offers.length > 0);
     const hasOffers = offers.length > 0;
     const isAssigned = status === 'ASSIGNED';
     const isEnRoute = status === 'EN_ROUTE';
-    const isArrived = status === 'ARRIVED';
+    const isDriverArrived = status === 'DRIVER_ARRIVED' || status === 'ARRIVED';
+    const isBoarded = status === 'BOARDED';
     const isStarted = status === 'STARTED';
+    const isDroppedOff = status === 'DROPPED_OFF';
     const isCompleted = status === 'COMPLETED';
+
+    const tripInstance = useDispatchStore((state) => state.tripInstance);
+    const offersByRoute = useDispatchStore((state) => state.offersByRoute);
+    const findingRouteIds = useDispatchStore((state) => state.findingRouteIds);
+    const dismissedPanelRouteIds = useDispatchStore((state) => state.dismissedPanelRouteIds);
+    const activeDriverRoute = useDispatchStore((state) => state.activeDriverRoute);
+    const setFindingForRoute = useDispatchStore((state) => state.setFindingForRoute);
+    const dismissPanelForRoute = useDispatchStore((state) => state.dismissPanelForRoute);
+    const setActiveDriverRoute = useDispatchStore((state) => state.setActiveDriverRoute);
+    const otp = assignment?.otp || assignment?.passengerJourney?.verificationOtp || assignment?.verificationOtp;
 
     return {
         // State
         status,
+        tripInstance,
         offers,
+        offersByRoute,
+        findingRouteIds,
+        dismissedPanelRouteIds,
+        activeDriverRoute,
         assignment,
+        otp,
         tripSummary,
         error,
         
         // Derived state
         isSearching,
+        isOffersOpen,
         hasOffers,
         isAssigned,
         isEnRoute,
-        isArrived,
+        isDriverArrived,
+        isArrived: isDriverArrived,
+        isBoarded,
         isStarted,
+        isDroppedOff,
         isCompleted,
 
         // Actions
         requestRide,
         acceptOffer,
+        rejectOffer,
+        addOffer,
         cancelSearch,
-        finishTripSession
+        finishTripSession,
+        setFindingForRoute,
+        dismissPanelForRoute,
+        setActiveDriverRoute
     };
 };

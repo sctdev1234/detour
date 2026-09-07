@@ -174,15 +174,14 @@ class RideService {
     }
 
     async acceptOffer(offerId, passengerId) {
-        // DispatchService handles race conditions using atomic update
-        const { tripInstance, newTrip } = await DispatchService.acceptOffer(offerId, passengerId);
+        const OfferAcceptanceEngine = require('./offerAcceptanceEngine');
+        const assignment = await OfferAcceptanceEngine.acceptOfferAtomic(offerId, passengerId);
 
         if (this.io) {
-            const offer = await Offer.findById(offerId);
-            this.io.to(`user:${offer.driverId.toString()}`).emit('offer:accepted', { tripId: newTrip._id });
+            this.io.to(`user:${assignment.driverId.toString()}`).emit('offer:accepted', { tripId: assignment._id });
         }
 
-        return newTrip;
+        return assignment;
     }
 
     async rejectOffer(offerId, passengerId) {

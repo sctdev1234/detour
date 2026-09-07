@@ -1,15 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Platform, TextInput, Alert } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Clock, Phone, MessageSquare } from 'lucide-react-native';
+import { Clock, Phone, MessageSquare, KeyRound } from 'lucide-react-native';
 import { Colors } from '../../../constants/theme';
 
 interface Props {
     trip: any;
-    onStartTrip: () => void;
+    onStartTrip: (otp?: string) => void;
 }
 
 export default function ArrivedView({ trip, onStartTrip }: Props) {
+    const [otp, setOtp] = useState('');
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
@@ -21,6 +22,14 @@ export default function ArrivedView({ trip, onStartTrip }: Props) {
     const bgColor = colorScheme === 'dark'
         ? 'rgba(28, 28, 30, 0.95)'
         : 'rgba(255, 255, 255, 0.95)';
+
+    const handleStart = () => {
+        if (!otp || otp.trim().length !== 4) {
+            Alert.alert('Verification Required', 'Please enter the 4-digit boarding PIN provided by the passenger.');
+            return;
+        }
+        onStartTrip(otp.trim());
+    };
 
     return (
         <View style={styles.wrapper}>
@@ -36,8 +45,26 @@ export default function ArrivedView({ trip, onStartTrip }: Props) {
                 </View>
 
                 <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                    You've arrived at the pickup point. Waiting for the passenger to board.
+                    You've arrived at the pickup point. Ask the passenger for their 4-digit boarding PIN.
                 </Text>
+
+                {/* OTP Input Section */}
+                <View style={[styles.otpCard, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7' }]}>
+                    <View style={styles.otpHeader}>
+                        <KeyRound size={16} color={theme.primary} />
+                        <Text style={[styles.otpTitle, { color: theme.text }]}>Enter Passenger Boarding PIN</Text>
+                    </View>
+                    <TextInput
+                        style={[styles.otpInput, { color: theme.text, borderColor: theme.border }]}
+                        value={otp}
+                        onChangeText={text => setOtp(text.replace(/[^0-9]/g, '').slice(0, 4))}
+                        placeholder="••••"
+                        placeholderTextColor={theme.textSecondary}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        textAlign="center"
+                    />
+                </View>
 
                 <View style={styles.contactRow}>
                     <TouchableOpacity
@@ -57,11 +84,11 @@ export default function ArrivedView({ trip, onStartTrip }: Props) {
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.startButton, { backgroundColor: '#10b981' }]}
-                    onPress={onStartTrip}
+                    style={[styles.startButton, { backgroundColor: otp.length === 4 ? '#10b981' : '#9ca3af' }]}
+                    onPress={handleStart}
                     activeOpacity={0.8}
                 >
-                    <Text style={styles.startText}>START TRIP</Text>
+                    <Text style={styles.startText}>VERIFY PIN & START TRIP</Text>
                 </TouchableOpacity>
             </Container>
         </View>
@@ -100,8 +127,34 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 15,
         textAlign: 'center',
-        marginBottom: 24,
+        marginBottom: 16,
         lineHeight: 22,
+    },
+    otpCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        alignItems: 'center',
+    },
+    otpHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    otpTitle: {
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    otpInput: {
+        width: 140,
+        height: 52,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        fontSize: 26,
+        fontWeight: '900',
+        letterSpacing: 10,
+        backgroundColor: 'transparent',
     },
     contactRow: {
         flexDirection: 'row',

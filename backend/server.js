@@ -37,10 +37,17 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+const allowedOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map(s => s.trim()) : ['*'];
 const corsOptions = {
-    origin: env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',') : '*', // Allow configuring origins
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'Bypass-Tunnel-Reminder'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'Bypass-Tunnel-Reminder', 'X-Request-Id', 'x-request-id'],
     credentials: true
 };
 app.use(cors(corsOptions));
@@ -69,9 +76,11 @@ const uriDebug = MONGODB_URI ? MONGODB_URI.replace(/:([^:@]+)@/, ':****@') : 'un
 logger.info(`Attempting to connect to MongoDB with URI: ${uriDebug}`);
 
 mongoose.connect(MONGODB_URI)
-    .then(() => {
+    .then(async () => {
         logger.info('MongoDB Connected');
         logger.info(`Connected to Database: ${mongoose.connection.name}`);
+        const TripInstance = require('./models/TripInstance');
+        await TripInstance.createIndexes().catch(e => logger.warn('TripInstance index creation:', e.message));
     })
     .catch(err => {
         logger.error('MongoDB Initial Connection Error:', err);
@@ -114,6 +123,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 
 
 // V2 Pipeline Endpoints
+app.use('/api/v2/trips', require('./routes/canonicalTrips'));
 app.use('/api/v2/dispatch', require('./routes/dispatchRoutes'));
 app.use('/api/v2/dispatch/driver', require('./routes/driverDispatchRoutes'));
 app.use('/api/v2/recurring', require('./routes/recurringRoutes'));

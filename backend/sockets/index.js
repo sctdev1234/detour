@@ -56,6 +56,19 @@ module.exports = {
                 }
             });
 
+            // Driver Heartbeat listener to maintain ONLINE presence
+            socket.on('heartbeat', async (data) => {
+                try {
+                    const userId = data?.userId;
+                    if (userId) {
+                        const User = require('../models/User');
+                        await User.updateOne({ _id: userId }, { $set: { lastHeartbeat: new Date() } });
+                    }
+                } catch (err) {
+                    // Suppress heartbeat logging noise
+                }
+            });
+
             socket.on('disconnect', () => {
                 // console.log('Client disconnected:', socket.id);
             });

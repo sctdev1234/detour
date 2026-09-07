@@ -56,10 +56,66 @@ exports.acceptOffer = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Offer does not belong to this driver' });
         }
 
-        // Delegate to DispatchService to handle atomic assignment and eventing
-        await DispatchServiceV2.acceptOffer(id);
+        // Driver proposes an invitation for this trip to the passenger
+        offer.status = 'DRIVER_PROPOSED';
+        offer.respondedAt = new Date();
 
-        res.status(200).json({ success: true, data: { offerId: offer._id, status: 'ACCEPTED' } });
+        let meta = offer.metadata instanceof Map ? Object.fromEntries(offer.metadata) : (offer.metadata || {});
+        let clientRouteId = meta.clientRouteId;
+        if (!clientRouteId && offer.tripInstanceId) {
+            const TripInstance = require('../models/TripInstance');
+            const ti = await TripInstance.findById(offer.tripInstanceId).lean();
+            clientRouteId = ti?.metadata?.clientRouteId || (ti?.metadata?.get && ti.metadata.get('clientRouteId'));
+        }
+        if (!clientRouteId && offer.passengerId) {
+            const Route = require('../models/Route');
+            const cr = await Route.findOne({ userId: offer.passengerId, role: 'client', status: { $in: ['active', 'pending', 'searching'] } }).sort({ createdAt: -1 }).lean();
+            if (cr) clientRouteId = cr._id.toString();
+        }
+        meta.clientRouteId = clientRouteId;
+        offer.metadata = meta;
+        await offer.save();
+
+        const NotificationService = require('../services/notificationService');
+        const Car = require('../models/Car');
+        const driverCar = await Car.findOne({ ownerId: driverId, isDefault: true }) || await Car.findOne({ ownerId: driverId });
+        const populatedOffer = await Offer.findById(offer._id)
+            .populate('driverId', 'fullName photoURL rating phone')
+            .lean();
+
+        if (populatedOffer?.driverId) {
+            populatedOffer.driverId.vehicle = driverCar ? {
+                color: driverCar.color || '',
+                marque: driverCar.marque || '',
+                model: `${driverCar.marque || ''} ${driverCar.model || ''}`.trim() || 'Verified Vehicle'
+            } : { model: 'Verified Vehicle' };
+            populatedOffer.driverId.rating = populatedOffer.driverId.rating || 4.9;
+        }
+
+        // Emit invitation to passenger with full driver info and clientRouteId
+        NotificationService.emitToPassenger(offer.passengerId, 'dispatch:offer_received', {
+            ...populatedOffer,
+            price: offer.counterPrice || offer.price,
+            clientRouteId,
+            routeInfo: {
+                driverRouteId: meta.driverRouteId,
+                clientRouteId: meta.clientRouteId,
+                pickup: meta.pickup,
+                destination: meta.destination
+            }
+        });
+
+        DomainEventBus.publish('DriverProposedOffer', offer._id, {
+            offerId: offer._id,
+            driverId,
+            tripInstanceId: offer.tripInstanceId,
+            passengerId: offer.passengerId,
+            price: offer.price
+        });
+
+        Metrics.count('driver_offer_proposed');
+
+        res.status(200).json({ success: true, data: { offerId: offer._id, status: 'DRIVER_PROPOSED' } });
     } catch (error) {
         console.error('[DriverDispatchController] acceptOffer error:', error);
         res.status(400).json({ success: false, error: error.message });
@@ -135,26 +191,76 @@ exports.counterOffer = async (req, res) => {
         }
 
         // [Phase 3 Resilience Fix] Idempotency Guard
-        if (offer.status === 'COUNTERED' && offer.counterPrice === counterPrice) {
-            return res.status(200).json({ success: true, data: { offerId: offer._id, status: 'COUNTERED', counterPrice } });
+        if (['COUNTERED', 'COUNTER_OFFERED'].includes(offer.status) && offer.counterPrice === counterPrice) {
+            return res.status(200).json({ success: true, data: { offerId: offer._id, status: offer.status, counterPrice } });
         }
 
         // Store counter-offer data
         offer.counterPrice = counterPrice;
-        offer.status = 'COUNTERED';
+        offer.price = counterPrice; // Update canonical offer price to the proposed counter price
+        offer.status = 'COUNTER_OFFERED';
         offer.respondedAt = new Date();
+
+        let counterMeta = offer.metadata instanceof Map ? Object.fromEntries(offer.metadata) : (offer.metadata || {});
+        let clientRouteId = counterMeta.clientRouteId;
+        if (!clientRouteId && offer.tripInstanceId) {
+            const TripInstance = require('../models/TripInstance');
+            const ti = await TripInstance.findById(offer.tripInstanceId).lean();
+            clientRouteId = ti?.metadata?.clientRouteId || (ti?.metadata?.get && ti.metadata.get('clientRouteId'));
+        }
+        if (!clientRouteId && offer.passengerId) {
+            const Route = require('../models/Route');
+            const cr = await Route.findOne({ userId: offer.passengerId, role: 'client', status: { $in: ['active', 'pending', 'searching'] } }).sort({ createdAt: -1 }).lean();
+            if (cr) clientRouteId = cr._id.toString();
+        }
+        counterMeta.clientRouteId = clientRouteId;
+        counterMeta.counterPrice = counterPrice;
+        offer.metadata = counterMeta;
         await offer.save();
+
+        const NotificationService = require('../services/notificationService');
+        const Car = require('../models/Car');
+        const driverCar = await Car.findOne({ ownerId: driverId, isDefault: true }) || await Car.findOne({ ownerId: driverId });
+        const populatedOffer = await Offer.findById(offer._id)
+            .populate('driverId', 'fullName photoURL rating phone')
+            .lean();
+
+        if (populatedOffer?.driverId) {
+            populatedOffer.driverId.vehicle = driverCar ? {
+                color: driverCar.color || '',
+                marque: driverCar.marque || '',
+                model: `${driverCar.marque || ''} ${driverCar.model || ''}`.trim() || 'Verified Vehicle'
+            } : { model: 'Verified Vehicle' };
+            populatedOffer.driverId.rating = populatedOffer.driverId.rating || 4.9;
+        }
+
+        // Emit invitation to passenger with full driver info, counterPrice and clientRouteId
+        NotificationService.emitToPassenger(offer.passengerId, 'dispatch:offer_received', {
+            ...populatedOffer,
+            price: counterPrice,
+            counterPrice,
+            status: 'COUNTER_OFFERED',
+            isCountered: true,
+            clientRouteId,
+            routeInfo: {
+                driverRouteId: counterMeta.driverRouteId,
+                clientRouteId: counterMeta.clientRouteId,
+                pickup: counterMeta.pickup,
+                destination: counterMeta.destination
+            }
+        });
 
         DomainEventBus.publish('DriverCounteredOffer', offer._id, {
             offerId: offer._id,
             driverId,
             tripInstanceId: offer.tripInstanceId,
+            passengerId: offer.passengerId,
             counterPrice
         });
 
         Metrics.count('driver_offer_countered');
 
-        res.status(200).json({ success: true, data: { offerId: offer._id, status: 'COUNTERED', counterPrice } });
+        res.status(200).json({ success: true, data: { offerId: offer._id, status: 'COUNTER_OFFERED', counterPrice } });
     } catch (error) {
         console.error('[DriverDispatchController] counterOffer error:', error);
         res.status(400).json({ success: false, error: error.message });
@@ -198,11 +304,17 @@ exports.updateTripStatus = async (req, res) => {
         const { status } = req.body;
         const driverId = req.user.id;
 
-        const instance = await TripInstance.findById(id);
+        let instance = await TripInstance.findById(id);
+        if (!instance) {
+            const assign = await TripAssignment.findById(id);
+            if (assign) {
+                instance = await TripInstance.findById(assign.tripInstanceId);
+            }
+        }
         if (!instance) return res.status(404).json({ success: false, error: 'Trip not found' });
 
         // Verify driver is assigned
-        const assignment = await TripAssignment.findOne({ tripInstanceId: id, driverId });
+        const assignment = await TripAssignment.findOne({ tripInstanceId: instance._id, driverId });
         if (!assignment) {
             return res.status(403).json({ success: false, error: 'Driver is not assigned to this trip' });
         }
@@ -210,15 +322,32 @@ exports.updateTripStatus = async (req, res) => {
         // [Phase 3 Resilience Fix] Idempotency Guard
         // Prevents ghost failures when mobile client retries on timeout
         if (instance.status === status) {
-            return res.status(200).json({ success: true, data: { tripInstanceId: id, status } });
+            return res.status(200).json({ success: true, data: { tripInstanceId: instance._id, status } });
+        }
+
+        // STRICT SECURITY: Remove BOARDED / STARTED direct mutation bypass
+        if (status === 'BOARDED' || status === 'STARTED') {
+            return res.status(400).json({
+                success: false,
+                error: `Direct status transition to ${status} is prohibited. Boarding must flow through the canonical OTP verification endpoint.`
+            });
+        }
+
+        // STRICT SECURITY: Remove COMPLETED direct mutation bypass
+        if (status === 'COMPLETED') {
+            return res.status(400).json({
+                success: false,
+                error: 'Direct status transition to COMPLETED is prohibited. Completion must flow through the canonical dropoff and settlement lifecycle.'
+            });
         }
 
         // Validate allowed transitions for driver
         const DRIVER_TRANSITIONS = {
-            'ASSIGNED': ['EN_ROUTE'],
+            'ASSIGNED': ['EN_ROUTE', 'ARRIVED'],
             'EN_ROUTE': ['ARRIVED'],
-            'ARRIVED': ['STARTED'],
-            'STARTED': ['COMPLETED']
+            'ARRIVED': [], // Must call canonical boarding endpoint with OTP!
+            'BOARDED': [], // Must call canonical dropoff endpoint!
+            'STARTED': []
         };
 
         const allowed = DRIVER_TRANSITIONS[instance.status] || [];
@@ -230,6 +359,20 @@ exports.updateTripStatus = async (req, res) => {
         }
 
         const oldStatus = instance.status;
+
+        // Transition journey to DRIVER_ARRIVED when driver arrives
+        if (status === 'ARRIVED') {
+            const journeyService = require('../services/journeyService');
+            const PassengerJourney = require('../models/PassengerJourney');
+            const journey = await PassengerJourney.findOne({
+                tripInstanceId: instance._id,
+                status: 'BOOKED'
+            });
+            if (journey) {
+                await journeyService.recordDriverArrived(journey._id);
+            }
+        }
+
         instance.status = status;
         if (!instance.stateTimestamps) instance.stateTimestamps = {};
         instance.stateTimestamps[`${status.toLowerCase()}At`] = new Date();
@@ -241,14 +384,6 @@ exports.updateTripStatus = async (req, res) => {
             fromStatus: oldStatus,
             toStatus: status
         });
-
-        if (status === 'COMPLETED') {
-            DomainEventBus.publish('TripCompleted', instance._id, {
-                tripInstanceId: instance._id,
-                driverId,
-                completedAt: instance.stateTimestamps.completedAt
-            });
-        }
 
         Metrics.count(`trip_status_${status.toLowerCase()}`);
 
@@ -268,10 +403,24 @@ exports.getRecoveryState = async (req, res) => {
         const driverId = req.user.id;
         const User = require('../models/User');
         const NotificationService = require('../services/notificationService');
+        const Route = require('../models/Route');
 
-        // 1. Fetch User status
+        // 1. Fetch User status & active routes
         const user = await User.findById(driverId).select('driverStatus').lean();
-        const driverStatus = user?.driverStatus || 'OFFLINE';
+        let driverStatus = user?.driverStatus || 'OFFLINE';
+
+        const activeRoute = await Route.findOne({
+            userId: driverId,
+            role: 'driver',
+            status: { $in: ['active', 'MATCHING'] },
+            isDeleted: { $ne: true }
+        }).lean();
+
+        // If driver has active routes and is not explicitly on BREAK, preserve ONLINE status
+        if (activeRoute && driverStatus !== 'BREAK') {
+            driverStatus = 'ONLINE';
+            await User.updateOne({ _id: driverId }, { $set: { driverStatus: 'ONLINE', lastHeartbeat: new Date() } });
+        }
         
         let presence = 'OFFLINE';
         let availability = 'BUSY';
@@ -296,10 +445,19 @@ exports.getRecoveryState = async (req, res) => {
             })
             .lean();
 
+        let activeJourney = null;
+        if (activeTrip?.tripInstanceId) {
+            const PassengerJourney = require('../models/PassengerJourney');
+            activeJourney = await PassengerJourney.findOne({
+                tripInstanceId: activeTrip.tripInstanceId._id,
+                status: { $nin: ['COMPLETED', 'CANCELLED_BY_CLIENT', 'CANCELLED_BY_DRIVER', 'NO_SHOW'] }
+            }).lean();
+        }
+
         // 3. Fetch Pending Offer
         const currentOffer = await Offer.findOne({
             driverId,
-            status: { $in: [OfferStateMachine.STATES.PENDING, 'COUNTERED'] },
+            status: { $in: [OfferStateMachine.STATES.PENDING, 'COUNTERED', 'DRIVER_PROPOSED', 'COUNTER_OFFERED'] },
             expiresAt: { $gt: new Date() }
         })
         .populate('tripInstanceId', 'pickup destination scheduledTime passengerIds')
@@ -320,12 +478,15 @@ exports.getRecoveryState = async (req, res) => {
             }
         }
 
+        let formattedCurrentOffer = null;
         if (currentOffer) {
-            availability = 'BUSY';
+            formattedCurrentOffer = {
+                ...currentOffer,
+                pickup: currentOffer.pickup || currentOffer.metadata?.pickup || currentOffer.tripInstanceId?.pickup,
+                destination: currentOffer.destination || currentOffer.metadata?.destination || currentOffer.tripInstanceId?.destination,
+                originalPrice: currentOffer.metadata?.price || currentOffer.price,
+            };
         }
-
-        // 5. Get current Socket Sequence Number
-        const lastSequenceNumber = NotificationService.getCurrentSequence(driverId);
 
         res.status(200).json({
             success: true,
@@ -333,8 +494,8 @@ exports.getRecoveryState = async (req, res) => {
                 presence,
                 availability,
                 tripStatus,
-                activeTrip: activeTrip?.tripInstanceId ? activeTrip : null,
-                currentOffer,
+                activeTrip: activeTrip?.tripInstanceId ? { ...activeTrip, journey: activeJourney } : null,
+                currentOffer: formattedCurrentOffer,
                 lastSequenceNumber
             }
         });
@@ -343,3 +504,141 @@ exports.getRecoveryState = async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 };
+
+/**
+ * POST /v2/dispatch/driver/invite-passenger
+ * Driver invites a matched passenger by creating a canonical DRIVER_PROPOSED Offer.
+ */
+exports.invitePassenger = async (req, res) => {
+    try {
+        const driverId = req.user.id;
+        const offer = await DispatchServiceV2.invitePassenger(driverId, req.body);
+        res.status(201).json({ success: true, data: offer });
+    } catch (error) {
+        console.error('[DriverDispatchController] invitePassenger error:', error);
+        const statusCode = error.statusCode || (error.message.includes('not found') ? 404 : 400);
+        res.status(statusCode).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * POST /v2/dispatch/driver/trip/:id/board
+ * Driver verifies passenger OTP through canonical journeyService.boardPassenger.
+ */
+exports.boardPassenger = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { otp, journeyId } = req.body;
+        const driverId = req.user.id || req.user._id;
+
+        const journeyService = require('../services/journeyService');
+        const PassengerJourney = require('../models/PassengerJourney');
+        const TripInstance = require('../models/TripInstance');
+        const TripAssignment = require('../models/TripAssignment');
+
+        let targetJourneyId = journeyId;
+        if (!targetJourneyId) {
+            let instance = await TripInstance.findById(id);
+            if (!instance) {
+                const assign = await TripAssignment.findById(id);
+                if (assign) instance = await TripInstance.findById(assign.tripInstanceId);
+            }
+            if (!instance) {
+                return res.status(404).json({ success: false, error: 'Trip not found' });
+            }
+
+            const activeJourney = await PassengerJourney.findOne({
+                tripInstanceId: instance._id,
+                status: { $in: ['BOOKED', 'DRIVER_ARRIVED'] }
+            });
+            if (!activeJourney) {
+                const alreadyBoarded = await PassengerJourney.findOne({
+                    tripInstanceId: instance._id,
+                    status: 'BOARDED'
+                });
+                if (alreadyBoarded) {
+                    return res.status(400).json({ success: false, error: 'Passenger is already boarded' });
+                }
+                return res.status(404).json({ success: false, error: 'No active journey awaiting boarding found for this trip' });
+            }
+            targetJourneyId = activeJourney._id;
+        }
+
+        const journey = await journeyService.boardPassenger(targetJourneyId, otp, { driverId });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                journeyId: journey._id,
+                tripInstanceId: journey.tripInstanceId,
+                status: journey.status,
+                boardedAt: journey.boardedAt
+            }
+        });
+    } catch (error) {
+        console.error('[DriverDispatchController] boardPassenger error:', error);
+        res.status(400).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * POST /v2/dispatch/driver/trip/:id/dropoff
+ * Driver confirms dropoff of passenger.
+ * Triggers canonical journeyService.dropoffPassenger, settlementService, and tripCompletionEngine.
+ */
+exports.dropoffPassenger = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { journeyId } = req.body;
+        const driverId = req.user.id || req.user._id;
+
+        const journeyService = require('../services/journeyService');
+        const PassengerJourney = require('../models/PassengerJourney');
+        const TripInstance = require('../models/TripInstance');
+        const TripAssignment = require('../models/TripAssignment');
+
+        let targetJourneyId = journeyId;
+        if (!targetJourneyId) {
+            let instance = await TripInstance.findById(id);
+            if (!instance) {
+                const assign = await TripAssignment.findById(id);
+                if (assign) instance = await TripInstance.findById(assign.tripInstanceId);
+            }
+            if (!instance) {
+                return res.status(404).json({ success: false, error: 'Trip not found' });
+            }
+
+            const activeJourney = await PassengerJourney.findOne({
+                tripInstanceId: instance._id,
+                status: 'BOARDED'
+            });
+            if (!activeJourney) {
+                const completedJourney = await PassengerJourney.findOne({
+                    tripInstanceId: instance._id,
+                    status: 'COMPLETED'
+                });
+                if (completedJourney) {
+                    return res.status(400).json({ success: false, error: 'Passenger journey is already completed' });
+                }
+                return res.status(404).json({ success: false, error: 'No active boarded journey found for dropoff on this trip' });
+            }
+            targetJourneyId = activeJourney._id;
+        }
+
+        const result = await journeyService.dropoffPassenger(targetJourneyId, { driverId });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                journeyId: result.journey._id,
+                tripInstanceId: result.journey.tripInstanceId,
+                status: result.settlement?.journey?.status || result.journey.status,
+                settlement: result.settlement
+            }
+        });
+    } catch (error) {
+        console.error('[DriverDispatchController] dropoffPassenger error:', error);
+        res.status(400).json({ success: false, error: error.message });
+    }
+};
+

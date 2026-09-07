@@ -238,6 +238,28 @@ class AuthService {
         }
 
         user.driverStatus = status;
+        if (status === 'ONLINE') {
+            user.lastHeartbeat = new Date();
+            // Asynchronously dispatch any pending trip instances for newly online driver
+            setImmediate(async () => {
+                try {
+                    const TripInstance = require('../models/TripInstance');
+                    const DispatchServiceV2 = require('./v2/dispatchService');
+                    const pendingInstances = await TripInstance.find({
+                        status: 'SEARCHING'
+                    }).limit(10);
+                    for (const inst of pendingInstances) {
+                        try {
+                            await DispatchServiceV2.executeMatchingPipeline(inst);
+                        } catch (e) {
+                            // ignore individual match failures
+                        }
+                    }
+                } catch (err) {
+                    // ignore
+                }
+            });
+        }
         await user.save();
         return user.toObject();
     }

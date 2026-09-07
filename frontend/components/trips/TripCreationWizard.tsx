@@ -298,24 +298,33 @@ export default function TripCreationWizard({
             setSearchQuery('');
             setSearchResults([]);
         } else {
+            if (!pickup && currentLocation) {
+                setPickup(currentLocation);
+                setPickupAddress(currentAddress || 'Current Location');
+            }
             setDestination({ latitude: item.latitude, longitude: item.longitude });
             setDestAddress(item.label);
             setStep('schedule');
         }
-    }, [focusedInput]);
+    }, [focusedInput, pickup, currentLocation, currentAddress]);
 
     const confirmMapLocation = useCallback(() => {
-        if (!mapCenter) return;
+        const center = mapCenter || currentLocation;
+        if (!center) return;
         if (step === 'pickup') {
-            setPickup(mapCenter);
-            setPickupAddress(centerAddress);
+            setPickup(center);
+            setPickupAddress(centerAddress || currentAddress || 'Selected Location');
             setStep('destination_search');
         } else if (step === 'destination_map') {
-            setDestination(mapCenter);
-            setDestAddress(centerAddress);
+            if (pickup) {
+                const dist = Math.hypot(center.latitude - pickup.latitude, center.longitude - pickup.longitude);
+                if (dist < 0.0008) return;
+            }
+            setDestination(center);
+            setDestAddress(centerAddress || 'Selected Destination');
             setStep('schedule');
         }
-    }, [mapCenter, centerAddress, step]);
+    }, [mapCenter, currentLocation, centerAddress, currentAddress, step, pickup]);
 
     const handleDestinationPress = useCallback(() => {
         if (step === 'pickup') {
@@ -511,9 +520,17 @@ export default function TripCreationWizard({
 
     const handleFinalConfirm = async () => {
         if (!pickup || !destination) return;
+        const resolvedPickupAddr = pickupAddress || centerAddress || (currentAddress && currentAddress !== 'Current Location' ? currentAddress : '') || 'Pickup location';
+        const resolvedDestAddr = destAddress || centerAddress || 'Destination';
         await onConfirm({
-            startPoint: pickup,
-            endPoint: destination,
+            startPoint: {
+                ...pickup,
+                address: resolvedPickupAddr
+            },
+            endPoint: {
+                ...destination,
+                address: resolvedDestAddr
+            },
             days: rideType === 'scheduled' ? selectedDays : [],
             timeStart: rideType === 'scheduled' ? timeStart : new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
             price: Number(price),
@@ -521,9 +538,19 @@ export default function TripCreationWizard({
         });
     };
 
+    const activeCenter = mapCenter || currentLocation;
+    const isSameAsPickup = Boolean(
+        step === 'destination_map' &&
+        pickup &&
+        activeCenter &&
+        Math.hypot(activeCenter.latitude - pickup.latitude, activeCenter.longitude - pickup.longitude) < 0.0008
+    );
+
     // Determine current dynamic address strings
     const currentPickupText = step === 'pickup' ? (isMapDragging ? 'Moving map...' : (isResolvingAddress ? 'Searching address...' : centerAddress)) : pickupAddress;
-    const currentDestText = step === 'destination_map' ? (isMapDragging ? 'Moving map...' : (isResolvingAddress ? 'Searching address...' : centerAddress)) : destAddress;
+    const currentDestText = step === 'destination_map'
+        ? (isMapDragging ? 'Moving map...' : (isResolvingAddress ? 'Searching address...' : (isSameAsPickup ? 'Drag map to choose destination' : centerAddress)))
+        : destAddress;
 
     const { title: pickupTitle, subtitle: pickupSub } = parseAddress(currentPickupText);
     const { title: destTitle, subtitle: destSub } = parseAddress(currentDestText);
@@ -531,12 +558,17 @@ export default function TripCreationWizard({
     // Button states
     let btnText = 'Continue';
     let btnAction = confirmMapLocation;
-    let btnDisabled = isMapDragging || !mapCenter;
+    let btnDisabled = isMapDragging || !activeCenter;
 
     if (step === 'pickup') {
         btnText = 'Confirm Pickup';
     } else if (step === 'destination_map') {
-        btnText = 'Confirm Destination';
+        if (isSameAsPickup) {
+            btnDisabled = true;
+            btnText = 'Drag map to choose destination';
+        } else {
+            btnText = 'Confirm Destination';
+        }
     } else if (step === 'destination_search') {
         btnText = 'Select a destination';
         btnDisabled = true;

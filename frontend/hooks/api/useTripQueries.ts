@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import api from '../../services/api';
+import { driverDispatchApi } from '../../services/driverDispatchApi';
 import { ClientTrip, LatLng, Route, RouteData, Trip } from '../../types';
 import { getNextTripOccurrence } from '../../utils/timeUtils';
 
@@ -27,18 +28,18 @@ export const useRoutes = () => {
                 role: item.role,
                 carId: item.carId,
                 startPoint: {
-                    latitude: item.startPoint?.coordinates?.[1],
-                    longitude: item.startPoint?.coordinates?.[0],
+                    latitude: item.startPoint?.coordinates?.[1] ?? item.startPoint?.latitude,
+                    longitude: item.startPoint?.coordinates?.[0] ?? item.startPoint?.longitude,
                     address: item.startPoint?.address
                 },
                 endPoint: {
-                    latitude: item.endPoint?.coordinates?.[1],
-                    longitude: item.endPoint?.coordinates?.[0],
+                    latitude: item.endPoint?.coordinates?.[1] ?? item.endPoint?.latitude,
+                    longitude: item.endPoint?.coordinates?.[0] ?? item.endPoint?.longitude,
                     address: item.endPoint?.address
                 },
                 waypoints: (item.waypoints || []).map((wp: any) => ({
-                    latitude: wp.coordinates?.[1],
-                    longitude: wp.coordinates?.[0],
+                    latitude: wp.coordinates?.[1] ?? wp.latitude,
+                    longitude: wp.coordinates?.[0] ?? wp.longitude,
                     address: wp.address
                 })),
                 timeStart: item.schedule?.time || '',
@@ -133,18 +134,19 @@ export const useMatches = (routeId: string | null) => {
                         _id: m.route.userId._id || m.route.userId,
                         fullName: m.route.userId.fullName,
                         email: m.route.userId.email,
-                        photoURL: m.route.userId.photoURL
+                        photoURL: m.route.userId.photoURL,
+                        phone: m.route.userId.phone
                     } : null,
-                    role: 'driver',
+                    role: m.route.role || 'client',
                     carId: m.route.carId,
                     startPoint: {
-                        latitude: m.route.startPoint?.coordinates?.[1],
-                        longitude: m.route.startPoint?.coordinates?.[0],
+                        latitude: m.route.startPoint?.coordinates?.[1] ?? m.route.startPoint?.latitude,
+                        longitude: m.route.startPoint?.coordinates?.[0] ?? m.route.startPoint?.longitude,
                         address: m.route.startPoint?.address
                     },
                     endPoint: {
-                        latitude: m.route.endPoint?.coordinates?.[1],
-                        longitude: m.route.endPoint?.coordinates?.[0],
+                        latitude: m.route.endPoint?.coordinates?.[1] ?? m.route.endPoint?.latitude,
+                        longitude: m.route.endPoint?.coordinates?.[0] ?? m.route.endPoint?.longitude,
                         address: m.route.endPoint?.address
                     },
                     days: m.route.schedule?.days || [],
@@ -152,12 +154,16 @@ export const useMatches = (routeId: string | null) => {
                     price: m.route.price?.amount || 0,
                     priceType: m.route.price?.type || 'fix',
                     routeGeometry: m.route.routeGeometry,
-                    distanceKm: m.route.distanceKm
+                    distanceKm: m.route.distanceKm,
+                    isTripInstance: m.route.isTripInstance
                 },
+                tripId: m.tripId || (m.trip ? m.trip._id : null),
+                requestStatus: m.requestStatus || null,
                 trip: m.trip ? { id: m.trip._id, status: m.trip.status } : null
             }));
         },
-        enabled: !!routeId
+        enabled: !!routeId,
+        refetchInterval: 3000
     });
 };
 
@@ -275,15 +281,24 @@ export const useSearchTrips = () => {
 export const useSendJoinRequest = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ clientRouteId, tripId, proposedPrice }: { clientRouteId: string, tripId: string, proposedPrice?: number }) => {
-            await api.post('/trip/request-join', { clientRouteId, tripId, proposedPrice });
+        mutationFn: async ({ clientRouteId, tripId, driverRouteId, proposedPrice }: { clientRouteId: string, tripId?: string, driverRouteId?: string, proposedPrice?: number }) => {
+            // Canonical V2 Driver Invitation Flow (Phase 2):
+            // Driver creates DRIVER_PROPOSED Offer with authoritative corridor verification
+            return await driverDispatchApi.invitePassenger({
+                clientRouteId,
+                tripId,
+                driverRouteId,
+                proposedPrice
+            });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: tripKeys.clientRequests() });
-            queryClient.invalidateQueries({ queryKey: tripKeys.driverRequests() }); // Also update driver requests since we just sent one
+            queryClient.invalidateQueries({ queryKey: tripKeys.all });
         }
     });
 };
+
+/** Canonical V2 Driver Invitation Hook (Phase 8) */
+export const useInvitePassenger = useSendJoinRequest;
 
 export const useHandleJoinRequest = () => {
     const queryClient = useQueryClient();

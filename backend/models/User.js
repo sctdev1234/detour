@@ -114,8 +114,20 @@ const UserSchema = new mongoose.Schema({
             default: [0, 0]
         }
     },
-    // Financials
+    // Financials (Canonical Materialized Projections from FinancialLedgerEntry)
     balance: {
+        type: Number,
+        default: 0
+    },
+    walletBalance: {
+        type: Number,
+        default: 0
+    },
+    heldBalance: {
+        type: Number,
+        default: 0
+    },
+    pendingEarnings: {
         type: Number,
         default: 0
     },
@@ -156,7 +168,7 @@ const UserSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Auto-sync location before save
+// Auto-sync location and financial projection before save
 UserSchema.pre('save', function() {
     if (this.isModified('location.latitude') || this.isModified('location.longitude')) {
         if (this.location && this.location.latitude && this.location.longitude) {
@@ -165,6 +177,13 @@ UserSchema.pre('save', function() {
                 coordinates: [this.location.longitude, this.location.latitude]
             };
         }
+    }
+
+    // Unify legacy balance and canonical walletBalance
+    if (this.isModified('walletBalance') && !this.isModified('balance')) {
+        this.balance = this.walletBalance;
+    } else if (this.isModified('balance') && !this.isModified('walletBalance')) {
+        this.walletBalance = this.balance;
     }
 });
 

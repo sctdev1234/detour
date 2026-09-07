@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useRatingStore } from '../store/useRatingStore';
-import { useTrips } from './api/useTripQueries';
+import { useTrips, useRoutes } from './api/useTripQueries';
 import { getNextTripOccurrence, IN_PROGRESS_STATUSES } from '../utils/timeUtils';
 
 export function useDriverDashboardStats() {
     const { user } = useAuthStore();
     const { data: allTrips } = useTrips();
+    const { data: allRoutes } = useRoutes();
     const getAverageRating = useRatingStore((state) => state.getAverageRating);
     const rating = getAverageRating(user?.id || '');
 
@@ -33,6 +34,20 @@ export function useDriverDashboardStats() {
             }
         });
 
+        // If no scheduled trip found in trips collection, fallback to driver's created routes
+        if (!nextTripRef) {
+            const driverRoutes = (allRoutes || []).filter((r: any) =>
+                r.role === 'driver' || r.userId === user?.id || r.userId?._id === user?.id
+            );
+            const activeRoute = driverRoutes.find((r: any) => r.status === 'active') || driverRoutes[0];
+            if (activeRoute) {
+                nextTripRef = {
+                    routeId: activeRoute,
+                    isRouteOnly: true
+                };
+            }
+        }
+
         const weeklyPotential = driverTrips.reduce(
             (acc: number, t: any) => acc + ((t.routeId?.price || 0) * (t.routeId?.days?.length || 0)),
             0
@@ -44,7 +59,7 @@ export function useDriverDashboardStats() {
             nextTripDate,
             nextTripRef,
         };
-    }, [allTrips, user?.id]);
+    }, [allTrips, allRoutes, user?.id]);
 
     return {
         ...stats,

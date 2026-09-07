@@ -27,6 +27,12 @@ interface DashboardState {
     // Selected Route on Map
     selectedMapRouteId: string | null;
     setSelectedMapRouteId: (id: string | null) => void;
+
+    // Driver Multi-Route Selection & Contextual Finding
+    selectedRouteId: string | null;
+    setSelectedRouteId: (id: string | null) => void;
+    isFindingClientsOpenByRoute: Record<string, boolean>;
+    setFindingClientsForRoute: (routeId: string, isOpen: boolean) => void;
 }
 
 import driverService from '../services/driverService';
@@ -73,4 +79,15 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     // Selected Route
     selectedMapRouteId: null,
     setSelectedMapRouteId: (id) => set({ selectedMapRouteId: id }),
+
+    // Driver Multi-Route Selection & Contextual Finding
+    selectedRouteId: null,
+    setSelectedRouteId: (id) => set({ selectedRouteId: id }),
+    isFindingClientsOpenByRoute: {},
+    setFindingClientsForRoute: (routeId, isOpen) => set((state) => ({
+        isFindingClientsOpenByRoute: {
+            ...state.isFindingClientsOpenByRoute,
+            [routeId]: isOpen
+        }
+    })),
 }));

@@ -61,6 +61,22 @@ const offerSchema = new mongoose.Schema(
             type: String,
             default: 'MAD'
         },
+        paymentType: {
+            type: String,
+            enum: ['DIGITAL', 'DIGITAL_ESCROW', 'CASH', 'CASH_ON_BOARDING'],
+            default: 'DIGITAL_ESCROW'
+        },
+        pickupWaypointIndex: {
+            type: Number,
+            default: 0
+        },
+        dropoffWaypointIndex: {
+            type: Number
+        },
+        seatsRequested: {
+            type: Number,
+            default: 1
+        },
         estimatedArrival: {
             type: Number, // In seconds
             required: false // Relaxed for legacy backward compatibility (Phase 1-5)
@@ -75,8 +91,14 @@ const offerSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['PENDING', 'COUNTER_OFFERED', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'WITHDRAWN'],
+            enum: ['PENDING', 'DRIVER_PROPOSED', 'COUNTER_OFFERED', 'COUNTERED', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'WITHDRAWN'],
             default: 'PENDING'
+        },
+        counterPrice: {
+            type: Number
+        },
+        respondedAt: {
+            type: Date
         },
         counterOfferHistory: [{
             issuerType: { type: String, enum: ['PASSENGER', 'DRIVER', 'SYSTEM'] },

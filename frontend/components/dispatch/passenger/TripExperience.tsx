@@ -19,6 +19,7 @@ export default function TripExperience({ onClose }: Props) {
         status, 
         offers, 
         assignment, 
+        otp,
         error, 
         tripSummary,
         acceptOffer, 
@@ -66,20 +67,31 @@ export default function TripExperience({ onClose }: Props) {
                     <ArrivalView 
                         status="EN_ROUTE"
                         driverId={assignment?.driverId || 'Unknown'}
+                        otp={otp}
                         onCancel={handleCancel}
                     />
                 );
             case 'ARRIVED':
+            case 'DRIVER_ARRIVED':
                 return (
                     <ArrivalView 
-                        status="ARRIVED"
+                        status="DRIVER_ARRIVED"
                         driverId={assignment?.driverId || 'Unknown'}
+                        otp={otp}
                         onCancel={handleCancel}
                     />
                 );
+            case 'BOARDED':
+                return (
+                    <RideView status="BOARDED" />
+                );
             case 'STARTED':
                 return (
-                    <RideView />
+                    <RideView status="STARTED" />
+                );
+            case 'DROPPED_OFF':
+                return (
+                    <RideView status="DROPPED_OFF" />
                 );
             case 'COMPLETED':
                 return (

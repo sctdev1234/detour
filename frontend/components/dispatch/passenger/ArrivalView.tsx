@@ -1,19 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Image } from 'expo-image';
-import { User, Phone, MessageCircle, Shield } from 'lucide-react-native';
-import { Colors } from '../../../constants/theme';
+import { KeyRound, MessageCircle, Phone, Shield, User } from 'lucide-react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
+import { Colors } from '../../../constants/theme';
 
 interface Props {
     driverId: string;
-    status: 'EN_ROUTE' | 'ARRIVED';
+    status: 'EN_ROUTE' | 'ARRIVED' | 'DRIVER_ARRIVED';
+    otp?: string;
     onCancel?: () => void;
 }
 
-export default function ArrivalView({ driverId, status, onCancel }: Props) {
-    const isArrived = status === 'ARRIVED';
+export default function ArrivalView({ driverId, status, otp, onCancel }: Props) {
+    const isArrived = status === 'ARRIVED' || status === 'DRIVER_ARRIVED';
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const theme = Colors[colorScheme ?? 'light'];
@@ -25,7 +25,7 @@ export default function ArrivalView({ driverId, status, onCancel }: Props) {
     return (
         <Animated.View entering={FadeInUp.springify()} style={styles.container}>
             <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={[styles.card, { backgroundColor: cardBg }]}>
-                
+
                 {/* Status Header */}
                 <View style={styles.statusHeader}>
                     <View style={[styles.statusDot, { backgroundColor: isArrived ? '#34C759' : '#0A84FF' }]} />
@@ -38,13 +38,25 @@ export default function ArrivalView({ driverId, status, onCancel }: Props) {
                     {isArrived ? 'Please locate your driver and board the vehicle.' : 'Your driver will arrive shortly. Please be ready.'}
                 </Text>
 
+                {/* 4-digit Boarding PIN */}
+                {otp ? (
+                    <View style={[styles.pinContainer, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
+                        <View style={styles.pinHeader}>
+                            <KeyRound size={14} color={theme.primary} />
+                            <Text style={[styles.pinLabel, { color: theme.primary }]}>BOARDING PIN</Text>
+                        </View>
+                        <Text style={[styles.pinValue, { color: textColor }]}>{otp}</Text>
+                        <Text style={[styles.pinSub, { color: subtextColor }]}>Share this 4-digit code with your driver</Text>
+                    </View>
+                ) : null}
+
                 {/* Driver Info */}
                 <View style={styles.driverInfoRow}>
                     <View style={[styles.avatarFallback, { backgroundColor: theme.primary }]}>
                         <User size={24} color="#FFF" />
                     </View>
                     <View style={styles.driverDetails}>
-                        <Text style={[styles.driverName, { color: textColor }]}>Driver {driverId.slice(-4)}</Text>
+                        <Text style={[styles.driverName, { color: textColor }]}>Driver {String(driverId).slice(-4)}</Text>
                         <View style={styles.vehicleRow}>
                             <Text style={[styles.vehicleText, { color: subtextColor }]}>Standard Ride</Text>
                             <View style={styles.dotSeparator} />
@@ -67,17 +79,17 @@ export default function ArrivalView({ driverId, status, onCancel }: Props) {
                     <TouchableOpacity style={[styles.iconButton, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}>
                         <MessageCircle size={20} color={textColor} />
                     </TouchableOpacity>
-                    
+
                     {onCancel && !isArrived && (
-                        <TouchableOpacity 
-                            style={[styles.cancelButton, { backgroundColor: isDark ? 'rgba(255, 69, 58, 0.15)' : 'rgba(255, 59, 48, 0.1)' }]} 
+                        <TouchableOpacity
+                            style={[styles.cancelButton, { backgroundColor: isDark ? 'rgba(255, 69, 58, 0.15)' : 'rgba(255, 59, 48, 0.1)' }]}
                             onPress={onCancel}
                         >
                             <Text style={[styles.cancelButtonText, { color: isDark ? '#FF453A' : '#FF3B30' }]}>Cancel</Text>
                         </TouchableOpacity>
                     )}
                 </View>
-                
+
             </BlurView>
         </Animated.View>
     );
@@ -118,8 +130,35 @@ const styles = StyleSheet.create({
     },
     instructionText: {
         fontSize: 14,
-        marginBottom: 20,
+        marginBottom: 16,
         lineHeight: 20,
+    },
+    pinContainer: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        alignItems: 'center',
+    },
+    pinHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 6,
+    },
+    pinLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    pinValue: {
+        fontSize: 32,
+        fontWeight: '900',
+        letterSpacing: 8,
+        marginVertical: 4,
+    },
+    pinSub: {
+        fontSize: 12,
+        fontWeight: '500',
     },
     driverInfoRow: {
         flexDirection: 'row',

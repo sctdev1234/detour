@@ -1,9 +1,9 @@
 import { driverDispatchApi } from '../services/driverDispatchApi';
 import { driverDispatchSocket } from '../services/driverDispatchSocket';
-import { useDriverDispatchStore, DriverOffer } from './useDriverDispatchStore';
-import { useDashboardStore } from './useDashboardStore';
 import driverService from '../services/driverService';
-import { socketLifecycleManager, ConnectionStatus } from '../services/SocketLifecycleManager';
+import { ConnectionStatus, socketLifecycleManager } from '../services/SocketLifecycleManager';
+import { useDashboardStore } from './useDashboardStore';
+import { useDriverDispatchStore } from './useDriverDispatchStore';
 
 /**
  * Driver Dispatch Actions — business logic module.
@@ -94,6 +94,23 @@ export const driverDispatchActions = {
             await driverDispatchApi.rejectOffer(offerId, reason);
             store.setCurrentOffer(null);
             store.setAvailability('AVAILABLE');
+
+            // Advance to next pending offer if any
+            try {
+                const pendingOffers = await driverDispatchApi.getOffers();
+                if (pendingOffers && pendingOffers.length > 0) {
+                    const next = pendingOffers.find((o: any) => String(o._id) !== String(offerId));
+                    if (next) {
+                        store.setCurrentOffer({
+                            ...next,
+                            pickup: next.pickup || next.metadata?.pickup || next.tripInstanceId?.pickup,
+                            destination: next.destination || next.metadata?.destination || next.tripInstanceId?.destination,
+                            price: next.metadata?.price || next.price,
+                        });
+                        store.setAvailability('BUSY');
+                    }
+                }
+            } catch {}
         } catch (error: any) {
             store.setError(error.message || 'Failed to reject offer');
         }
@@ -107,16 +124,24 @@ export const driverDispatchActions = {
         store.setError(null);
         try {
             await driverDispatchApi.counterOffer(offerId, counterPrice);
-            // Status stays as BUSY with OFFER_INCOMING until passenger responds
+            if (store.currentOffer && String(store.currentOffer._id || (store.currentOffer as any).id) === String(offerId)) {
+                store.setCurrentOffer({
+                    ...store.currentOffer,
+                    counterPrice,
+                    isCountered: true,
+                    isDeclined: false
+                });
+            }
         } catch (error: any) {
             store.setError(error.message || 'Failed to submit counter-offer');
+            throw error;
         }
     },
 
     /**
      * Update trip status (driver-initiated transitions).
      */
-    updateTripStatus: async (tripInstanceId: string, status: string) => {
+    updateTripStatus: async (tripInstanceId: string, status: string, otp?: string) => {
         const store = useDriverDispatchStore.getState();
         store.setError(null);
         try {
@@ -133,13 +158,53 @@ export const driverDispatchActions = {
             if (tripStatus) {
                 store.setTripStatus(tripStatus);
             }
-            
+
             // Also locally patch the activeTrip status so the view knows if it's Arrived vs En_Route
             if (store.activeTrip) {
                 store.setActiveTrip({ ...store.activeTrip, status: status === 'ARRIVED' ? 'ARRIVED_PICKUP' : status });
             }
         } catch (error: any) {
             store.setError(error.message || 'Failed to update trip status');
+        }
+    },
+
+    /**
+     * Canonical Boarding: Submit OTP to board passenger and transition to BOARDED.
+     */
+    boardPassenger: async (tripInstanceId: string, otp: string, journeyId?: string) => {
+        const store = useDriverDispatchStore.getState();
+        store.setError(null);
+        try {
+            const data = await driverDispatchApi.boardPassenger(tripInstanceId, otp, journeyId);
+            store.setTripStatus('STARTED'); // Or active trip in progress
+            if (store.activeTrip) {
+                store.setActiveTrip({ ...store.activeTrip, status: 'BOARDED' });
+            }
+            return data;
+        } catch (error: any) {
+            const msg = error.response?.data?.error || error.message || 'Failed to board passenger';
+            store.setError(msg);
+            throw error;
+        }
+    },
+
+    /**
+     * Canonical Dropoff: Complete passenger dropoff and trigger settlement.
+     */
+    dropoffPassenger: async (tripInstanceId: string, journeyId?: string) => {
+        const store = useDriverDispatchStore.getState();
+        store.setError(null);
+        try {
+            const data = await driverDispatchApi.dropoffPassenger(tripInstanceId, journeyId);
+            store.setTripStatus('COMPLETED');
+            if (store.activeTrip) {
+                store.setActiveTrip({ ...store.activeTrip, status: 'COMPLETED' });
+            }
+            return data;
+        } catch (error: any) {
+            const msg = error.response?.data?.error || error.message || 'Failed to drop off passenger';
+            store.setError(msg);
+            throw error;
         }
     },
 
@@ -172,8 +237,12 @@ export const driverDispatchActions = {
             store.setCurrentOffer(data.currentOffer);
             store.setLastSequenceNumber(data.lastSequenceNumber || 0);
 
+            // Sync with dashboard store
+            useDashboardStore.getState().setDriverStatus(data.presence as any);
+
             // Once recovered, re-bind sockets with the latest sequence number
             driverDispatchActions._bindSockets();
+            return data;
         } catch (error: any) {
             console.error('[DriverDispatchActions] Recovery failed', error);
         } finally {
@@ -196,7 +265,7 @@ export const driverDispatchActions = {
         unsubConnectionStatus = socketLifecycleManager.addStatusListener((status: ConnectionStatus) => {
             const store = useDriverDispatchStore.getState();
             store.setConnectionStatus(status);
-            
+
             // If we just reconnected, trigger a recovery
             if (status === 'CONNECTED' && prevStatus && prevStatus !== 'CONNECTED') {
                 driverDispatchActions.recoverState();
@@ -260,15 +329,23 @@ export const driverDispatchActions = {
             if (data.accepted) {
                 // Passenger accepted — wait for assignment
             } else {
-                // Passenger rejected counter — return to online
-                store.setCurrentOffer(null);
-                store.setAvailability('AVAILABLE');
+                // Passenger rejected/declined counter proposition
+                if (store.currentOffer && String(store.currentOffer._id || (store.currentOffer as any).id) === String(data.offerId)) {
+                    store.setCurrentOffer({
+                        ...store.currentOffer,
+                        isDeclined: true,
+                        declinedReason: data.reason || 'Client declined the proposition'
+                    });
+                } else {
+                    store.setCurrentOffer(null);
+                    store.setAvailability('AVAILABLE');
+                }
             }
         });
 
         // We wrap the unsubs so we can clear them easily
         unsubOffer = () => {
-            driverDispatchSocket.onSequenceGap(() => {})();
+            driverDispatchSocket.onSequenceGap(() => { })();
             offerUnsub();
             expiredUnsub();
             assignedUnsub();

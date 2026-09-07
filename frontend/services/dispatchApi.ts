@@ -14,6 +14,8 @@ export interface TripTemplatePayload {
     schedulingStrategy: 'IMMEDIATE' | 'SCHEDULED' | 'RECURRING';
     scheduleConfig?: any;
     waypoints?: any[];
+    price?: number;
+    metadata?: any;
 }
 
 export const dispatchApi = {
@@ -31,6 +33,14 @@ export const dispatchApi = {
     acceptOffer: async (offerId: string) => {
         const response = await api.post(`/v2/dispatch/offer/${offerId}/accept`);
         return response.data.data; // Unwraps backend { success, data }
+    },
+
+    /**
+     * Rejects/declines an Offer.
+     */
+    rejectOffer: async (offerId: string, reason?: string) => {
+        const response = await api.post(`/v2/dispatch/offer/${offerId}/reject`, { reason });
+        return response.data.data;
     },
 
     /**
