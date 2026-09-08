@@ -1,5 +1,5 @@
-import { LatLng, Trip } from '../types';
-import { calculateDistance } from './location';
+import { LatLng, Route, RoutePolyline, Trip } from '../types';
+import { calculateDistance, decodePolyline } from './location';
 
 export interface RoutePoint {
     lat: number;
@@ -177,3 +177,77 @@ export const calculateOptimalAnnotationAnchor = (
 
     return bestPoint;
 };
+
+/**
+ * Canonical transformation layer to convert Route models into RoutePolyline objects for map rendering.
+ * Enforces explicit selectedRouteId hierarchy:
+ * - Selected route: thicker line, high zIndex, primary theme color, full opacity.
+ * - Non-selected routes: secondary color, visible, tappable, lower zIndex.
+ */
+export const formatRoutesToPolylines = (
+    routes: (Route | any)[] = [],
+    selectedRouteId: string | null = null,
+    options?: {
+        theme?: any;
+        isDark?: boolean;
+        primaryColor?: string;
+        secondaryColor?: string;
+    }
+): RoutePolyline[] => {
+    if (!Array.isArray(routes) || routes.length === 0) return [];
+
+    const isDark = options?.isDark ?? false;
+    const defaultPrimary = options?.primaryColor || options?.theme?.primary || '#3b82f6';
+    const defaultSecondary = options?.secondaryColor || (isDark ? 'rgba(99, 102, 241, 0.75)' : 'rgba(79, 70, 229, 0.65)');
+
+    return routes.map((r: any) => {
+        const routeId = r.id || r._id || '';
+        const isSelected = selectedRouteId === routeId;
+        const isActive = r.status === 'active';
+
+        const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0)
+            ? r.startPoint
+            : (r.startPoint?.coordinates && Array.isArray(r.startPoint.coordinates) && r.startPoint.coordinates.length >= 2)
+                ? { latitude: r.startPoint.coordinates[1], longitude: r.startPoint.coordinates[0], address: r.startPoint.address }
+                : null;
+
+        const endP = (r.endPoint?.latitude !== undefined && r.endPoint.latitude !== 0 && r.endPoint.longitude !== 0)
+            ? r.endPoint
+            : (r.endPoint?.coordinates && Array.isArray(r.endPoint.coordinates) && r.endPoint.coordinates.length >= 2)
+                ? { latitude: r.endPoint.coordinates[1], longitude: r.endPoint.coordinates[0], address: r.endPoint.address }
+                : null;
+
+        let coords: LatLng[] = [];
+        if (r.routeGeometry && typeof r.routeGeometry === 'string' && !r.routeGeometry.startsWith('mock_polyline_')) {
+            coords = decodePolyline(r.routeGeometry);
+        } else if (startP && endP) {
+            coords = [
+                startP,
+                ...(r.waypoints || []).map((wp: any) => {
+                    if (wp?.latitude !== undefined && wp.latitude !== 0) return wp;
+                    if (wp?.coordinates && Array.isArray(wp.coordinates) && wp.coordinates.length >= 2) {
+                        return { latitude: wp.coordinates[1], longitude: wp.coordinates[0], address: wp.address };
+                    }
+                    return null;
+                }).filter(Boolean),
+                endP,
+            ];
+        }
+
+        const validCoords = coords.filter(p => p && typeof p.latitude === 'number' && typeof p.longitude === 'number' && p.latitude !== 0 && p.longitude !== 0);
+
+        return {
+            id: routeId,
+            coords: validCoords,
+            isActive,
+            isSelected,
+            isDriverRoute: r.role === 'driver',
+            color: isSelected ? defaultPrimary : defaultSecondary,
+            width: isSelected ? 6 : 4,
+            zIndex: isSelected ? 10 : 2,
+            startPoint: startP,
+            endPoint: endP,
+        };
+    });
+};
+

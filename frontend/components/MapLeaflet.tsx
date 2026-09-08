@@ -442,7 +442,7 @@ const MapLeaflet = React.memo(({
                         );
                     })()}
 
-                    {mode === 'route' && (
+                    {(mode === 'route' && (!propRoutePolylines || propRoutePolylines.length === 0)) && (
                         <>
                             {propStartPoint?.latitude !== undefined && propStartPoint?.longitude !== undefined && (
                                 <Marker position={[propStartPoint.latitude, propStartPoint.longitude]} icon={createGenericIcon(<Navigation size={14} color="#fff" />, '#10b981')} />
@@ -460,13 +460,13 @@ const MapLeaflet = React.memo(({
                         <Marker position={[driverLocation.latitude, driverLocation.longitude]} icon={createCarIcon(driverLocation.heading, theme)} />
                     )}
 
-                    {(mode === 'picker' && points.length > 1) && (
+                    {mode === 'picker' && points.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).length > 1 && (
                         <Polyline 
                             positions={points.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).map(p => [p.latitude, p.longitude])} 
                             pathOptions={{ color: theme.primary || '#007AFF', weight: 4, opacity: 0.8 }} 
                         />
                     )}
-                    {((mode === 'trip' || mode === 'route') && routeCoordinates.length > 1) && (
+                    {((mode === 'trip' || mode === 'route') && (!propRoutePolylines || propRoutePolylines.length === 0) && routeCoordinates.length > 1) && (
                         <>
                             <Polyline 
                                 positions={routeCoordinates.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0).map(p => [p.latitude, p.longitude])} 
@@ -514,18 +514,12 @@ const MapLeaflet = React.memo(({
                         const endPoint = route.endPoint && typeof route.endPoint.latitude === 'number' ? route.endPoint : null;
 
                         const isSelected = selectedRouteId === route.id || route.isSelected;
-                        const routeColor = route.isDriverRoute 
-                            ? (route.color || '#f59e0b') 
-                            : (isSelected ? (theme?.primary || '#3b82f6') : (route.color || '#6366f1'));
-                        const routeWeight = route.isDriverRoute 
-                            ? (route.width || 5) 
-                            : (isSelected ? 6 : (route.width || 4));
-                        const routeOpacity = route.isDriverRoute 
-                            ? 0.95 
-                            : (isSelected ? 1.0 : (route.isActive ? 0.85 : 0.6));
-                        const routeDash = route.isDriverRoute 
-                            ? (route.dashArray || undefined) 
-                            : (isSelected ? undefined : (route.isActive ? undefined : '8, 8'));
+                        const routeColor = isSelected 
+                            ? (theme?.primary || '#3b82f6') 
+                            : (route.color || (route.isDriverRoute ? '#f59e0b' : '#6366f1'));
+                        const routeWeight = isSelected ? 6 : (route.width || 4);
+                        const routeOpacity = isSelected ? 1.0 : (route.isActive ? 0.85 : 0.65);
+                        const routeDash = isSelected ? undefined : (route.isActive ? undefined : '8, 8');
 
                         return (
                             <React.Fragment key={`route-polyline-${route.id}`}>

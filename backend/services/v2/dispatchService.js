@@ -298,9 +298,10 @@ class DispatchServiceV2 {
             throw err;
         }
 
-        const matchResult = isRouteCompatible(driverRoute, passengerCandidate, { maxCorridorMeters: 25000 });
+        const maxCorridorMeters = params.maxCorridorMeters || driverRoute.maxCorridorMeters || 25000;
+        const matchResult = isRouteCompatible(driverRoute, passengerCandidate, { maxCorridorMeters });
         if (!matchResult.matched) {
-            const err = new Error('Passenger is not an authoritative corridor match (max 25km corridor)');
+            const err = new Error(`Passenger is not an authoritative corridor match (max ${Math.round(maxCorridorMeters / 1000)}km corridor)`);
             err.statusCode = 400;
             throw err;
         }

@@ -212,7 +212,7 @@ function projectPointToRoute(point, routePoints) {
  * @returns {Object} Structured match decision
  */
 function isRouteCompatible(driverRoute, passengerRequest, options = {}) {
-    const maxCorridorMeters = options.maxCorridorMeters || 25000; // 25 km corridor default
+    const maxCorridorMeters = options.maxCorridorMeters || 2500; // 2.5 km canonical default
     const minSpanMeters = options.minSpanMeters || 200; // Minimum passenger journey span 200m
 
     const routePoints = getDriverRoutePoints(driverRoute);
@@ -258,10 +258,19 @@ function isRouteCompatible(driverRoute, passengerRequest, options = {}) {
         };
     }
 
+    const detourDistanceMeters = Math.round(pickupProj.minDistance + dropoffProj.minDistance);
+    const detourKm = Number((detourDistanceMeters / 1000).toFixed(1));
+    const estimatedDetourMinutes = Math.max(1, Math.round((detourKm / 40) * 60));
+    const passengerRideKm = Number((passengerProgressSpan / 1000).toFixed(1));
+
     return {
         matched: true,
         pickupDistanceMeters: Math.round(pickupProj.minDistance),
         dropoffDistanceMeters: Math.round(dropoffProj.minDistance),
+        detourDistanceMeters,
+        detourKm,
+        estimatedDetourMinutes,
+        passengerRideKm,
         pickupRoutePosition: Math.round(pickupProj.routeProgress),
         dropoffRoutePosition: Math.round(dropoffProj.routeProgress),
         pickupSegmentIndex: pickupProj.segmentIndex,

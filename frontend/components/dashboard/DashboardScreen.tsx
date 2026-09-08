@@ -22,7 +22,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useDashboardStore } from '../../store/useDashboardStore';
 import { useLocationStore } from '../../store/useLocationStore';
 import { usePlacesStore } from '../../store/usePlacesStore';
-import { decodePolyline } from '../../utils/location';
+import { formatRoutesToPolylines } from '../../utils/mapUtils';
 import { IN_PROGRESS_STATUSES } from '../../utils/timeUtils';
 import FloatingTopBar from './FloatingTopBar';
 import QuickActions from './QuickActions';
@@ -99,10 +99,6 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             r.role === 'driver' || r.userId === user?.id || r.userId?._id === user?.id
         );
     }, [allRoutes, user?.id]);
-
-    const activeOrPrimaryRoute = React.useMemo(() => {
-        return driverRoutes.find((r: any) => r.status === 'active') || driverRoutes[0] || null;
-    }, [driverRoutes]);
 
     // Selected route derived from independent selectedRouteId
     const selectedRoute = React.useMemo(() => {
@@ -203,9 +199,9 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                        featureFlags.enableV2Dispatch && passengerV2ActiveTrip ? passengerV2ActiveTrip :
                        v1ActiveTrip;
 
-    // Active route matches strictly scoped to selected route (or primary if none selected)
+    // Active route matches strictly scoped to selected route
     const isDriverSearching = presence === 'ONLINE' && !activeTrip;
-    const targetRouteForMatches = selectedRoute || activeOrPrimaryRoute;
+    const targetRouteForMatches = selectedRoute;
     const activeRouteId = targetRouteForMatches ? (targetRouteForMatches.id || (targetRouteForMatches as any)._id || null) : null;
     const { data: rawMatchedClients, refetch: refetchMatches } = useMatches(activeRouteId);
     const matchedClients = React.useMemo(() => {
@@ -294,8 +290,8 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             }
         }
 
-        // 4. Driver's created route (when waiting for clients or viewing route)
-        const targetRoute = selectedRoute || activeOrPrimaryRoute;
+        // 4. Driver's created route (when viewing a selected route)
+        const targetRoute = selectedRoute;
         if (targetRoute) {
             const start = getPt(targetRoute.startPoint);
             const end = getPt(targetRoute.endPoint);
@@ -315,7 +311,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             waypoints: [],
             trip: undefined,
         };
-    }, [activeTrip, currentOffer, tripToDisplay, activeOrPrimaryRoute]);
+    }, [activeTrip, currentOffer, tripToDisplay, selectedRoute]);
 
     const mapMode = React.useMemo(() => {
         if (displayRoute.trip) return 'trip';
@@ -420,56 +416,13 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     ]);
 
     const routePolylines = React.useMemo(() => {
-        // Render all driver routes simultaneously with selection state
-        return driverRoutes.map((r: any) => {
-            const routeId = r.id || r._id;
-            const isSelected = selectedRouteId === routeId;
-            const isActive = r.status === 'active';
-
-            const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0)
-                ? r.startPoint
-                : (r.startPoint?.coordinates)
-                    ? { latitude: r.startPoint.coordinates[1], longitude: r.startPoint.coordinates[0], address: r.startPoint.address }
-                    : null;
-
-            const endP = (r.endPoint?.latitude !== undefined && r.endPoint.latitude !== 0 && r.endPoint.longitude !== 0)
-                ? r.endPoint
-                : (r.endPoint?.coordinates)
-                    ? { latitude: r.endPoint.coordinates[1], longitude: r.endPoint.coordinates[0], address: r.endPoint.address }
-                    : null;
-
-            let coords: any[] = [];
-            if (r.routeGeometry) {
-                coords = decodePolyline(r.routeGeometry);
-            } else if (startP && endP) {
-                coords = [
-                    startP,
-                    ...(r.waypoints || []).map((wp: any) => {
-                        if (wp?.latitude !== undefined) return wp;
-                        if (wp?.coordinates) return { latitude: wp.coordinates[1], longitude: wp.coordinates[0], address: wp.address };
-                        return null;
-                    }).filter(Boolean),
-                    endP,
-                ];
-            }
-
-            return {
-                id: routeId,
-                coords: coords.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0),
-                isActive,
-                isSelected,
-                color: isSelected
-                    ? (theme.primary || '#3b82f6')
-                    : (colorScheme === 'dark'
-                        ? 'rgba(99, 102, 241, 0.75)'
-                        : 'rgba(99, 102, 241, 0.6)'),
-                width: isSelected ? 6 : 4,
-                zIndex: isSelected ? 10 : 2,
-                startPoint: startP,
-                endPoint: endP,
-            };
+        // Render all driver routes simultaneously with canonical selection state
+        return formatRoutesToPolylines(driverRoutes, selectedRouteId, {
+            theme,
+            isDark: colorScheme === 'dark',
+            primaryColor: theme.primary,
         });
-    }, [driverRoutes, selectedRouteId, theme.primary, colorScheme]);
+    }, [driverRoutes, selectedRouteId, theme, colorScheme]);
 
     // --- Saved places icons ---
     const getSavedPlaceColor = (icon?: string) => {
@@ -536,7 +489,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             {/* Driver Dispatch & Multi-Route Overlay */}
             {activeTrip || currentOffer ? (
                 <View style={{ position: 'absolute', bottom: 20, left: 0, right: 0, zIndex: 50 }}>
-                    <DriverTripExperience matchedClients={matchedClients} activeRoute={selectedRoute || activeOrPrimaryRoute} />
+                    <DriverTripExperience matchedClients={matchedClients} activeRoute={selectedRoute || (activeTrip?.routeId as any)} />
                 </View>
             ) : (
                 <View style={{ position: 'absolute', bottom: 16, left: 0, right: 0, zIndex: 50, gap: 8 }}>

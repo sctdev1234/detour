@@ -14,29 +14,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 
-app.use(helmet());
-app.use((req, res, next) => {
-    if (req.body) req.body = mongoSanitize.sanitize(req.body);
-    if (req.params) req.params = mongoSanitize.sanitize(req.params);
-    if (req.query) {
-        const sanitizedQuery = mongoSanitize.sanitize({ ...req.query });
-        Object.defineProperty(req, 'query', {
-            get: () => sanitizedQuery,
-            configurable: true
-        });
-    }
-    next();
-}); // Prevent NoSQL injection attacks
-
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // Limit each IP to 1000 requests per `window` (here, per 15 minutes)
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    message: 'Too many requests from this IP, please try again after 15 minutes'
-});
-app.use('/api', apiLimiter);
-
+// 1. CORS MUST be mounted first so all responses (including 429 and preflight OPTIONS) carry CORS headers
 const allowedOrigins = env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map(s => s.trim()) : ['*'];
 const corsOptions = {
     origin: (origin, callback) => {
@@ -51,6 +29,31 @@ const corsOptions = {
     credentials: true
 };
 app.use(cors(corsOptions));
+
+app.use(helmet());
+app.use((req, res, next) => {
+    if (req.body) req.body = mongoSanitize.sanitize(req.body);
+    if (req.params) req.params = mongoSanitize.sanitize(req.params);
+    if (req.query) {
+        const sanitizedQuery = mongoSanitize.sanitize({ ...req.query });
+        Object.defineProperty(req, 'query', {
+            get: () => sanitizedQuery,
+            configurable: true
+        });
+    }
+    next();
+}); // Prevent NoSQL injection attacks
+
+const isDev = process.env.NODE_ENV !== 'production';
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: isDev ? 100000 : 1000, // Relaxed limit in dev to prevent blocking hot reloads/recovery polls
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    skip: (req) => req.method === 'OPTIONS',
+    message: { success: false, error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+app.use('/api', apiLimiter);
 
 // Body Parser Middleware
 // SPRINT-13: Migrate all file uploads to GridFS to lower this limit further (e.g., to 1mb)

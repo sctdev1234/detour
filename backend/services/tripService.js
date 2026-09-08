@@ -339,7 +339,10 @@ class TripService {
                         pickupDistanceMeters: matchResult.pickupDistanceMeters,
                         dropoffDistanceMeters: matchResult.dropoffDistanceMeters,
                         pickupSegmentIndex: matchResult.pickupSegmentIndex,
-                        dropoffSegmentIndex: matchResult.dropoffSegmentIndex
+                        dropoffSegmentIndex: matchResult.dropoffSegmentIndex,
+                        detourKm: matchResult.detourKm,
+                        detourMinutes: matchResult.estimatedDetourMinutes,
+                        passengerRideKm: matchResult.passengerRideKm
                     }
                 };
             });

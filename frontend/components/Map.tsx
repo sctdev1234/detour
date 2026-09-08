@@ -6,7 +6,7 @@ import MapView from 'react-native-map-clustering';
 import { Callout, Marker, Polyline } from 'react-native-maps';
 import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuthStore } from '../store/useAuthStore';
-import { LatLng, Trip } from '../types';
+import { LatLng, RoutePolyline, Trip } from '../types';
 import { decodePolyline } from '../utils/location';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
 import InteractiveTripRoute from './InteractiveTripRoute';
@@ -61,7 +61,7 @@ export interface MapProps {
     edgePadding?: { top: number; right: number; bottom: number; left: number };
     boundsPoints?: LatLng[];
     fullScreen?: boolean;
-    routePolylines?: any[];
+    routePolylines?: RoutePolyline[];
     onRegionChange?: (region: any) => void;
     onRegionChangeComplete?: (region: any) => void;
     children?: React.ReactNode;
@@ -777,7 +777,7 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                         routeCoordinates={routeCoordinates}
                     />
                 )}
-                {mode === 'route' && <RouteMarkers startPoint={startPoint} endPoint={endPoint} waypoints={waypoints} />}
+                {(mode === 'route' && (!routePolylines || routePolylines.length === 0)) && <RouteMarkers startPoint={startPoint} endPoint={endPoint} waypoints={waypoints} />}
 
                 {/* Driver Location */}
                 {driverLocation && (
@@ -804,7 +804,7 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                 )}
 
                 {/* Driver Route Polyline (Leaflet style red road line with casing) */}
-                {((mode === 'trip' || mode === 'route') && routeCoordinates.length > 1) && (
+                {((mode === 'trip' || mode === 'route') && (!routePolylines || routePolylines.length === 0) && routeCoordinates.length > 1) && (
                     <>
                         <Polyline
                             coordinates={routeCoordinates}

@@ -24,14 +24,20 @@ export interface FindingDriversContext {
 
 export const extractOfferRouteId = (offer: any): string | null => {
     if (!offer) return null;
-    return (
+    const raw =
         offer.metadata?.clientRouteId ||
         offer.clientRouteId ||
         offer.routeInfo?.clientRouteId ||
+        offer.passengerRouteId ||
+        offer.routeId ||
+        (typeof offer.tripInstanceId === 'object' && offer.tripInstanceId !== null
+            ? (offer.tripInstanceId.metadata?.clientRouteId || offer.tripInstanceId.clientRouteId)
+            : null) ||
         (offer.metadata && typeof offer.metadata.get === 'function' ? offer.metadata.get('clientRouteId') : null) ||
-        offer.tripInstanceId ||
-        null
-    );
+        (typeof offer.tripInstanceId === 'string' ? offer.tripInstanceId : null);
+
+    if (!raw) return null;
+    return typeof raw === 'object' ? (raw._id || raw.id || String(raw)) : String(raw);
 };
 
 interface DispatchState {

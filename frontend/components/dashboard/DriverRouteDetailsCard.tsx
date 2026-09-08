@@ -238,6 +238,11 @@ export const DriverRouteDetailsCard: React.FC<DriverRouteDetailsCardProps> = ({
                                                         <Text style={[styles.clientRouteSub, { color: theme.textSecondary }]} numberOfLines={1}>
                                                             {pickup} → {dropoff}
                                                         </Text>
+                                                        {matchItem.match?.detourKm !== undefined && (
+                                                            <Text style={{ fontSize: 11, color: '#06b6d4', marginTop: 2, fontWeight: '600' }}>
+                                                                📍 +{matchItem.match.detourKm} km detour (~+{matchItem.match.detourMinutes || 5} min)
+                                                            </Text>
+                                                        )}
                                                     </View>
                                                     <View style={styles.fareTag}>
                                                         <Text style={styles.fareText}>{fare} MAD</Text>

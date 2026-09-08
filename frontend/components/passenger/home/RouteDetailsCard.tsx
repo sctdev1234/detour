@@ -1,6 +1,6 @@
-import { Clock, Navigation, Trash2, X } from 'lucide-react-native';
+import { Car, Clock, Navigation, Search, Trash2, X } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, useColorScheme, View, ActivityIndicator } from 'react-native';
 import { Colors } from '../../../constants/theme';
 import { Route } from '../../../types';
 import { RouteService } from '../../../services/RouteService';
@@ -13,6 +13,8 @@ interface RouteDetailsCardProps {
     isFinding?: boolean;
     offersCount?: number;
     onOpenFindingPanel?: () => void;
+    onFindDriver?: (route: Route) => void;
+    isInitiatingFind?: boolean;
 }
 
 export const RouteDetailsCard: React.FC<RouteDetailsCardProps> = ({
@@ -22,7 +24,9 @@ export const RouteDetailsCard: React.FC<RouteDetailsCardProps> = ({
     isDeleting = false,
     isFinding = false,
     offersCount = 0,
-    onOpenFindingPanel
+    onOpenFindingPanel,
+    onFindDriver,
+    isInitiatingFind = false,
 }) => {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -151,6 +155,29 @@ export const RouteDetailsCard: React.FC<RouteDetailsCardProps> = ({
                     <View style={[styles.viewOffersPill, { backgroundColor: theme.primary }]}>
                         <Text style={styles.viewOffersPillText}>View Panel</Text>
                     </View>
+                </TouchableOpacity>
+            )}
+
+            {/* Find Driver Action Button for Idle Routes */}
+            {!isFinding && onFindDriver && (
+                <TouchableOpacity
+                    style={[
+                        styles.findDriverButton,
+                        { backgroundColor: theme.primary },
+                        isInitiatingFind && { opacity: 0.7 }
+                    ]}
+                    onPress={() => onFindDriver(route)}
+                    activeOpacity={0.8}
+                    disabled={isInitiatingFind}
+                >
+                    {isInitiatingFind ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                        <>
+                            <Car size={16} color="#ffffff" />
+                            <Text style={styles.findDriverButtonText}>Find a Driver</Text>
+                        </>
+                    )}
                 </TouchableOpacity>
             )}
 
@@ -318,5 +345,24 @@ const styles = StyleSheet.create({
         color: '#ef4444',
         fontSize: 12,
         fontWeight: '600',
+    },
+    findDriverButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        borderRadius: 14,
+        marginTop: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    findDriverButtonText: {
+        color: '#ffffff',
+        fontSize: 15,
+        fontWeight: '700',
     },
 });

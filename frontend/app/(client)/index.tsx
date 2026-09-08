@@ -13,9 +13,10 @@ import FloatingActionPanel from '../../components/passenger/home/FloatingActionP
 import SmartHeader from '../../components/passenger/home/SmartHeader';
 import { DriverOfferToast, OfferNotificationData } from '../../components/passenger/home/DriverOfferToast';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { CameraConfig, GradientConfig } from '../../constants/design';
 import { Colors } from '../../constants/theme';
-import { useClientRequests, useClientTrips, useCreateClientTrip, useRoutes, useRemoveRoute } from '../../hooks/api/useTripQueries';
+import { useClientRequests, useClientTrips, useCreateClientTrip, useRoutes, useRemoveRoute, tripKeys } from '../../hooks/api/useTripQueries';
 import { useDispatchFlow } from '../../hooks/useDispatchFlow';
 import { RouteService } from '../../services/RouteService';
 import { dispatchSocket } from '../../services/dispatchSocket';
@@ -26,6 +27,7 @@ import { useTrackingStore } from '../../store/useTrackingStore';
 import { useUIStore } from '../../store/useUIStore';
 import { ClientTrip, LatLng, Route } from '../../types';
 import { decodePolyline } from '../../utils/location';
+import { formatRoutesToPolylines } from '../../utils/mapUtils';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type HomeState = 'idle' | 'searching' | 'active';
@@ -37,6 +39,7 @@ export default function ClientDashboard() {
     const theme = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
 
+    const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const { showToast, setHideGlobalHeader, setHideGlobalFooter } = useUIStore();
     const { driverLocation } = useTrackingStore();
@@ -50,20 +53,22 @@ export default function ClientDashboard() {
 
     // Client's personal routes
     const clientRoutes = useMemo(() => {
-        return (allRoutes || []).filter((r: Route) =>
-            r.role === 'client' || r.userId === user?.id || (r.userId as any)?._id === user?.id
-        );
+        return (allRoutes || []).filter((r: Route) => {
+            const ownerId = typeof r.userId === 'object' && r.userId !== null ? ((r.userId as any)._id || (r.userId as any).id) : r.userId;
+            return r.role === 'client' && (ownerId === user?.id || (user?.id && ownerId === user.id));
+        });
     }, [allRoutes, user?.id]);
 
     // Selected route state (independent from active dispatch session)
     const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
     const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
     const [isAcceptingOffer, setIsAcceptingOffer] = useState(false);
+    const [isInitiatingFind, setIsInitiatingFind] = useState(false);
     const [offerNotification, setOfferNotification] = useState<OfferNotificationData | null>(null);
 
     const selectedRoute = useMemo(() => {
         if (!selectedRouteId) return null;
-        return clientRoutes.find(r => r.id === selectedRouteId) || null;
+        return clientRoutes.find(r => (r.id || (r as any)._id) === selectedRouteId) || null;
     }, [clientRoutes, selectedRouteId]);
 
     // Route-scoped finding drivers lifecycle state
@@ -89,28 +94,28 @@ export default function ClientDashboard() {
     }, [selectedRoute, v2Flow.offersByRoute]);
 
     const handleSelectRoute = useCallback((routeId: string) => {
-        setSelectedRouteId(prev => {
-            if (prev === routeId) {
-                v2Flow.setActiveDriverRoute(null);
-                setSelectedOfferId(null);
-                return null;
-            }
-            v2Flow.dismissPanelForRoute(routeId, false);
-            v2Flow.setActiveDriverRoute(null);
+        if (selectedRouteId === routeId) {
+            setSelectedRouteId(null);
             setSelectedOfferId(null);
+            v2Flow.setActiveDriverRoute(null);
+            return;
+        }
 
-            const r = clientRoutes.find(cr => cr.id === routeId);
-            if (r?.startPoint && mapRef.current) {
-                mapRef.current.animateToRegion({
-                    latitude: r.startPoint.latitude,
-                    longitude: r.startPoint.longitude,
-                    latitudeDelta: 0.05,
-                    longitudeDelta: 0.05,
-                }, 800);
-            }
-            return routeId;
-        });
-    }, [clientRoutes, v2Flow]);
+        setSelectedRouteId(routeId);
+        setSelectedOfferId(null);
+        v2Flow.setActiveDriverRoute(null);
+        v2Flow.dismissPanelForRoute(routeId, false);
+
+        const r = clientRoutes.find(cr => (cr.id || (cr as any)._id) === routeId);
+        if (r?.startPoint && mapRef.current) {
+            mapRef.current.animateToRegion({
+                latitude: r.startPoint.latitude,
+                longitude: r.startPoint.longitude,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+            }, 800);
+        }
+    }, [selectedRouteId, clientRoutes, v2Flow]);
 
     const handleCloseFindingPanel = useCallback(() => {
         if (selectedRouteId) {
@@ -126,6 +131,50 @@ export default function ClientDashboard() {
         }
     }, [selectedRouteId, v2Flow]);
 
+    const handleFindDriverForRoute = useCallback(async (route: Route) => {
+        setIsInitiatingFind(true);
+        try {
+            const rId = route.id || (route as any)._id;
+            // 1. Mark this route as actively finding and ensure its panel is open
+            v2Flow.setFindingForRoute(rId, true);
+            v2Flow.dismissPanelForRoute(rId, false);
+
+            // 2. Animate map to route start point
+            if (route.startPoint && mapRef.current) {
+                mapRef.current.animateToRegion({
+                    latitude: route.startPoint.latitude,
+                    longitude: route.startPoint.longitude,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05,
+                }, 800);
+            }
+
+            // 3. Initiate dispatch discovery scoped to this route
+            await v2Flow.requestRide({
+                startPoint: {
+                    type: 'Point',
+                    coordinates: [route.startPoint.longitude, route.startPoint.latitude],
+                    address: route.startPoint.address || 'Pickup'
+                },
+                endPoint: {
+                    type: 'Point',
+                    coordinates: [route.endPoint.longitude, route.endPoint.latitude],
+                    address: route.endPoint.address || 'Destination'
+                },
+                schedulingStrategy: 'IMMEDIATE',
+                price: route.price || 15,
+                metadata: { clientRouteId: rId, price: route.price || 15 }
+            });
+
+            showToast('Finding drivers along your corridor...', 'success');
+        } catch (error: any) {
+            console.warn('Find driver request note:', error);
+            showToast(error.response?.data?.error || error.message || 'Finding drivers along your corridor...', 'info');
+        } finally {
+            setIsInitiatingFind(false);
+        }
+    }, [v2Flow, showToast]);
+
     const handleAcceptOffer = useCallback(async (offerId: string) => {
         setIsAcceptingOffer(true);
         try {
@@ -133,13 +182,17 @@ export default function ClientDashboard() {
             showToast('Offer accepted! Driver assigned.', 'success');
             if (selectedRouteId) {
                 v2Flow.setFindingForRoute(selectedRouteId, false);
+                v2Flow.dismissPanelForRoute(selectedRouteId, true);
+                v2Flow.setActiveDriverRoute(null);
             }
+            queryClient.invalidateQueries({ queryKey: tripKeys.routes() });
+            queryClient.invalidateQueries({ queryKey: tripKeys.trips() });
         } catch (err: any) {
             showToast(err?.message || 'Failed to accept offer', 'error');
         } finally {
             setIsAcceptingOffer(false);
         }
-    }, [selectedRouteId, v2Flow, showToast]);
+    }, [selectedRouteId, v2Flow, showToast, queryClient]);
 
     const handleHoverOffer = useCallback((offer: any | null) => {
         if (!offer) {
@@ -147,25 +200,22 @@ export default function ClientDashboard() {
             v2Flow.setActiveDriverRoute(null);
             return;
         }
-        setSelectedOfferId(offer._id);
+        setSelectedOfferId(offer._id || offer.id);
         const geom = offer.routeInfo?.driverRouteGeometry || offer.driverRouteGeometry;
         if (geom) {
             v2Flow.setActiveDriverRoute({
-                id: offer.routeInfo?.driverRouteId || `driver-${offer._id}`,
+                id: offer.routeInfo?.driverRouteId || `driver-${offer._id || offer.id}`,
                 geometry: geom,
-                startPoint: offer.routeInfo?.driverStartPoint,
-                endPoint: offer.routeInfo?.driverEndPoint,
-                driverName: offer.driverId?.fullName
+                startPoint: offer.routeInfo?.driverStartPoint || offer.driverStartPoint,
+                endPoint: offer.routeInfo?.driverEndPoint || offer.driverEndPoint,
+                driverName: offer.driverId?.fullName || offer.driverName
             });
         }
     }, [v2Flow]);
 
     const handleViewNotification = useCallback((routeId: string, offer: any) => {
-        let target = clientRoutes.find(r => r.id === routeId);
-        if (!target && routeId) {
-            target = clientRoutes.find(r => (r as any)._id === routeId);
-        }
-        const finalRouteId = target ? target.id : routeId;
+        let target = clientRoutes.find(r => r.id === routeId || (r as any)._id === routeId);
+        const finalRouteId = target ? (target.id || (target as any)._id) : routeId;
 
         setSelectedRouteId(finalRouteId);
         if (finalRouteId) {
@@ -179,17 +229,19 @@ export default function ClientDashboard() {
                 longitude: target.startPoint.longitude,
                 latitudeDelta: 0.05,
                 longitudeDelta: 0.05,
-            }, 1000);
+            }, 800);
         }
 
-        if (offer?.routeInfo?.driverRouteGeometry) {
+        const geom = offer?.routeInfo?.driverRouteGeometry || offer?.driverRouteGeometry;
+        if (geom) {
             v2Flow.setActiveDriverRoute({
-                id: offer.routeInfo.driverRouteId || `driver-${offer._id}`,
-                geometry: offer.routeInfo.driverRouteGeometry,
-                startPoint: offer.routeInfo.driverStartPoint,
-                endPoint: offer.routeInfo.driverEndPoint,
-                driverName: offer.driverId?.fullName
+                id: offer.routeInfo?.driverRouteId || `driver-${offer._id || offer.id}`,
+                geometry: geom,
+                startPoint: offer.routeInfo?.driverStartPoint || offer.driverStartPoint,
+                endPoint: offer.routeInfo?.driverEndPoint || offer.driverEndPoint,
+                driverName: offer.driverId?.fullName || offer.driverName
             });
+            setSelectedOfferId(offer._id || offer.id);
         }
 
         setOfferNotification(null);
@@ -212,16 +264,15 @@ export default function ClientDashboard() {
 
             if (targetRouteId) {
                 v2Flow.setFindingForRoute(targetRouteId, true);
-                v2Flow.dismissPanelForRoute(targetRouteId, false);
             }
 
-            // Show top toast if client is not actively looking at this route
-            if (selectedRouteId !== targetRouteId) {
+            // Show top toast if client is not actively viewing this route's finding panel
+            if (selectedRouteId !== targetRouteId || isSelectedRouteDismissed) {
                 const driver = typeof offer.driverId === 'object' && offer.driverId !== null ? offer.driverId : (offer.driver || {});
-                const dName = driver.fullName || (driver.firstName ? `${driver.firstName} ${driver.lastName || ''}` : (offer.driverName || 'Driver'));
+                const dName = driver.fullName || (driver.firstName ? `${driver.firstName} ${driver.lastName || ''}`.trim() : (offer.driverName || 'Driver'));
                 const dest = offer.routeInfo?.destination?.address || offer.metadata?.destination?.address || 'your destination';
                 setOfferNotification({
-                    id: offer._id,
+                    id: offer._id || offer.id,
                     routeId: targetRouteId || '',
                     tripInstanceId: offer.tripInstanceId,
                     driverName: dName,
@@ -234,7 +285,7 @@ export default function ClientDashboard() {
         return () => {
             unsubscribe();
         };
-    }, [selectedRouteId, v2Flow]);
+    }, [selectedRouteId, isSelectedRouteDismissed, clientRoutes, v2Flow]);
 
     const handleDeleteSelectedRoute = useCallback(async (routeId: string) => {
         try {
@@ -357,36 +408,10 @@ export default function ClientDashboard() {
 
     // Format all client routes into polylines for simultaneous map rendering
     const routePolylines = useMemo(() => {
-        const polylines: any[] = clientRoutes.map((r: Route) => {
-            const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0) ? r.startPoint : null;
-            const endP = (r.endPoint?.latitude !== undefined && r.endPoint.latitude !== 0 && r.endPoint.longitude !== 0) ? r.endPoint : null;
-
-            let coords: LatLng[] = [];
-            if (r.routeGeometry) {
-                coords = decodePolyline(r.routeGeometry);
-            } else if (startP && endP) {
-                coords = [
-                    startP,
-                    ...(r.waypoints || []).filter((wp: any) => wp?.latitude !== undefined),
-                    endP,
-                ];
-            }
-
-            const isSelected = selectedRouteId === r.id;
-            const isActive = r.status === 'active';
-
-            return {
-                id: r.id,
-                coords: coords.filter(p => p && typeof p.latitude === 'number' && p.latitude !== 0 && p.longitude !== 0),
-                isActive,
-                isSelected,
-                color: isSelected
-                    ? theme.primary
-                    : (isDark ? 'rgba(99, 102, 241, 0.75)' : 'rgba(79, 70, 229, 0.65)'),
-                width: isSelected ? 6 : 4,
-                startPoint: startP,
-                endPoint: endP,
-            };
+        const polylines = formatRoutesToPolylines(clientRoutes, selectedRouteId, {
+            theme,
+            isDark,
+            primaryColor: theme.primary,
         });
 
         // If an active or candidate driver route is selected / previewed, add it to polylines
@@ -406,6 +431,7 @@ export default function ClientDashboard() {
                     isDriverRoute: true,
                     color: '#F59E0B',
                     width: 5,
+                    zIndex: 20,
                     startPoint: v2Flow.activeDriverRoute.startPoint,
                     endPoint: v2Flow.activeDriverRoute.endPoint
                 });
@@ -413,7 +439,8 @@ export default function ClientDashboard() {
         }
 
         return polylines;
-    }, [clientRoutes, selectedRouteId, theme.primary, isDark, v2Flow.activeDriverRoute]);
+    }, [clientRoutes, selectedRouteId, theme, isDark, v2Flow.activeDriverRoute]);
+
 
     const handleCreateTrip = useCallback(async (data: {
         startPoint: LatLng;
@@ -667,6 +694,8 @@ export default function ClientDashboard() {
                     onHoverOffer={handleHoverOffer}
                     selectedOfferId={selectedOfferId}
                     isAssigned={isAssigned}
+                    onFindDriver={handleFindDriverForRoute}
+                    isInitiatingFind={isInitiatingFind}
                 />
             )}
         </GestureHandlerRootView>

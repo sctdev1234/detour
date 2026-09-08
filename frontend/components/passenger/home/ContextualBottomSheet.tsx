@@ -34,6 +34,8 @@ interface ContextualBottomSheetProps {
     onHoverOffer?: (offer: any | null) => void;
     selectedOfferId?: string | null;
     isAssigned?: boolean;
+    onFindDriver?: (route: Route) => void;
+    isInitiatingFind?: boolean;
 }
 
 export default function ContextualBottomSheet({ 
@@ -56,6 +58,8 @@ export default function ContextualBottomSheet({
     onHoverOffer,
     selectedOfferId,
     isAssigned = false,
+    onFindDriver,
+    isInitiatingFind = false,
 }: ContextualBottomSheetProps) {
     const bottomSheetRef = useRef<BottomSheet>(null);
     const colorScheme = useColorScheme() ?? 'light';
@@ -89,12 +93,15 @@ export default function ContextualBottomSheet({
     }, []);
 
     React.useEffect(() => {
-        if (selectedRoute) {
-            bottomSheetRef.current?.snapToIndex(0);
-        } else if (homeState === 'active') {
-            bottomSheetRef.current?.snapToIndex(0);
-        }
-    }, [selectedRoute, showFindingDrivers, homeState]);
+        const frame = requestAnimationFrame(() => {
+            if (selectedRoute) {
+                bottomSheetRef.current?.snapToIndex(0);
+            } else if (homeState === 'active') {
+                bottomSheetRef.current?.snapToIndex(0);
+            }
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [selectedRoute?.id, showFindingDrivers, homeState]);
 
     const renderIdleContent = () => (
         <View style={styles.idleContent}>
@@ -216,6 +223,8 @@ export default function ContextualBottomSheet({
                                 isFinding={isFinding}
                                 offersCount={routeOffers.length}
                                 onOpenFindingPanel={onOpenFindingPanel}
+                                onFindDriver={onFindDriver}
+                                isInitiatingFind={isInitiatingFind}
                             />
                             {renderIdleContent()}
                         </View>

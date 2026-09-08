@@ -167,11 +167,15 @@ export const DriverFindingClientsPanel: React.FC<DriverFindingClientsPanelProps>
                                             <Text style={[styles.routeSub, { color: theme.textSecondary }]} numberOfLines={1}>
                                                 {pickup} → {dropoff}
                                             </Text>
-                                            {distMeters !== undefined && (
+                                            {m.match?.detourKm !== undefined ? (
                                                 <Text style={[styles.corridorProximity, { color: '#06b6d4' }]}>
-                                                    📍 {distMeters}m from your route
+                                                    📍 +{m.match.detourKm} km detour (~+{m.match.detourMinutes || 5} min)
                                                 </Text>
-                                            )}
+                                            ) : distMeters !== undefined ? (
+                                                <Text style={[styles.corridorProximity, { color: '#06b6d4' }]}>
+                                                    📍 {distMeters < 1000 ? `${distMeters}m` : `${(distMeters / 1000).toFixed(1)} km`} from your route
+                                                </Text>
+                                            ) : null}
                                         </View>
                                         <View style={styles.fareBadge}>
                                             <Text style={styles.fareText}>{fare} MAD</Text>

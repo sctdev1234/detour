@@ -80,6 +80,19 @@ export type Route = RouteData & {
     userId: string | User; // Can be populated
 };
 
+export interface RoutePolyline {
+    id: string;
+    coords: LatLng[];
+    isActive?: boolean;
+    isSelected?: boolean;
+    isDriverRoute?: boolean;
+    color?: string;
+    width?: number;
+    zIndex?: number;
+    startPoint?: LatLng | null;
+    endPoint?: LatLng | null;
+}
+
 export type Trip = {
     id: string;
     driverId: {
