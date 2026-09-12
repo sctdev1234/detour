@@ -41,6 +41,9 @@ exports.deleteRoute = async (req, res) => {
 
 exports.searchMatches = async (req, res) => {
     try {
+        if (!req.params.routeId || req.params.routeId === 'null') {
+            return res.status(400).json({ msg: 'Valid routeId is required' });
+        }
         const matches = await tripService.searchMatches(req.params.routeId, req.user.role, req.user.id);
         res.json(matches);
     } catch (err) {

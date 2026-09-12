@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Image,
@@ -7,20 +7,17 @@ import {
     Text,
     TouchableOpacity,
     useColorScheme,
-    View
+    View,
+    Dimensions
 } from 'react-native';
 import {
     CheckCircle2,
     Clock,
-    KeyRound,
-    MapPin,
-    Navigation,
-    Phone,
-    Send,
     User as UserIcon,
     Users,
     X,
-    AlertCircle
+    Send,
+    Search
 } from 'lucide-react-native';
 import { Colors } from '../../constants/theme';
 import { Route } from '../../types';
@@ -49,19 +46,25 @@ export const DriverFindingClientsPanel: React.FC<DriverFindingClientsPanelProps>
     const isDark = colorScheme === 'dark';
 
     const [activeTab, setActiveTab] = useState<TabType>('matched');
-    const [otpInput, setOtpInput] = useState<Record<string, string>>({});
 
-    // Categorize clients strictly by lifecycle (using offer/invitation requestStatus)
+    const handleTabPress = (tab: TabType, index: number) => {
+        setActiveTab(tab);
+    };
+
+    const tabIndex = activeTab === 'matched' ? 0 : activeTab === 'invited' ? 1 : 2;
+    const tabIndicatorStyle = {
+        transform: [{ translateX: tabIndex * ((Dimensions.get('window').width - 32 - 12) / 3) }]
+    };
+
+    // Categorize clients
     const matchedList = matchedClients.filter((m: any) => {
         const s = (m.requestStatus || '').toUpperCase();
         return s !== 'ACCEPTED' && s !== 'DRIVER_PROPOSED' && s !== 'PENDING' && s !== 'BOOKED' && s !== 'REJECTED' && s !== 'EXPIRED';
     });
-
     const invitedList = matchedClients.filter((m: any) => {
         const s = (m.requestStatus || '').toUpperCase();
         return s === 'DRIVER_PROPOSED' || s === 'PENDING';
     });
-
     const assignedList = matchedClients.filter((m: any) => {
         const s = (m.requestStatus || '').toUpperCase();
         return s === 'ACCEPTED' || s === 'BOOKED' || s === 'ASSIGNED' || s === 'BOARDED';
@@ -71,352 +74,399 @@ export const DriverFindingClientsPanel: React.FC<DriverFindingClientsPanelProps>
     const endAddr = route.endPoint?.address ? route.endPoint.address.split(',')[0] : 'Destination';
 
     return (
-        <View style={[
-            styles.container,
-            {
-                backgroundColor: isDark ? 'rgba(28, 28, 30, 0.98)' : 'rgba(255, 255, 255, 0.98)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'
-            }
-        ]}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <View style={[styles.corridorBadge, { backgroundColor: theme.primary + '18' }]}>
-                        <Navigation size={14} color={theme.primary} />
-                        <Text style={[styles.corridorText, { color: theme.primary }]}>
-                            {startAddr} → {endAddr}
-                        </Text>
+        <View style={styles.shadowContainer}>
+            <View 
+                style={[
+                    styles.container, 
+                    { 
+                        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' 
+                    }
+                ]}
+            >
+                {/* Header: Vertical Timeline */}
+                <View style={styles.header}>
+                    <View style={styles.timelineContainer}>
+                        <View style={styles.timelineGraphic}>
+                            <View style={styles.pickupDot} />
+                            <View style={styles.timelineLine} />
+                            <View style={styles.dropoffDot} />
+                        </View>
+                        <View style={styles.timelineAddresses}>
+                            <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>{startAddr}</Text>
+                            <Text style={[styles.addressText, { color: theme.text }]} numberOfLines={1}>{endAddr}</Text>
+                        </View>
                     </View>
+                    <TouchableOpacity
+                        style={[styles.closeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
+                        onPress={onClose}
+                    >
+                        <X size={18} color={theme.text} />
+                    </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity
-                    style={[styles.closeBtn, { backgroundColor: isDark ? '#2c2c2e' : '#f2f2f7' }]}
-                    onPress={onClose}
-                    accessibilityLabel="Close finding clients panel"
-                >
-                    <X size={16} color={theme.text} />
-                </TouchableOpacity>
+                {/* Segmented Control Tabs */}
+                <View style={[styles.tabsRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6' }]}>
+                    <TouchableOpacity 
+                        style={[styles.tabBtn, activeTab === 'matched' && styles.activeTabBtn]} 
+                        onPress={() => handleTabPress('matched', 0)}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.tabText, { color: activeTab === 'matched' ? theme.text : theme.textSecondary }]}>
+                            Matched ({matchedList.length})
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tabBtn, activeTab === 'invited' && styles.activeTabBtn]} 
+                        onPress={() => handleTabPress('invited', 1)}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.tabText, { color: activeTab === 'invited' ? theme.text : theme.textSecondary }]}>
+                            Invited ({invitedList.length})
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tabBtn, activeTab === 'assigned' && styles.activeTabBtn]} 
+                        onPress={() => handleTabPress('assigned', 2)}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.tabText, { color: activeTab === 'assigned' ? '#10b981' : theme.textSecondary }]}>
+                            Assigned ({assignedList.length})
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Content List */}
+                <ScrollView style={styles.scrollList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    {/* 1. MATCHED CLIENTS */}
+                    {activeTab === 'matched' && (
+                        matchedList.length === 0 ? (
+                            <View style={styles.emptyBox}>
+                                <View style={styles.radarContainer}>
+                                    <View style={[styles.radarRing, { borderColor: theme.primary, borderWidth: 1, transform: [{scale: 1.8}], opacity: 0.1 }]} />
+                                    <View style={[styles.radarRing, { borderColor: theme.primary, borderWidth: 2, transform: [{scale: 1.3}], opacity: 0.25 }]} />
+                                    <View style={[styles.radarCenter, { backgroundColor: theme.primary }]}>
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    </View>
+                                </View>
+                                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                                    Scanning corridor for passengers...
+                                </Text>
+                            </View>
+                        ) : (
+                            matchedList.map((m: any, idx: number) => {
+                                const r = m.route || m;
+                                const clientUser = r.userId;
+                                const clientName = clientUser?.fullName || `Passenger #${idx + 1}`;
+                                const pickup = r.startPoint?.address ? r.startPoint.address.split(',')[0] : 'Pickup';
+                                const dropoff = r.endPoint?.address ? r.endPoint.address.split(',')[0] : 'Dropoff';
+                                const fare = r.price?.amount ?? r.price ?? 20;
+                                const clientRouteId = r.id || r._id;
+                                const distMeters = m.match?.pickupDistanceMeters;
+
+                                return (
+                                    <View key={clientRouteId || idx} style={[styles.card, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#fff' }]}>
+                                        <View style={styles.cardHeader}>
+                                            <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
+                                                {clientUser?.photoURL ? (
+                                                    <Image source={{ uri: clientUser.photoURL }} style={styles.avatarImg} />
+                                                ) : (
+                                                    <UserIcon size={16} color="#fff" />
+                                                )}
+                                            </View>
+                                            <View style={styles.cardInfo}>
+                                                <Text style={[styles.clientName, { color: theme.text }]} numberOfLines={1}>
+                                                    {clientName}
+                                                </Text>
+                                                <Text style={[styles.routeSub, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                    {pickup} → {dropoff}
+                                                </Text>
+                                                {distMeters !== undefined && (
+                                                    <Text style={[styles.corridorProximity, { color: theme.primary }]}>
+                                                        📍 {distMeters < 1000 ? `${distMeters}m` : `${(distMeters / 1000).toFixed(1)} km`} from your route
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            <View style={[styles.fareBadge, { backgroundColor: theme.primary + '15' }]}>
+                                                <Text style={[styles.fareText, { color: theme.primary }]}>{fare} MAD</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.cardFooter}>
+                                            <TouchableOpacity
+                                                style={[styles.inviteActionBtn, { backgroundColor: theme.primary }]}
+                                                disabled={isInviting}
+                                                onPress={() => onInviteClient(clientRouteId, fare)}
+                                                activeOpacity={0.8}
+                                            >
+                                                {isInviting ? (
+                                                    <ActivityIndicator size="small" color="#fff" />
+                                                ) : (
+                                                    <>
+                                                        <Text style={styles.inviteActionText}>Send Offer</Text>
+                                                        <Send size={14} color="#fff" />
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        )
+                    )}
+
+                    {/* 2. INVITED CLIENTS */}
+                    {activeTab === 'invited' && (
+                        invitedList.length === 0 ? (
+                            <View style={styles.emptyBox}>
+                                <Clock size={36} color={theme.textSecondary} style={{ opacity: 0.5, marginBottom: 8 }} />
+                                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                                    No pending invitations. Invite matched passengers.
+                                </Text>
+                            </View>
+                        ) : (
+                            invitedList.map((m: any, idx: number) => {
+                                const r = m.route || m;
+                                const clientUser = r.userId;
+                                const clientName = clientUser?.fullName || `Passenger #${idx + 1}`;
+                                const pickup = r.startPoint?.address ? r.startPoint.address.split(',')[0] : 'Pickup';
+                                const dropoff = r.endPoint?.address ? r.endPoint.address.split(',')[0] : 'Dropoff';
+                                const fare = r.price?.amount ?? r.price ?? 20;
+
+                                return (
+                                    <View key={r.id || idx} style={[styles.card, { backgroundColor: '#fef3c720', borderColor: '#f59e0b40', borderWidth: 1 }]}>
+                                        <View style={styles.cardHeader}>
+                                            <View style={[styles.avatar, { backgroundColor: '#f59e0b' }]}>
+                                                {clientUser?.photoURL ? (
+                                                    <Image source={{ uri: clientUser.photoURL }} style={styles.avatarImg} />
+                                                ) : (
+                                                    <UserIcon size={16} color="#fff" />
+                                                )}
+                                            </View>
+                                            <View style={styles.cardInfo}>
+                                                <Text style={[styles.clientName, { color: theme.text }]} numberOfLines={1}>{clientName}</Text>
+                                                <Text style={[styles.routeSub, { color: theme.textSecondary }]} numberOfLines={1}>{pickup} → {dropoff}</Text>
+                                            </View>
+                                            <View style={[styles.fareBadge, { backgroundColor: '#fef3c7' }]}>
+                                                <Text style={[styles.fareText, { color: '#d97706' }]}>{fare} MAD</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.statusPillLarge}>
+                                            <Clock size={14} color="#d97706" />
+                                            <Text style={[styles.statusPillText, { color: '#d97706' }]}>Waiting for passenger response...</Text>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        )
+                    )}
+
+                    {/* 3. ASSIGNED PASSENGERS */}
+                    {activeTab === 'assigned' && (
+                        assignedList.length === 0 ? (
+                            <View style={styles.emptyBox}>
+                                <CheckCircle2 size={36} color={theme.textSecondary} style={{ opacity: 0.5, marginBottom: 8 }} />
+                                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                                    No confirmed passengers yet.
+                                </Text>
+                            </View>
+                        ) : (
+                            assignedList.map((m: any, idx: number) => {
+                                const r = m.route || m;
+                                const clientUser = r.userId;
+                                const clientName = clientUser?.fullName || `Passenger #${idx + 1}`;
+                                const pickup = r.startPoint?.address ? r.startPoint.address.split(',')[0] : 'Pickup';
+                                const dropoff = r.endPoint?.address ? r.endPoint.address.split(',')[0] : 'Dropoff';
+                                const fare = r.price?.amount ?? r.price ?? 20;
+
+                                return (
+                                    <View key={r.id || idx} style={[styles.card, { backgroundColor: '#dcfce720', borderColor: '#10b98140', borderWidth: 1 }]}>
+                                        <View style={styles.cardHeader}>
+                                            <View style={[styles.avatar, { backgroundColor: '#10b981' }]}>
+                                                {clientUser?.photoURL ? (
+                                                    <Image source={{ uri: clientUser.photoURL }} style={styles.avatarImg} />
+                                                ) : (
+                                                    <UserIcon size={16} color="#fff" />
+                                                )}
+                                            </View>
+                                            <View style={styles.cardInfo}>
+                                                <Text style={[styles.clientName, { color: theme.text }]} numberOfLines={1}>{clientName}</Text>
+                                                <Text style={[styles.routeSub, { color: theme.textSecondary }]} numberOfLines={1}>{pickup} → {dropoff}</Text>
+                                            </View>
+                                            <View style={[styles.fareBadge, { backgroundColor: '#dcfce7' }]}>
+                                                <Text style={[styles.fareText, { color: '#15803d' }]}>{fare} MAD</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.statusPillLarge}>
+                                            <CheckCircle2 size={14} color="#15803d" />
+                                            <Text style={[styles.statusPillText, { color: '#15803d' }]}>Seat Reserved • Head to pickup</Text>
+                                        </View>
+                                    </View>
+                                );
+                            })
+                        )
+                    )}
+                </ScrollView>
             </View>
-
-            {/* Lifecycle Segmented Control */}
-            <View style={[styles.tabsRow, { backgroundColor: isDark ? '#1f1f22' : '#f1f5f9' }]}>
-                <TouchableOpacity
-                    style={[styles.tabBtn, activeTab === 'matched' && { backgroundColor: isDark ? '#2c2c2e' : '#fff' }]}
-                    onPress={() => setActiveTab('matched')}
-                >
-                    <Text style={[styles.tabText, { color: activeTab === 'matched' ? theme.text : theme.textSecondary }]}>
-                        Matched ({matchedList.length})
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.tabBtn, activeTab === 'invited' && { backgroundColor: isDark ? '#2c2c2e' : '#fff' }]}
-                    onPress={() => setActiveTab('invited')}
-                >
-                    <Text style={[styles.tabText, { color: activeTab === 'invited' ? theme.text : theme.textSecondary }]}>
-                        Invited ({invitedList.length})
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.tabBtn, activeTab === 'assigned' && { backgroundColor: isDark ? '#2c2c2e' : '#fff' }]}
-                    onPress={() => setActiveTab('assigned')}
-                >
-                    <Text style={[styles.tabText, { color: activeTab === 'assigned' ? '#10b981' : theme.textSecondary }]}>
-                        Assigned ({assignedList.length})
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Content List */}
-            <ScrollView style={styles.scrollList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                {/* 1. MATCHED CLIENTS */}
-                {activeTab === 'matched' && (
-                    matchedList.length === 0 ? (
-                        <View style={styles.emptyBox}>
-                            <Users size={28} color={theme.textSecondary} />
-                            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                                No new passenger requests on this corridor right now.
-                            </Text>
-                        </View>
-                    ) : (
-                        matchedList.map((m: any, idx: number) => {
-                            const r = m.route || m;
-                            const clientUser = r.userId;
-                            const clientName = clientUser?.fullName || `Passenger #${idx + 1}`;
-                            const pickup = r.startPoint?.address ? r.startPoint.address.split(',')[0] : 'Pickup';
-                            const dropoff = r.endPoint?.address ? r.endPoint.address.split(',')[0] : 'Dropoff';
-                            const fare = r.price?.amount ?? r.price ?? 20;
-                            const clientRouteId = r.id || r._id;
-                            const distMeters = m.match?.pickupDistanceMeters;
-
-                            return (
-                                <View key={clientRouteId || idx} style={[styles.card, { borderColor: isDark ? '#333336' : '#e5e7eb' }]}>
-                                    <View style={styles.cardHeader}>
-                                        <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-                                            {clientUser?.photoURL ? (
-                                                <Image source={{ uri: clientUser.photoURL }} style={styles.avatarImg} />
-                                            ) : (
-                                                <UserIcon size={14} color="#fff" />
-                                            )}
-                                        </View>
-                                        <View style={styles.cardInfo}>
-                                            <Text style={[styles.clientName, { color: theme.text }]} numberOfLines={1}>
-                                                {clientName}
-                                            </Text>
-                                            <Text style={[styles.routeSub, { color: theme.textSecondary }]} numberOfLines={1}>
-                                                {pickup} → {dropoff}
-                                            </Text>
-                                            {m.match?.detourKm !== undefined ? (
-                                                <Text style={[styles.corridorProximity, { color: '#06b6d4' }]}>
-                                                    📍 +{m.match.detourKm} km detour (~+{m.match.detourMinutes || 5} min)
-                                                </Text>
-                                            ) : distMeters !== undefined ? (
-                                                <Text style={[styles.corridorProximity, { color: '#06b6d4' }]}>
-                                                    📍 {distMeters < 1000 ? `${distMeters}m` : `${(distMeters / 1000).toFixed(1)} km`} from your route
-                                                </Text>
-                                            ) : null}
-                                        </View>
-                                        <View style={styles.fareBadge}>
-                                            <Text style={styles.fareText}>{fare} MAD</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.cardFooter}>
-                                        <TouchableOpacity
-                                            style={[styles.inviteActionBtn, { backgroundColor: theme.primary }]}
-                                            disabled={isInviting}
-                                            onPress={() => onInviteClient(clientRouteId, fare)}
-                                        >
-                                            {isInviting ? (
-                                                <ActivityIndicator size="small" color="#fff" />
-                                            ) : (
-                                                <>
-                                                    <Send size={12} color="#fff" />
-                                                    <Text style={styles.inviteActionText}>Invite Passenger</Text>
-                                                </>
-                                            )}
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            );
-                        })
-                    )
-                )}
-
-                {/* 2. INVITED CLIENTS / OFFER SENT */}
-                {activeTab === 'invited' && (
-                    invitedList.length === 0 ? (
-                        <View style={styles.emptyBox}>
-                            <Clock size={28} color={theme.textSecondary} />
-                            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                                No pending invitations. Invite matched passengers above.
-                            </Text>
-                        </View>
-                    ) : (
-                        invitedList.map((m: any, idx: number) => {
-                            const r = m.route || m;
-                            const clientUser = r.userId;
-                            const clientName = clientUser?.fullName || `Passenger #${idx + 1}`;
-                            const pickup = r.startPoint?.address ? r.startPoint.address.split(',')[0] : 'Pickup';
-                            const dropoff = r.endPoint?.address ? r.endPoint.address.split(',')[0] : 'Dropoff';
-                            const fare = r.price?.amount ?? r.price ?? 20;
-                            const clientRouteId = r.id || r._id;
-
-                            return (
-                                <View key={clientRouteId || idx} style={[styles.card, { borderColor: '#f59e0b40', backgroundColor: '#fef3c710' }]}>
-                                    <View style={styles.cardHeader}>
-                                        <View style={[styles.avatar, { backgroundColor: '#f59e0b' }]}>
-                                            {clientUser?.photoURL ? (
-                                                <Image source={{ uri: clientUser.photoURL }} style={styles.avatarImg} />
-                                            ) : (
-                                                <UserIcon size={14} color="#fff" />
-                                            )}
-                                        </View>
-                                        <View style={styles.cardInfo}>
-                                            <Text style={[styles.clientName, { color: theme.text }]} numberOfLines={1}>
-                                                {clientName}
-                                            </Text>
-                                            <Text style={[styles.routeSub, { color: theme.textSecondary }]} numberOfLines={1}>
-                                                {pickup} → {dropoff}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.fareBadge}>
-                                            <Text style={styles.fareText}>{fare} MAD</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.cardFooter}>
-                                        <View style={[styles.statusPill, { backgroundColor: '#fef3c7' }]}>
-                                            <Clock size={12} color="#b45309" />
-                                            <Text style={[styles.statusPillText, { color: '#b45309' }]}>
-                                                Invitation Sent • Waiting for Client
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            );
-                        })
-                    )
-                )}
-
-                {/* 3. ASSIGNED PASSENGERS */}
-                {activeTab === 'assigned' && (
-                    assignedList.length === 0 ? (
-                        <View style={styles.emptyBox}>
-                            <CheckCircle2 size={28} color={theme.textSecondary} />
-                            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                                No confirmed passengers yet. Once a passenger accepts your offer, they will appear here.
-                            </Text>
-                        </View>
-                    ) : (
-                        assignedList.map((m: any, idx: number) => {
-                            const r = m.route || m;
-                            const clientUser = r.userId;
-                            const clientName = clientUser?.fullName || `Passenger #${idx + 1}`;
-                            const pickup = r.startPoint?.address ? r.startPoint.address.split(',')[0] : 'Pickup';
-                            const dropoff = r.endPoint?.address ? r.endPoint.address.split(',')[0] : 'Dropoff';
-                            const fare = r.price?.amount ?? r.price ?? 20;
-                            const clientRouteId = r.id || r._id;
-                            const phone = clientUser?.phone;
-
-                            return (
-                                <View key={clientRouteId || idx} style={[styles.card, { borderColor: '#10b98140', backgroundColor: '#dcfce710' }]}>
-                                    <View style={styles.cardHeader}>
-                                        <View style={[styles.avatar, { backgroundColor: '#10b981' }]}>
-                                            {clientUser?.photoURL ? (
-                                                <Image source={{ uri: clientUser.photoURL }} style={styles.avatarImg} />
-                                            ) : (
-                                                <UserIcon size={14} color="#fff" />
-                                            )}
-                                        </View>
-                                        <View style={styles.cardInfo}>
-                                            <Text style={[styles.clientName, { color: theme.text }]} numberOfLines={1}>
-                                                {clientName}
-                                            </Text>
-                                            <Text style={[styles.routeSub, { color: theme.textSecondary }]} numberOfLines={1}>
-                                                {pickup} → {dropoff}
-                                            </Text>
-                                            {phone ? (
-                                                <Text style={[styles.contactInfo, { color: theme.textSecondary }]}>
-                                                    📞 {phone}
-                                                </Text>
-                                            ) : null}
-                                        </View>
-                                        <View style={[styles.fareBadge, { backgroundColor: '#dcfce7' }]}>
-                                            <Text style={[styles.fareText, { color: '#15803d' }]}>{fare} MAD</Text>
-                                        </View>
-                                    </View>
-
-                                    <View style={styles.cardFooter}>
-                                        <View style={[styles.statusPill, { backgroundColor: '#dcfce7' }]}>
-                                            <CheckCircle2 size={12} color="#15803d" />
-                                            <Text style={[styles.statusPillText, { color: '#15803d' }]}>
-                                                Confirmed Passenger • Seat Reserved
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            );
-                        })
-                    )
-                )}
-            </ScrollView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        marginHorizontal: 16,
-        padding: 16,
-        borderRadius: 22,
-        borderWidth: 1,
+    shadowContainer: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        elevation: 6,
-        gap: 12,
-        maxHeight: 340,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 24,
+        elevation: 12,
+        marginHorizontal: 16,
+    },
+    container: {
+        borderRadius: 24,
+        borderWidth: 1,
+        padding: 16,
+        gap: 16,
+        overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    headerLeft: {
-        flex: 1,
-    },
-    corridorBadge: {
+    timelineContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 10,
-        alignSelf: 'flex-start',
+        flex: 1,
+        gap: 12,
+        backgroundColor: 'rgba(150,150,150,0.05)',
+        padding: 10,
+        borderRadius: 14,
+        marginRight: 10,
     },
-    corridorText: {
-        fontSize: 12,
+    timelineGraphic: {
+        alignItems: 'center',
+        width: 14,
+        paddingTop: 4,
+        paddingBottom: 4,
+    },
+    pickupDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#10b981',
+        borderWidth: 2,
+        borderColor: '#dcfce7',
+        zIndex: 2,
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        backgroundColor: '#d1d5db',
+        marginVertical: -2,
+        zIndex: 1,
+    },
+    dropoffDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#ef4444',
+        borderWidth: 2,
+        borderColor: '#fee2e2',
+        zIndex: 2,
+    },
+    timelineAddresses: {
+        flex: 1,
+        justifyContent: 'space-between',
+        paddingVertical: 1,
+        gap: 16,
+    },
+    addressText: {
+        fontSize: 14,
         fontWeight: '700',
     },
     closeBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
     },
     tabsRow: {
         flexDirection: 'row',
-        borderRadius: 12,
-        padding: 3,
-        gap: 2,
+        borderRadius: 14,
+        padding: 4,
+        marginTop: 4,
     },
     tabBtn: {
         flex: 1,
-        paddingVertical: 8,
-        borderRadius: 10,
+        paddingVertical: 10,
         alignItems: 'center',
         justifyContent: 'center',
+        borderRadius: 10,
+    },
+    activeTabBtn: {
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
     },
     tabText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '700',
     },
     scrollList: {
-        maxHeight: 220,
+        maxHeight: 300,
     },
     emptyBox: {
-        paddingVertical: 32,
-        paddingHorizontal: 16,
+        paddingVertical: 40,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
+        gap: 24,
+    },
+    radarContainer: {
+        width: 70,
+        height: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    radarRing: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        borderRadius: 35,
+    },
+    radarCenter: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 4,
     },
     emptyText: {
-        fontSize: 13,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
         textAlign: 'center',
-        lineHeight: 18,
     },
     card: {
-        borderRadius: 14,
-        borderWidth: 1,
-        padding: 12,
-        marginBottom: 8,
-        gap: 10,
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 10,
+        gap: 12,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 12,
     },
     avatar: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
@@ -427,64 +477,61 @@ const styles = StyleSheet.create({
     },
     cardInfo: {
         flex: 1,
-        gap: 2,
+        gap: 4,
     },
     clientName: {
-        fontSize: 13,
+        fontSize: 15,
         fontWeight: '700',
     },
     routeSub: {
-        fontSize: 11,
+        fontSize: 12,
     },
     corridorProximity: {
-        fontSize: 11,
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    contactInfo: {
-        fontSize: 11,
-        fontWeight: '500',
-        marginTop: 2,
+        fontSize: 12,
+        fontWeight: '700',
     },
     fareBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
     },
     fareText: {
-        color: '#10b981',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '800',
     },
     cardFooter: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(150,150,150,0.1)',
+        paddingTop: 12,
     },
     inviteActionBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 10,
+        gap: 8,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 12,
     },
     inviteActionText: {
         color: '#fff',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '700',
     },
-    statusPill: {
+    statusPillLarge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        borderRadius: 10,
+        marginTop: 4,
     },
     statusPillText: {
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: '700',
     },
 });

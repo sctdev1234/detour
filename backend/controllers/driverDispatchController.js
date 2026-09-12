@@ -496,7 +496,7 @@ exports.getRecoveryState = async (req, res) => {
                 tripStatus,
                 activeTrip: activeTrip?.tripInstanceId ? { ...activeTrip, journey: activeJourney } : null,
                 currentOffer: formattedCurrentOffer,
-                lastSequenceNumber
+                lastSequenceNumber: 0
             }
         });
     } catch (error) {

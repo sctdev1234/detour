@@ -198,12 +198,22 @@ export const formatRoutesToPolylines = (
 
     const isDark = options?.isDark ?? false;
     const defaultPrimary = options?.primaryColor || options?.theme?.primary || '#3b82f6';
-    const defaultSecondary = options?.secondaryColor || (isDark ? 'rgba(99, 102, 241, 0.75)' : 'rgba(79, 70, 229, 0.65)');
+    const ROUTE_COLORS = [
+        'rgba(99, 102, 241, 0.85)', // Indigo
+        'rgba(236, 72, 153, 0.85)', // Pink
+        'rgba(20, 184, 166, 0.85)', // Teal
+        'rgba(245, 158, 11, 0.85)', // Amber
+        'rgba(139, 92, 246, 0.85)', // Violet
+        'rgba(6, 182, 212, 0.85)',  // Cyan
+        'rgba(16, 185, 129, 0.85)', // Emerald
+        'rgba(244, 63, 94, 0.85)'   // Rose
+    ];
 
-    return routes.map((r: any) => {
+    return routes.map((r: any, index: number) => {
         const routeId = r.id || r._id || '';
         const isSelected = selectedRouteId === routeId;
         const isActive = r.status === 'active';
+        const defaultSecondary = ROUTE_COLORS[index % ROUTE_COLORS.length];
 
         const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0)
             ? r.startPoint

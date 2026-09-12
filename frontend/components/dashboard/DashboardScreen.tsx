@@ -473,18 +473,20 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             />
 
             {/* Quick Actions (Right Side) */}
-            <QuickActions
-                onCenterMap={centerToMyLocation}
-                onCreateRoute={() => router.push('/(driver)/add-route')}
-                isOnline={presence === 'ONLINE'}
-                onToggleStatus={async () => {
-                    if (presence === 'ONLINE') {
-                        await driverDispatchActions.goOffline();
-                    } else {
-                        await driverDispatchActions.goOnline();
-                    }
-                }}
-            />
+            {!isFindingOpen && (
+                <QuickActions
+                    onCenterMap={centerToMyLocation}
+                    onCreateRoute={() => router.push('/(driver)/add-route')}
+                    isOnline={presence === 'ONLINE'}
+                    onToggleStatus={async () => {
+                        if (presence === 'ONLINE') {
+                            await driverDispatchActions.goOffline();
+                        } else {
+                            await driverDispatchActions.goOnline();
+                        }
+                    }}
+                />
+            )}
 
             {/* Driver Dispatch & Multi-Route Overlay */}
             {activeTrip || currentOffer ? (
@@ -576,12 +578,14 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                         )
                     )}
 
-                    <DriverRouteSelector
-                        routes={driverRoutes}
-                        selectedRouteId={selectedRouteId}
-                        onSelectRoute={handleSelectRoute}
-                        onCreateRoute={() => router.push('/(driver)/add-route')}
-                    />
+                    {!isFindingOpen && (
+                        <DriverRouteSelector
+                            routes={driverRoutes}
+                            selectedRouteId={selectedRouteId}
+                            onSelectRoute={handleSelectRoute}
+                            onCreateRoute={() => router.push('/(driver)/add-route')}
+                        />
+                    )}
                 </View>
             )}
         </View>

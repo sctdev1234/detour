@@ -314,6 +314,41 @@ const RouteMarkers = React.memo(({ startPoint, endPoint, waypoints }: any) => {
     );
 });
 
+const SmartPolyline = React.memo(({ route, strokeColor, strokeWidth, lineDashPattern, tappable, onPress, zIndex }: any) => {
+    const [realCoords, setRealCoords] = useState<LatLng[]>(route.coords);
+
+    useEffect(() => {
+        if (route.coords?.length <= 10 && route.coords.length >= 2) {
+            let active = true;
+            const start = route.coords[0];
+            const end = route.coords[route.coords.length - 1];
+            const waypoints = route.coords.slice(1, -1);
+            
+            RouteService.fetchRoadRoute(start, end, waypoints).then(roadCoords => {
+                if (active && roadCoords && roadCoords.length > 2) {
+                    setRealCoords(roadCoords);
+                }
+            }).catch(e => console.log('SmartPolyline fetch error', e));
+            
+            return () => { active = false; };
+        } else {
+            setRealCoords(route.coords);
+        }
+    }, [route.coords]);
+
+    return (
+        <Polyline
+            coordinates={realCoords.filter((c: any) => c.latitude !== 0 && c.longitude !== 0)}
+            strokeColor={strokeColor}
+            strokeWidth={strokeWidth}
+            lineDashPattern={lineDashPattern}
+            tappable={tappable}
+            onPress={onPress}
+            zIndex={zIndex}
+        />
+    );
+});
+
 const RoutePolylines = React.memo(({ 
     routePolylines, 
     selectedRouteId, 
@@ -339,8 +374,8 @@ const RoutePolylines = React.memo(({
                 return (
                     <React.Fragment key={`route-${route.id}`}>
                         {route.coords?.length > 1 && (
-                            <Polyline
-                                coordinates={route.coords.filter((c: any) => c.latitude !== 0 && c.longitude !== 0)}
+                            <SmartPolyline
+                                route={route}
                                 strokeColor={routeColor}
                                 strokeWidth={strokeWidth}
                                 lineDashPattern={isSelected ? [] : (route.isActive ? [] : [8, 4])}
@@ -540,6 +575,10 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
             start = startPoint;
             end = endPoint;
             wps = waypoints || [];
+        } else if (mode === 'picker' && points.length > 1) {
+            start = points[0];
+            end = points[points.length - 1];
+            wps = points.slice(1, -1);
         }
 
         if (geom) {
@@ -551,7 +590,9 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
         }
 
         if (start && end && typeof start.latitude === 'number' && typeof end.latitude === 'number') {
-            const routeKey = `${start.latitude.toFixed(5)},${start.longitude.toFixed(5)}-${end.latitude.toFixed(5)},${end.longitude.toFixed(5)}`;
+            const wpsStr = wps.map(p => `${p.latitude.toFixed(5)},${p.longitude.toFixed(5)}`).join('|');
+            const routeKey = `${start.latitude.toFixed(5)},${start.longitude.toFixed(5)}-${end.latitude.toFixed(5)},${end.longitude.toFixed(5)}|${wpsStr}`;
+            
             if (fetchedRouteKeyRef.current === routeKey && routeCoordinates.length > 2) {
                 return;
             }
@@ -565,8 +606,10 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                 }
             });
             return () => { active = false; };
+        } else if (mode === 'picker' && points.length <= 1) {
+            setRouteCoordinates([]);
         }
-    }, [mode, trip, customStopOrder, startPoint?.latitude, startPoint?.longitude, endPoint?.latitude, endPoint?.longitude]);
+    }, [mode, trip, customStopOrder, startPoint?.latitude, startPoint?.longitude, endPoint?.latitude, endPoint?.longitude, points]);
 
     // --- Optimized Auto-Center (Fit Bounds) ---
     // NO driverLocation in dependency array to avoid constant zooming
@@ -797,9 +840,9 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                 {/* Polylines */}
                 {(mode === 'picker' && points.length > 1) && (
                     <Polyline
-                        coordinates={points}
+                        coordinates={routeCoordinates.length > 1 ? routeCoordinates : points}
                         strokeColor={theme.primary}
-                        strokeWidth={3}
+                        strokeWidth={4}
                     />
                 )}
 
