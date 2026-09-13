@@ -132,8 +132,8 @@ api.interceptors.response.use(
                             originalRequestConfig.headers['x-auth-token'] = res.data.token;
                             return api(originalRequestConfig);
                         }
-                    } catch (refreshError) {
-                        console.error('[API] Token refresh failed', refreshError);
+                    } catch (refreshError: any) {
+                        console.warn('[API] Token refresh failed:', refreshError.message);
                         logout();
                     }
                 } else {

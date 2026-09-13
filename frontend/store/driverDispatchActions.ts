@@ -244,7 +244,7 @@ export const driverDispatchActions = {
             driverDispatchActions._bindSockets();
             return data;
         } catch (error: any) {
-            console.error('[DriverDispatchActions] Recovery failed', error);
+            console.warn('[DriverDispatchActions] Recovery failed', error.message);
         } finally {
             isRecovering = false;
         }

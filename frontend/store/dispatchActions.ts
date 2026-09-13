@@ -150,8 +150,8 @@ export const dispatchActions = {
             if (data.status !== 'IDLE' && data.status !== 'COMPLETED' && data.status !== 'CANCELLED') {
                 dispatchActions._bindSockets();
             }
-        } catch (error) {
-            console.error('[dispatchActions] recoverState failed', error);
+        } catch (error: any) {
+            console.warn('[dispatchActions] recoverState failed', error.message);
         } finally {
             isRecovering = false;
         }

@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Crosshair, Navigation, Plus, Power } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     StyleSheet,
     Text,
@@ -9,7 +9,8 @@ import {
     useColorScheme,
     View,
 } from 'react-native';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+import Animated, { FadeInRight, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { Colors } from '../../constants/theme';
 import { useDashboardStore } from '../../store/useDashboardStore';
 
@@ -19,6 +20,8 @@ interface QuickActionsProps {
     isOnline?: boolean;
     onToggleStatus?: () => void;
     isUpdatingStatus?: boolean;
+    isRouteSelected?: boolean;
+    isFindingOpen?: boolean;
 }
 
 export default function QuickActions({
@@ -26,7 +29,9 @@ export default function QuickActions({
     onCreateRoute,
     isOnline: propIsOnline,
     onToggleStatus: propOnToggleStatus,
-    isUpdatingStatus: propIsUpdatingStatus
+    isUpdatingStatus: propIsUpdatingStatus,
+    isRouteSelected = false,
+    isFindingOpen = false,
 }: QuickActionsProps) {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
@@ -36,6 +41,29 @@ export default function QuickActions({
     const isOnline = propIsOnline !== undefined ? propIsOnline : (driverStatus === 'ONLINE');
     const onToggle = propOnToggleStatus || toggleDriverStatus;
     const isUpdating = propIsUpdatingStatus !== undefined ? propIsUpdatingStatus : v1Updating;
+
+    const bottomPos = useSharedValue(isRouteSelected ? 300 : 180);
+
+    useEffect(() => {
+        // Dynamically adjust height to avoid overlapping with bottom cards
+        let targetBottom = 180;
+        if (isFindingOpen) {
+            targetBottom = 500; // very high if finding open
+        } else if (isRouteSelected) {
+            targetBottom = 340; // above route card
+        }
+        bottomPos.value = withSpring(targetBottom, {
+            damping: 18,
+            stiffness: 150,
+            mass: 0.8
+        });
+    }, [isRouteSelected, isFindingOpen]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            bottom: bottomPos.value,
+        };
+    });
 
     const actions = [
         {
@@ -48,7 +76,7 @@ export default function QuickActions({
         {
             id: 'toggle-status',
             icon: Power,
-            label: isUpdating ? 'Updating' : isOnline ? 'Online' : 'Offline',
+            label: isUpdating ? 'Wait' : isOnline ? 'Online' : 'Offline',
             onPress: onToggle,
             gradient: isOnline
                 ? ['#34D399', '#10B981'] as [string, string]
@@ -64,7 +92,7 @@ export default function QuickActions({
     ];
 
     return (
-        <View style={styles.container}>
+        <Animated.View style={[styles.container, animatedStyle]}>
             {actions.map((action, index) => {
                 const Icon = action.icon;
                 return (
@@ -77,8 +105,10 @@ export default function QuickActions({
                                 styles.actionBtn,
                                 !action.gradient && {
                                     backgroundColor: colorScheme === 'dark'
-                                        ? 'rgba(255,255,255,0.1)'
+                                        ? 'rgba(40,40,44,0.85)'
                                         : 'rgba(255,255,255,0.92)',
+                                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                                    borderWidth: 1,
                                 }
                             ]}
                             onPress={action.onPress}
@@ -91,22 +121,24 @@ export default function QuickActions({
                                     end={{ x: 1, y: 1 }}
                                     style={styles.gradientFill}
                                 >
-                                    <Icon size={20} color="#fff" strokeWidth={2.5} />
+                                    <Icon size={22} color="#fff" strokeWidth={2.5} />
                                 </LinearGradient>
                             ) : (
-                                <Icon size={20} color={theme.text} strokeWidth={2.5} />
+                                <BlurView intensity={40} tint={colorScheme} style={styles.blurWrap}>
+                                    <Icon size={22} color={theme.text} strokeWidth={2.5} />
+                                </BlurView>
                             )}
                         </TouchableOpacity>
                         <Text style={[
                             styles.actionLabel,
-                            { color: colorScheme === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }
+                            { color: colorScheme === 'dark' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)' }
                         ]}>
                             {action.label}
                         </Text>
                     </Animated.View>
                 );
             })}
-        </View>
+        </Animated.View>
     );
 }
 
@@ -114,24 +146,23 @@ const styles = StyleSheet.create({
     container: {
         position: 'absolute',
         right: 16,
-        bottom: 180,
-        gap: 12,
+        gap: 16,
         alignItems: 'center',
         zIndex: 90,
     },
     actionBtn: {
-        width: 52,
-        height: 52,
-        borderRadius: 18,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
-        // Shadow
+        // Enhanced shadow for a floating feel
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 8,
     },
     gradientFill: {
         width: '100%',
@@ -139,11 +170,20 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    blurWrap: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     actionLabel: {
-        fontSize: 10,
-        fontWeight: '700',
+        fontSize: 11,
+        fontWeight: '800',
         textAlign: 'center',
-        marginTop: 4,
+        marginTop: 6,
         letterSpacing: -0.2,
+        textShadowColor: 'rgba(255,255,255,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
 });

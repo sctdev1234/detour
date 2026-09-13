@@ -2,9 +2,9 @@ import { useUIStore } from '@/store/useUIStore';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Car, Check, Clock, MapPin, Route as RouteIcon, X, Maximize2, Search } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { Car, Check, Clock, MapPin, Route as RouteIcon, X, Maximize2, Search, Plus } from 'lucide-react-native';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View, Modal, TextInput, ActivityIndicator, Animated as RNAnimated } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import DetourMap from '../../components/Map';
 import { PremiumInput } from '../../components/PremiumInput';
@@ -32,7 +32,6 @@ export default function AddRouteScreen() {
     const [timeStart, setTimeStart] = useState('08:00');
     const [timeArrival, setTimeArrival] = useState('09:00');
     const [selectedDays, setSelectedDays] = useState<string[]>([]);
-    // Price removed for drivers - defaulted to 0
     const [selectedCarId, setSelectedCarId] = useState('');
     const [routeMetrics, setRouteMetrics] = useState<{ distance: number; duration: number; geometry: string } | null>(null);
     const [isCalculating, setIsCalculating] = useState(false);
@@ -44,6 +43,25 @@ export default function AddRouteScreen() {
     const [suggestions, setSuggestions] = useState<{ label: string; latitude: number; longitude: number }[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchFocusPoint, setSearchFocusPoint] = useState<LatLng | null>(null);
+
+    // Map Center Pin States
+    const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
+    const [centerAddress, setCenterAddress] = useState<string>('Move map to select');
+    const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+    const [isMapDragging, setIsMapDragging] = useState(false);
+    const pinTranslateY = useRef(new RNAnimated.Value(0)).current;
+    const pinScale = useRef(new RNAnimated.Value(1)).current;
+
+    const reverseGeocodeAbortControllerRef = useRef<AbortController | null>(null);
+
+    // Clean up abort controllers
+    useEffect(() => {
+        return () => {
+            if (reverseGeocodeAbortControllerRef.current) {
+                reverseGeocodeAbortControllerRef.current.abort();
+            }
+        };
+    }, []);
 
     const handleSearch = async (text: string) => {
         setSearchQuery(text);
@@ -67,11 +85,64 @@ export default function AddRouteScreen() {
             latitude: suggestion.latitude,
             longitude: suggestion.longitude
         };
-        const newPoints = [...points, newPoint];
-        handlePointsChange(newPoints);
+        // Don't auto-add, just center map
         setSearchFocusPoint(newPoint);
         setSearchQuery('');
         setSuggestions([]);
+    };
+
+    // Animate map pin when dragging and fetch address when stopped
+    useEffect(() => {
+        if (isMapDragging) {
+            if (reverseGeocodeAbortControllerRef.current) {
+                reverseGeocodeAbortControllerRef.current.abort();
+                reverseGeocodeAbortControllerRef.current = null;
+            }
+            RNAnimated.parallel([
+                RNAnimated.spring(pinTranslateY, { toValue: -15, useNativeDriver: true, damping: 15, mass: 0.8, stiffness: 200 }),
+                RNAnimated.spring(pinScale, { toValue: 1.1, useNativeDriver: true, damping: 15, mass: 0.8, stiffness: 200 })
+            ]).start();
+        } else {
+            RNAnimated.parallel([
+                RNAnimated.spring(pinTranslateY, { toValue: 0, useNativeDriver: true, damping: 12, mass: 0.6, stiffness: 180 }),
+                RNAnimated.spring(pinScale, { toValue: 1, useNativeDriver: true, damping: 12, mass: 0.6, stiffness: 180 })
+            ]).start();
+
+            if (mapCenter) {
+                if (reverseGeocodeAbortControllerRef.current) {
+                    reverseGeocodeAbortControllerRef.current.abort();
+                }
+                const controller = new AbortController();
+                reverseGeocodeAbortControllerRef.current = controller;
+
+                setIsResolvingAddress(true);
+                RouteService.reverseGeocode(mapCenter.latitude, mapCenter.longitude, controller.signal)
+                    .then(addr => {
+                        if (addr) setCenterAddress(addr);
+                    })
+                    .catch((err) => {
+                        if (err.name !== 'AbortError') {
+                            setCenterAddress('Selected Location');
+                        }
+                    })
+                    .finally(() => {
+                        if (reverseGeocodeAbortControllerRef.current === controller) {
+                            setIsResolvingAddress(false);
+                            reverseGeocodeAbortControllerRef.current = null;
+                        }
+                    });
+            }
+        }
+    }, [isMapDragging, mapCenter]);
+
+    const handleAddCenterPoint = () => {
+        if (!mapCenter) return;
+        setSearchFocusPoint(null);
+        const newPoints = [...points, mapCenter];
+        handlePointsChange(newPoints);
+        if (newPoints.length >= 2) {
+            setIsMapModalVisible(false);
+        }
     };
 
     // Initialize selected car when cars are loaded
@@ -96,12 +167,6 @@ export default function AddRouteScreen() {
                 const start = newPoints[0];
                 const end = newPoints[newPoints.length - 1];
                 const result = await RouteService.calculateRoute(start, end);
-
-                setRouteMetrics({
-                    distance: result.distanceKm,
-                    duration: result.durationMinutes,
-                    geometry: result.geometry
-                });
 
                 setRouteMetrics({
                     distance: result.distanceKm,
@@ -166,6 +231,8 @@ export default function AddRouteScreen() {
             showToast('Failed to create route', 'error');
         }
     };
+
+    const memoizedBoundsPoints = useMemo(() => searchFocusPoint ? [searchFocusPoint] : undefined, [searchFocusPoint]);
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -410,22 +477,6 @@ export default function AddRouteScreen() {
                 onRequestClose={() => setIsMapModalVisible(false)}
             >
                 <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
-                    <View style={[styles.modalHeader, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
-                        <TouchableOpacity 
-                            onPress={() => setIsMapModalVisible(false)}
-                            style={styles.modalCloseBtn}
-                        >
-                            <X size={24} color={theme.text} />
-                        </TouchableOpacity>
-                        <Text style={[styles.modalTitle, { color: theme.text }]}>Select Route Points</Text>
-                        <TouchableOpacity 
-                            onPress={() => handlePointsChange([])}
-                            style={styles.modalClearBtn}
-                        >
-                            <Text style={{ color: '#ef4444', fontWeight: '700' }}>Clear</Text>
-                        </TouchableOpacity>
-                    </View>
-
                     <View style={{ flex: 1, position: 'relative' }}>
                         <DetourMap 
                             mode="picker" 
@@ -435,16 +486,72 @@ export default function AddRouteScreen() {
                             savedPlaces={user?.savedPlaces}
                             fullScreen
                             height="100%"
-                            boundsPoints={searchFocusPoint ? [searchFocusPoint] : undefined}
+                            hidePickerControls={true}
+                            disableTapToAdd={true}
+                            boundsPoints={memoizedBoundsPoints}
                             onMapPress={() => setSearchFocusPoint(null)}
+                            onRegionChange={(region) => {
+                                setIsMapDragging(true);
+                                setMapCenter({ latitude: region.latitude, longitude: region.longitude });
+                                if (searchFocusPoint) setSearchFocusPoint(null);
+                            }}
+                            onRegionChangeComplete={(region) => {
+                                setIsMapDragging(false);
+                                setMapCenter({ latitude: region.latitude, longitude: region.longitude });
+                            }}
                         />
+
+                        {/* Top Left Back Button */}
+                        <TouchableOpacity
+                            style={[styles.floatingBackBtn, { backgroundColor: theme.surface }]}
+                            onPress={() => setIsMapModalVisible(false)}
+                            activeOpacity={0.8}
+                        >
+                            <X size={24} color={theme.text} />
+                        </TouchableOpacity>
+
+                        {/* Center Pin Overlay & Address Badge */}
+                        <View style={styles.centerPinWrapper} pointerEvents="none">
+                            <RNAnimated.View style={[
+                                styles.centerPinContainer,
+                                { transform: [{ translateY: pinTranslateY }, { scale: pinScale }] }
+                            ]}>
+                                {/* Address Badge */}
+                                <View style={styles.addressBadge}>
+                                    <Text style={styles.addressBadgeText} numberOfLines={1}>
+                                        {isMapDragging ? 'Moving map...' : (isResolvingAddress ? 'Searching...' : centerAddress)}
+                                    </Text>
+                                </View>
+                                <View style={[styles.centerPinBubble, { backgroundColor: '#1C1C1E' }]}>
+                                    <View style={styles.pinInnerDot} />
+                                </View>
+                                <View style={[styles.pinNeedle, { backgroundColor: '#1C1C1E' }]} />
+                            </RNAnimated.View>
+                            <View style={styles.pinGroundShadow} />
+                        </View>
+
+                        {/* Floating Clear Route Button (Top Right) */}
+                        {points.length > 0 && (
+                            <TouchableOpacity 
+                                style={[styles.pointsBadge, { backgroundColor: '#ef4444' }]}
+                                onPress={() => {
+                                    handlePointsChange([]);
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[styles.pointsBadgeText, { color: '#FFF' }]}>
+                                    Recommencer
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
                         {/* Modern Floating Search Bar */}
-                        <View style={styles.searchContainer}>
-                            <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                        <View style={[styles.searchContainer, { top: Platform.OS === 'ios' ? 110 : 90 }]}>
+                            <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 5, borderRadius: 24, marginHorizontal: 20 }]}>
                                 <Search size={20} color={theme.icon} style={styles.searchIcon} />
                                 <TextInput
                                     style={[styles.searchInput, { color: theme.text }]}
-                                    placeholder="Search places (e.g. Maarif, Casablanca)"
+                                    placeholder="Search places..."
                                     placeholderTextColor={theme.textSecondary + '80'}
                                     value={searchQuery}
                                     onChangeText={handleSearch}
@@ -466,7 +573,7 @@ export default function AddRouteScreen() {
                             </View>
 
                             {suggestions.length > 0 && (
-                                <View style={[styles.suggestionsContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                                <View style={[styles.suggestionsContainer, { backgroundColor: theme.surface, borderColor: theme.border, marginHorizontal: 20, borderRadius: 16, marginTop: 8 }]}>
                                     <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">
                                         {suggestions.map((item, index) => (
                                             <TouchableOpacity
@@ -474,32 +581,38 @@ export default function AddRouteScreen() {
                                                 style={[styles.suggestionItem, { borderBottomColor: theme.border }]}
                                                 onPress={() => handleSelectSuggestion(item)}
                                             >
-                                                <MapPin size={16} color={theme.primary} style={styles.suggestionIcon} />
-                                                <Text style={[styles.suggestionText, { color: theme.text }]} numberOfLines={2}>
-                                                    {item.label}
-                                                </Text>
+                                                <View style={styles.suggestionIconContainer}>
+                                                    <MapPin size={18} color={theme.primary} />
+                                                </View>
+                                                <View style={styles.suggestionTextContainer}>
+                                                    <Text style={[styles.suggestionText, { color: theme.text }]} numberOfLines={1}>
+                                                        {item.label}
+                                                    </Text>
+                                                    {item.subtitle && (
+                                                        <Text style={[styles.suggestionSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                            {item.subtitle}
+                                                        </Text>
+                                                    )}
+                                                </View>
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
                                 </View>
                             )}
                         </View>
-                    </View>
 
-                    <View style={[styles.modalFooter, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
-                        <TouchableOpacity
-                            onPress={() => setIsMapModalVisible(false)}
-                            style={[styles.modalConfirmBtn, { backgroundColor: theme.primary }]}
-                            activeOpacity={0.8}
-                        >
-                            <Check size={20} color="#fff" />
-                            <Text style={styles.modalConfirmText}>
-                                {points.length < 2 
-                                    ? `Select Points (${points.length}/2+)` 
-                                    : `Confirm Route (${points.length} Points)`
-                                }
-                            </Text>
-                        </TouchableOpacity>
+                        {/* Large Terminé Button at Bottom */}
+                        <View style={styles.bottomTermineContainer}>
+                            <TouchableOpacity
+                                style={styles.termineBtn}
+                                onPress={handleAddCenterPoint}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={styles.termineBtnText}>
+                                    {points.length === 0 ? 'Ajouter Départ' : 'Ajouter Destination (Terminé)'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -831,7 +944,95 @@ const styles = StyleSheet.create({
         paddingVertical: 0,
     },
     searchLoader: {
-        marginLeft: 8,
+        marginLeft: 12,
+    },
+    // Floating Top Left Back Btn
+    floatingBackBtn: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 30,
+        left: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        zIndex: 100,
+    },
+    // Top Right Points Badge
+    pointsBadge: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 30,
+        right: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        zIndex: 100,
+    },
+    pointsBadgeText: {
+        fontWeight: '800',
+        fontSize: 14,
+    },
+    // InDrive Style Center Pin
+    centerPinWrapper: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, justifyContent: 'center', alignItems: 'center' },
+    centerPinContainer: { alignItems: 'center', marginTop: -80 },
+    addressBadge: {
+        backgroundColor: '#1C1C1E',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 24,
+        marginBottom: 8,
+        maxWidth: 250,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    addressBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+    centerPinBubble: { width: 14, height: 14, borderRadius: 7, justifyContent: 'center', alignItems: 'center' },
+    pinInnerDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#FFF' },
+    pinNeedle: { width: 2, height: 16 },
+    pinGroundShadow: { width: 12, height: 4, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.2)', marginTop: 2 },
+    
+    // Large Terminé Button
+    bottomTermineContainer: {
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ? 40 : 20,
+        left: 20,
+        right: 20,
+        zIndex: 100,
+    },
+    termineBtn: {
+        backgroundColor: '#C8F32F', // InDrive Greenish Yellow
+        height: 60,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 4,
+    },
+    termineBtnText: {
+        color: '#1C1C1E', // Dark text on bright button
+        fontSize: 18,
+        fontWeight: '800',
     },
     searchClearBtn: {
         padding: 4,
@@ -855,12 +1056,26 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
-    suggestionIcon: {
+    suggestionIconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(200, 243, 47, 0.2)', // Light primary color background
+        justifyContent: 'center',
+        alignItems: 'center',
         marginRight: 12,
     },
-    suggestionText: {
-        fontSize: 14,
-        fontWeight: '500',
+    suggestionTextContainer: {
         flex: 1,
+        justifyContent: 'center',
+    },
+    suggestionText: {
+        fontSize: 15,
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    suggestionSubtitle: {
+        fontSize: 13,
+        fontWeight: '400',
     }
 });

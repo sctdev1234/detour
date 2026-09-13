@@ -473,20 +473,20 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             />
 
             {/* Quick Actions (Right Side) */}
-            {!isFindingOpen && (
-                <QuickActions
-                    onCenterMap={centerToMyLocation}
-                    onCreateRoute={() => router.push('/(driver)/add-route')}
-                    isOnline={presence === 'ONLINE'}
-                    onToggleStatus={async () => {
-                        if (presence === 'ONLINE') {
-                            await driverDispatchActions.goOffline();
-                        } else {
-                            await driverDispatchActions.goOnline();
-                        }
-                    }}
-                />
-            )}
+            <QuickActions
+                onCenterMap={centerToMyLocation}
+                onCreateRoute={() => router.push('/(driver)/add-route')}
+                isOnline={presence === 'ONLINE'}
+                onToggleStatus={async () => {
+                    if (presence === 'ONLINE') {
+                        await driverDispatchActions.goOffline();
+                    } else {
+                        await driverDispatchActions.goOnline();
+                    }
+                }}
+                isRouteSelected={!!selectedRoute || !!activeTrip || !!currentOffer}
+                isFindingOpen={isFindingOpen}
+            />
 
             {/* Driver Dispatch & Multi-Route Overlay */}
             {activeTrip || currentOffer ? (

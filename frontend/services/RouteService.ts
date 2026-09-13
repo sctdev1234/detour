@@ -120,36 +120,65 @@ export const RouteService = {
                 },
                 signal
             });
-            const data = await response.json();
-            return data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            
+            const text = await response.text();
+            if (!response.ok) {
+                return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            }
+            
+            try {
+                const data = JSON.parse(text);
+                return data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            } catch (parseError) {
+                // If it's HTML or invalid JSON, ignore and return fallback
+                return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            }
         } catch (error: any) {
-            if (error.name === 'AbortError') {
-                console.log('[RouteService] Reverse geocode aborted');
-            } else {
+            if (error.name !== 'AbortError') {
                 console.error('Geocoding error:', error);
             }
             return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         }
     },
 
-    geocode: async (query: string, signal?: AbortSignal): Promise<{ label: string; latitude: number; longitude: number }[]> => {
+    geocode: async (query: string, signal?: AbortSignal): Promise<{ label: string; subtitle?: string; latitude: number; longitude: number }[]> => {
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ma`, {
-                headers: {
-                    'User-Agent': 'DetourApp/1.0'
-                },
+            // Using Photon API for better autocomplete and cleaner results
+            const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=33.5731&lon=-7.5898`, {
+                headers: { 'User-Agent': 'DetourApp/1.0' },
                 signal
             });
-            const data = await response.json();
-            return data.map((item: any) => ({
-                label: item.display_name,
-                latitude: parseFloat(item.lat),
-                longitude: parseFloat(item.lon)
-            }));
+            const text = await response.text();
+            if (!response.ok) return [];
+            
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                return [];
+            }
+            
+            if (!data || !data.features) return [];
+            
+            return data.features.map((feature: any) => {
+                const p = feature.properties;
+                const coords = feature.geometry.coordinates;
+                
+                const label = p.name || p.street || p.city || 'Unknown Location';
+                const subtitleParts = [];
+                if (p.name && p.street && p.street !== p.name) subtitleParts.push(p.street);
+                if (p.city && p.city !== label) subtitleParts.push(p.city);
+                if (p.state) subtitleParts.push(p.state);
+                
+                return {
+                    label: label,
+                    subtitle: subtitleParts.join(', '),
+                    latitude: coords[1],
+                    longitude: coords[0]
+                };
+            });
         } catch (error: any) {
-            if (error.name === 'AbortError') {
-                console.log('[RouteService] Geocode search aborted');
-            } else {
+            if (error.name !== 'AbortError') {
                 console.error('Geocoding search error:', error);
             }
             return [];

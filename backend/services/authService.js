@@ -437,14 +437,14 @@ class AuthService {
     }
 
     async refreshSession(refreshToken) {
-        if (!refreshToken) throw new Error('No refresh token provided');
+        if (!refreshToken) throw new AppError('No refresh token provided', 400);
 
         try {
             const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
             const user = await userRepository.findById(decoded.user.id);
             
             if (!user || user.refreshToken !== refreshToken) {
-                throw new Error('Invalid refresh token');
+                throw new AppError('Invalid refresh token', 401);
             }
 
             const tokens = this.generateTokens(user);
@@ -453,7 +453,8 @@ class AuthService {
 
             return tokens;
         } catch (err) {
-            throw new Error('Invalid or expired refresh token');
+            if (err.isOperational) throw err;
+            throw new AppError('Invalid or expired refresh token', 401);
         }
     }
 

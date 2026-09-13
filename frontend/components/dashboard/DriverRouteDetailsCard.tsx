@@ -1,4 +1,5 @@
 import React from 'react';
+import { BlurView } from 'expo-blur';
 import {
     ActivityIndicator,
     Image,
@@ -79,11 +80,12 @@ export const DriverRouteDetailsCard: React.FC<DriverRouteDetailsCardProps> = ({
     const badge = getStatusBadge();
 
     return (
-        <View style={[
+        <BlurView intensity={isDark ? 80 : 90} tint={isDark ? 'dark' : 'light'} style={[
             styles.container,
             {
-                backgroundColor: isDark ? 'rgba(28, 28, 30, 0.98)' : 'rgba(255, 255, 255, 0.98)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'
+                backgroundColor: isDark ? 'rgba(28, 28, 30, 0.75)' : 'rgba(255, 255, 255, 0.75)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.8)',
+                borderWidth: 1.5,
             }
         ]}>
             {/* Header */}
@@ -290,7 +292,7 @@ export const DriverRouteDetailsCard: React.FC<DriverRouteDetailsCardProps> = ({
                     </TouchableOpacity>
                 </View>
             )}
-        </View>
+        </BlurView>
     );
 };
 

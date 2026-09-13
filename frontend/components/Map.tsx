@@ -58,6 +58,8 @@ export interface MapProps {
     onRouteSelect?: (routeId: string) => void;
     clientColors?: Record<string, string>;
     onMapPress?: () => void;
+    hidePickerControls?: boolean;
+    disableTapToAdd?: boolean;
     edgePadding?: { top: number; right: number; bottom: number; left: number };
     boundsPoints?: LatLng[];
     fullScreen?: boolean;
@@ -434,6 +436,8 @@ const RoutePolylines = React.memo(({
 // Map styles are now imported from constants/design.ts
 // (refinedLightMapStyle, refinedDarkMapStyle)
 
+const EMPTY_ARRAY: any[] = [];
+
 const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     mode = 'view',
     theme,
@@ -441,20 +445,20 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     readOnly = false,
     interactive = true,
     style,
-    initialPoints = [],
+    initialPoints = EMPTY_ARRAY,
     onPointsChange,
     trip,
     customStopOrder,
     startPoint,
     endPoint,
-    waypoints = [],
+    waypoints = EMPTY_ARRAY,
     matchedClients,
     maxPoints,
     savedPlaces: propSavedPlaces,
     driverLocation,
     selectedRouteId,
     onRouteSelect,
-    interactiveTrips = [],
+    interactiveTrips = EMPTY_ARRAY,
     onRoutePress,
     onAnnotationPress,
     clientColors,
@@ -465,6 +469,8 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
     fullScreen = false,
     onRegionChange,
     onRegionChangeComplete,
+    hidePickerControls = false,
+    disableTapToAdd = false,
     children,
     initialRegion = {
         latitude: 33.5731,
@@ -675,10 +681,19 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
 
         if (markersToFit.length > 0 && mapRef.current) {
             setTimeout(() => {
-                mapRef.current?.fitToCoordinates(markersToFit, {
-                    edgePadding: edgePadding || { top: 120, right: 40, bottom: 160, left: 40 },
-                    animated: true,
-                });
+                if (markersToFit.length === 1) {
+                    mapRef.current?.animateToRegion({
+                        latitude: markersToFit[0].latitude,
+                        longitude: markersToFit[0].longitude,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                    }, 500);
+                } else {
+                    mapRef.current?.fitToCoordinates(markersToFit, {
+                        edgePadding: edgePadding || { top: 120, right: 40, bottom: 160, left: 40 },
+                        animated: true,
+                    });
+                }
                 
                 // Keep flat view for route browsing — no dramatic pitch
                 // Browsing is not navigation; camera stays calm
@@ -699,7 +714,7 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
 
     const handlePress = useCallback((e: any) => {
         onMapPress?.();
-        if (mode !== 'picker' || readOnly) return;
+        if (mode !== 'picker' || readOnly || disableTapToAdd) return;
         const newPoint = e.nativeEvent.coordinate;
 
         let newPoints = [...points];
@@ -713,16 +728,16 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
 
         setPoints(newPoints);
         onPointsChange && onPointsChange(newPoints);
-    }, [mode, readOnly, points, maxPoints, onPointsChange]);
+    }, [mode, readOnly, disableTapToAdd, points, maxPoints, onPointsChange]);
 
     const handlePointAdd = useCallback((coordinate: LatLng) => {
-        if (readOnly) return;
+        if (readOnly || disableTapToAdd) return;
         setPoints(prev => {
             const next = [...prev, coordinate];
             onPointsChange && onPointsChange(next);
             return next;
         });
-    }, [readOnly, onPointsChange]);
+    }, [readOnly, disableTapToAdd, onPointsChange]);
 
     const handlePointRemove = useCallback((index: number) => {
         if (readOnly) return;
@@ -984,7 +999,7 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
             </MapView>
 
             <TouchableOpacity
-                style={[styles.recenterBtn, { bottom: mode === 'picker' ? 80 : 40 }]}
+                style={[styles.recenterBtn, { bottom: mode === 'picker' ? 120 : 40 }]}
                 onPress={centerToMyLocation}
                 accessibilityLabel="Center on my location"
                 accessibilityRole="button"
@@ -994,7 +1009,7 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
             </TouchableOpacity>
 
             {/* Controls for Picker Mode */}
-            {mode === 'picker' && !readOnly && (
+            {mode === 'picker' && !readOnly && !hidePickerControls && (
                 <View style={styles.controls}>
                     <View style={styles.leftControls}>
                         {points.length > 0 && (
