@@ -10,7 +10,70 @@ interface RouteResult {
 
 export const RouteService = {
     calculateRoute: async (start: { latitude: number; longitude: number }, end: { latitude: number; longitude: number }): Promise<RouteResult> => {
-        // Mock calculation using Haversine formula for distance and random speed for duration
+        const coordString = `${start.longitude},${start.latitude};${end.longitude},${end.latitude}`;
+        const servers = [
+            `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full`,
+            `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordString}?overview=full`
+        ];
+
+        for (const url of servers) {
+            try {
+                // Set a timeout so we don't hang forever
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.routes && data.routes.length > 0) {
+                        const route = data.routes[0];
+                        
+                        // OSRM returns distance in meters and duration in seconds (ideal clear conditions)
+                        const distanceKm = route.distance / 1000;
+                        let baseDurationMinutes = route.duration / 60;
+                        
+                        // 🧠 Advanced Traffic & Urban Delay Modeling (Waze/InDrive Style)
+                        const currentHour = new Date().getHours();
+                        let trafficMultiplier = 1.1; // Base urban friction (traffic lights, stops, etc.)
+                        
+                        // Morning Rush Hour (07:30 - 09:30)
+                        if (currentHour >= 7 && currentHour <= 9) {
+                            trafficMultiplier = 1.6;
+                        } 
+                        // Evening Rush Hour (17:00 - 19:30)
+                        else if (currentHour >= 17 && currentHour <= 19) {
+                            trafficMultiplier = 1.7; 
+                        }
+                        // Mid-day moderate traffic
+                        else if (currentHour >= 11 && currentHour <= 14) {
+                            trafficMultiplier = 1.3;
+                        }
+                        // Night time (empty roads)
+                        else if (currentHour >= 22 || currentHour <= 5) {
+                            trafficMultiplier = 1.0;
+                        }
+
+                        // Add intersection delay (approx 30 seconds per km in cities)
+                        const intersectionDelayMinutes = distanceKm * 0.5;
+
+                        // Final calculation
+                        const finalDurationMinutes = (baseDurationMinutes * trafficMultiplier) + intersectionDelayMinutes;
+
+                        return {
+                            distanceKm: parseFloat(distanceKm.toFixed(2)),
+                            durationMinutes: Math.ceil(finalDurationMinutes),
+                            geometry: route.geometry || '' // encoded polyline
+                        };
+                    }
+                }
+            } catch (error) {
+                console.warn("OSRM routing failed, trying fallback...", error);
+            }
+        }
+
+        // Fallback: Haversine formula if API fails
         const R = 6371; // Earth radius in km
         const dLat = (end.latitude - start.latitude) * Math.PI / 180;
         const dLon = (end.longitude - start.longitude) * Math.PI / 180;
@@ -21,20 +84,13 @@ export const RouteService = {
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const distanceKm = R * c;
 
-        // Assume average speed of 40 km/h in city
-        const durationMinutes = (distanceKm / 40) * 60;
-
-        // Mock geometry (straight line)
-        // In reality, this would be a complex polyline string
-        const geometry = `mock_polyline_${start.latitude},${start.longitude}_${end.latitude},${end.longitude}`;
-
-        // Artificial delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Conservative fallback duration: Assume average speed of 30 km/h in city traffic
+        const durationMinutes = (distanceKm / 30) * 60;
 
         return {
             distanceKm: parseFloat(distanceKm.toFixed(2)),
             durationMinutes: Math.ceil(durationMinutes),
-            geometry
+            geometry: ''
         };
     },
 
