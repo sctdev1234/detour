@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Bell, Menu } from 'lucide-react-native';
+import { Bell, Menu, Map, Users } from 'lucide-react-native';
 import React from 'react';
 import {
     Platform,
@@ -16,12 +16,15 @@ import { Colors } from '../../constants/theme';
 import { useDriverRequests } from '../../hooks/api/useTripQueries';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useDashboardStore } from '../../store/useDashboardStore';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 
 interface FloatingTopBarProps {
     onMenuPress: () => void;
+    driverRoutesCount?: number;
+    matchedClientsCount?: number;
 }
 
-export default function FloatingTopBar({ onMenuPress }: FloatingTopBarProps) {
+export default function FloatingTopBar({ onMenuPress, driverRoutesCount = 0, matchedClientsCount = 0 }: FloatingTopBarProps) {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
@@ -135,6 +138,43 @@ export default function FloatingTopBar({ onMenuPress }: FloatingTopBarProps) {
                     )}
                 </TouchableOpacity>
             </Container>
+
+            {/* Floating Stats Badges (Glassmorphic) */}
+            <Animated.View 
+                entering={FadeInUp.delay(300).springify().damping(14)}
+                style={styles.statsRow}
+                pointerEvents="box-none"
+            >
+                <Container
+                    {...containerProps}
+                    style={[
+                        styles.statBadge,
+                        Platform.OS !== 'ios' && {
+                            backgroundColor: colorScheme === 'dark' ? 'rgba(28, 28, 30, 0.85)' : 'rgba(255, 255, 255, 0.9)'
+                        }
+                    ]}
+                >
+                    <Map size={14} color="#3B82F6" strokeWidth={2.5} />
+                    <Text style={[styles.statText, { color: theme.text }]}>
+                        <Text style={{ fontWeight: '800' }}>{driverRoutesCount}</Text> Route{driverRoutesCount !== 1 ? 's' : ''}
+                    </Text>
+                </Container>
+
+                <Container
+                    {...containerProps}
+                    style={[
+                        styles.statBadge,
+                        Platform.OS !== 'ios' && {
+                            backgroundColor: colorScheme === 'dark' ? 'rgba(28, 28, 30, 0.85)' : 'rgba(255, 255, 255, 0.9)'
+                        }
+                    ]}
+                >
+                    <Users size={14} color="#10B981" strokeWidth={2.5} />
+                    <Text style={[styles.statText, { color: theme.text }]}>
+                        <Text style={{ fontWeight: '800' }}>{matchedClientsCount}</Text> Client{matchedClientsCount !== 1 ? 's' : ''}
+                    </Text>
+                </Container>
+            </Animated.View>
         </View>
     );
 }
@@ -235,5 +275,29 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 9,
         fontWeight: '800',
+    },
+    statsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+        paddingHorizontal: 8,
+    },
+    statBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    statText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });

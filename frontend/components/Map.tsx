@@ -3,11 +3,12 @@ import { Briefcase, Car, Dumbbell, GraduationCap, Home, MapPin, Navigation, Tras
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Easing, Image, Animated as RNAnimated, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import MapView from 'react-native-map-clustering';
-import { Callout, Marker, Polyline } from 'react-native-maps';
+import { Callout, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuthStore } from '../store/useAuthStore';
 import { LatLng, RoutePolyline, Trip } from '../types';
 import { decodePolyline } from '../utils/location';
+import { silverMapStyle } from '../constants/mapStyle';
 import { getAllPointsFromTrip, optimizeRoute, RoutePoint } from '../utils/mapUtils';
 import InteractiveTripRoute from './InteractiveTripRoute';
 import { refinedLightMapStyle, refinedDarkMapStyle, RecenterDesign, CameraConfig } from '../constants/design';
@@ -338,16 +339,29 @@ const SmartPolyline = React.memo(({ route, strokeColor, strokeWidth, lineDashPat
         }
     }, [route.coords]);
 
+    const filteredCoords = realCoords.filter((c: any) => c.latitude !== 0 && c.longitude !== 0);
+    
     return (
-        <Polyline
-            coordinates={realCoords.filter((c: any) => c.latitude !== 0 && c.longitude !== 0)}
-            strokeColor={strokeColor}
-            strokeWidth={strokeWidth}
-            lineDashPattern={lineDashPattern}
-            tappable={tappable}
-            onPress={onPress}
-            zIndex={zIndex}
-        />
+        <>
+            {/* Outline / Casing for High Contrast against Traffic */}
+            <Polyline
+                coordinates={filteredCoords}
+                strokeColor="rgba(0, 0, 0, 0.5)"
+                strokeWidth={(strokeWidth || 4) + 4}
+                lineDashPattern={lineDashPattern}
+                zIndex={(zIndex || 2) - 1}
+            />
+            {/* Inner Route Line */}
+            <Polyline
+                coordinates={filteredCoords}
+                strokeColor={strokeColor}
+                strokeWidth={strokeWidth}
+                lineDashPattern={lineDashPattern}
+                tappable={tappable}
+                onPress={onPress}
+                zIndex={zIndex}
+            />
+        </>
     );
 });
 
@@ -369,7 +383,7 @@ const RoutePolylines = React.memo(({
         <>
             {routePolylines.map((route) => {
                 const isSelected = selectedRouteId === route.id || route.isSelected;
-                const routeColor = isSelected ? (theme?.primary || '#3b82f6') : (route.color || '#6366f1');
+                const routeColor = isSelected ? '#3B82F6' : (route.color || '#6366f1'); // Vibrant Blue
                 const strokeWidth = isSelected ? 6 : (route.width || 4);
                 const zIndex = isSelected ? 10 : 2;
 
@@ -396,7 +410,7 @@ const RoutePolylines = React.memo(({
                                 zIndex={zIndex + 1}
                             >
                                 <View style={[styles.routeEndpoint, {
-                                    backgroundColor: isSelected ? '#10b981' : (route.isActive ? '#10b981' : 'rgba(79, 70, 229, 0.6)'),
+                                    backgroundColor: isSelected ? '#3B82F6' : 'rgba(79, 70, 229, 0.6)',
                                     borderColor: '#fff',
                                     borderWidth: isSelected ? 3 : 2.5,
                                     transform: [{ scale: isSelected ? 1.2 : 1.0 }]
@@ -790,9 +804,11 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                 ref={mapRef as any}
                 style={[styles.map, style, { height }]}
                 initialRegion={initialRegion}
+                provider={PROVIDER_GOOGLE}
                 showsUserLocation
+                showsTraffic={true}
                 showsMyLocationButton={false}
-                customMapStyle={mapStyle}
+                customMapStyle={silverMapStyle}
                 showsCompass={false}
                 scrollEnabled={!readOnly && interactive}
                 zoomEnabled={!readOnly && interactive}
@@ -864,15 +880,17 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                 {/* Driver Route Polyline (Leaflet style red road line with casing) */}
                 {((mode === 'trip' || mode === 'route') && (!routePolylines || routePolylines.length === 0) && routeCoordinates.length > 1) && (
                     <>
+                        {/* Dark translucent casing for pop effect */}
                         <Polyline
                             coordinates={routeCoordinates}
-                            strokeColor="rgba(15, 23, 42, 0.35)"
-                            strokeWidth={8}
+                            strokeColor="rgba(0, 0, 0, 0.4)"
+                            strokeWidth={10}
                         />
+                        {/* Vibrant Electric Blue inner line */}
                         <Polyline
                             coordinates={routeCoordinates}
-                            strokeColor="#ef4444"
-                            strokeWidth={5}
+                            strokeColor="#3b82f6"
+                            strokeWidth={6}
                             tappable={true}
                             onPress={() => {
                                 if (mode === 'trip' && trip?.clients?.length && onRouteSelect) {

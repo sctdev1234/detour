@@ -1,6 +1,6 @@
+import { decodePolyline } from '../utils/location';
 
-// Mock implementation of a Route Service
-// In production, this would call OSRM
+// Google Maps implementation of Route Service
 
 interface RouteResult {
     distanceKm: number;
@@ -8,72 +8,55 @@ interface RouteResult {
     geometry: string; // Polyline string
 }
 
+const getApiKey = () => {
+    return process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+};
+
 export const RouteService = {
     calculateRoute: async (start: { latitude: number; longitude: number }, end: { latitude: number; longitude: number }): Promise<RouteResult> => {
-        const coordString = `${start.longitude},${start.latitude};${end.longitude},${end.latitude}`;
-        const servers = [
-            `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full`,
-            `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordString}?overview=full`
-        ];
-
-        for (const url of servers) {
+        const apiKey = getApiKey();
+        
+        if (apiKey) {
+            const origin = `${start.latitude},${start.longitude}`;
+            const destination = `${end.latitude},${end.longitude}`;
+            
+            // departure_time=now enables traffic routing
+            const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&departure_time=now&key=${apiKey}`;
+            
+            console.log(`[Google Maps] 🗺️ Requesting Directions: ${origin} -> ${destination}`);
+            
             try {
-                // Set a timeout so we don't hang forever
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 
                 const response = await fetch(url, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.routes && data.routes.length > 0) {
+                    if (data.status === 'OK' && data.routes && data.routes.length > 0) {
                         const route = data.routes[0];
+                        const leg = route.legs[0];
                         
-                        // OSRM returns distance in meters and duration in seconds (ideal clear conditions)
-                        const distanceKm = route.distance / 1000;
-                        let baseDurationMinutes = route.duration / 60;
+                        const distanceKm = leg.distance.value / 1000;
+                        const durationSeconds = leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value;
+                        const durationMinutes = Math.ceil(durationSeconds / 60);
                         
-                        // 🧠 Advanced Traffic & Urban Delay Modeling (Waze/InDrive Style)
-                        const currentHour = new Date().getHours();
-                        let trafficMultiplier = 1.1; // Base urban friction (traffic lights, stops, etc.)
+                        console.log(`[Google Maps] ✅ Directions Success! Distance: ${distanceKm}km, Duration: ${durationMinutes}min`);
                         
-                        // Morning Rush Hour (07:30 - 09:30)
-                        if (currentHour >= 7 && currentHour <= 9) {
-                            trafficMultiplier = 1.6;
-                        } 
-                        // Evening Rush Hour (17:00 - 19:30)
-                        else if (currentHour >= 17 && currentHour <= 19) {
-                            trafficMultiplier = 1.7; 
-                        }
-                        // Mid-day moderate traffic
-                        else if (currentHour >= 11 && currentHour <= 14) {
-                            trafficMultiplier = 1.3;
-                        }
-                        // Night time (empty roads)
-                        else if (currentHour >= 22 || currentHour <= 5) {
-                            trafficMultiplier = 1.0;
-                        }
-
-                        // Add intersection delay (approx 30 seconds per km in cities)
-                        const intersectionDelayMinutes = distanceKm * 0.5;
-
-                        // Final calculation
-                        const finalDurationMinutes = (baseDurationMinutes * trafficMultiplier) + intersectionDelayMinutes;
-
                         return {
                             distanceKm: parseFloat(distanceKm.toFixed(2)),
-                            durationMinutes: Math.ceil(finalDurationMinutes),
-                            geometry: route.geometry || '' // encoded polyline
+                            durationMinutes,
+                            geometry: route.overview_polyline.points
                         };
                     }
                 }
             } catch (error) {
-                console.warn("OSRM routing failed, trying fallback...", error);
+                console.warn("Google Maps routing failed, trying fallback...", error);
             }
         }
 
-        // Fallback: Haversine formula if API fails
+        // Fallback: Haversine formula if API fails or key is missing
         const R = 6371; // Earth radius in km
         const dLat = (end.latitude - start.latitude) * Math.PI / 180;
         const dLon = (end.longitude - start.longitude) * Math.PI / 180;
@@ -99,145 +82,148 @@ export const RouteService = {
         end: { latitude: number; longitude: number }, 
         waypoints: { latitude: number; longitude: number }[] = []
     ): Promise<{ latitude: number; longitude: number }[]> => {
-        const points = [start, ...waypoints, end];
-        const coordString = points.map(p => `${p.longitude},${p.latitude}`).join(';');
-        
-        const servers = [
-            `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`,
-            `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordString}?overview=full&geometries=geojson`
-        ];
+        const apiKey = getApiKey();
+        if (!apiKey) return [];
 
-        for (const url of servers) {
-            try {
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.routes && data.routes.length > 0 && data.routes[0].geometry?.coordinates) {
-                        const coordinates = data.routes[0].geometry.coordinates;
-                        if (coordinates.length > 2) {
-                            return coordinates.map((c: [number, number]) => ({
-                                latitude: c[1],
-                                longitude: c[0]
-                            }));
-                        }
-                    }
+        const origin = `${start.latitude},${start.longitude}`;
+        const destination = `${end.latitude},${end.longitude}`;
+        const waypointsStr = waypoints.length > 0 
+            ? `&waypoints=${waypoints.map(w => `${w.latitude},${w.longitude}`).join('|')}` 
+            : '';
+
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}${waypointsStr}&key=${apiKey}`;
+
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'OK' && data.routes && data.routes.length > 0) {
+                    const encodedPolyline = data.routes[0].overview_polyline.points;
+                    return decodePolyline(encodedPolyline);
                 }
-            } catch (error) {
-                // Continue to next server / fallback
             }
+        } catch (error) {
+            console.warn("fetchRoadRoute error:", error);
         }
 
-        // Fallback: Generate realistic multi-point road curvature with street grid turns
-        const coords: { latitude: number; longitude: number }[] = [];
-        const steps = 30;
-        const dLat = end.latitude - start.latitude;
-        const dLng = end.longitude - start.longitude;
-
-        const offsetScale = 0.12;
-        const perpLat = -dLng * offsetScale;
-        const perpLng = dLat * offsetScale;
-
-        const control1 = {
-            latitude: start.latitude + dLat * 0.35 + perpLat,
-            longitude: start.longitude + dLng * 0.35 + perpLng
-        };
-        const control2 = {
-            latitude: start.latitude + dLat * 0.7 - perpLat * 0.5,
-            longitude: start.longitude + dLng * 0.7 - perpLng * 0.5
-        };
-
-        for (let i = 0; i <= steps; i++) {
-            const t = i / steps;
-            const u = 1 - t;
-            const lat = u * u * u * start.latitude +
-                        3 * u * u * t * control1.latitude +
-                        3 * u * t * t * control2.latitude +
-                        t * t * t * end.latitude;
-            const lng = u * u * u * start.longitude +
-                        3 * u * u * t * control1.longitude +
-                        3 * u * t * t * control2.longitude +
-                        t * t * t * end.longitude;
-            coords.push({ latitude: lat, longitude: lng });
-        }
-
-        return coords;
+        // Fallback: Straight line if API fails
+        return [start, ...waypoints, end];
     },
 
     estimatePrice: (distanceKm: number, model: 'fixed' | 'per_km', perKmRate?: number) => {
         if (model === 'fixed') return 0; // User sets manually
-        return (distanceKm * (perKmRate || 2)).toFixed(2); // Default 2 TND/km?
+        return (distanceKm * (perKmRate || 2)).toFixed(2); // Default 2 MAD/km
     },
 
     reverseGeocode: async (lat: number, lng: number, signal?: AbortSignal): Promise<string> => {
+        const apiKey = getApiKey();
+        const fallback = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        if (!apiKey) return fallback;
+
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-                headers: {
-                    'User-Agent': 'DetourApp/1.0'
-                },
+            const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`, {
                 signal
             });
             
-            const text = await response.text();
-            if (!response.ok) {
-                return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'OK' && data.results && data.results.length > 0) {
+                    // Try to return a concise address if possible, otherwise formatted_address
+                    const result = data.results[0];
+                    return result.formatted_address;
+                }
             }
-            
-            try {
-                const data = JSON.parse(text);
-                return data.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-            } catch (parseError) {
-                // If it's HTML or invalid JSON, ignore and return fallback
-                return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-            }
+            return fallback;
         } catch (error: any) {
             if (error.name !== 'AbortError') {
                 console.error('Geocoding error:', error);
             }
-            return `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+            return fallback;
         }
     },
 
-    geocode: async (query: string, signal?: AbortSignal): Promise<{ label: string; subtitle?: string; latitude: number; longitude: number }[]> => {
+    geocode: async (query: string, signal?: AbortSignal): Promise<{ placeId?: string; label: string; subtitle?: string; latitude?: number; longitude?: number }[]> => {
+        const apiKey = getApiKey();
+        if (!apiKey || !query.trim()) return [];
+
+        console.log(`[Google Maps] 🔍 Autocomplete Search for: "${query}"`);
+
         try {
-            // Using Photon API for better autocomplete and cleaner results
-            const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=33.5731&lon=-7.5898`, {
-                headers: { 'User-Agent': 'DetourApp/1.0' },
+            // Using Google Places API (New)
+            const response = await fetch(`https://places.googleapis.com/v1/places:autocomplete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': apiKey,
+                },
+                body: JSON.stringify({
+                    input: query,
+                    includedRegionCodes: ['MA']
+                }),
                 signal
             });
-            const text = await response.text();
-            if (!response.ok) return [];
             
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                return [];
-            }
-            
-            if (!data || !data.features) return [];
-            
-            return data.features.map((feature: any) => {
-                const p = feature.properties;
-                const coords = feature.geometry.coordinates;
-                
-                const label = p.name || p.street || p.city || 'Unknown Location';
-                const subtitleParts = [];
-                if (p.name && p.street && p.street !== p.name) subtitleParts.push(p.street);
-                if (p.city && p.city !== label) subtitleParts.push(p.city);
-                if (p.state) subtitleParts.push(p.state);
-                
-                return {
-                    label: label,
-                    subtitle: subtitleParts.join(', '),
-                    latitude: coords[1],
-                    longitude: coords[0]
-                };
-            });
-        } catch (error: any) {
-            if (error.name !== 'AbortError') {
-                console.error('Geocoding search error:', error);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.suggestions) {
+                    console.log(`[Google Maps] ✅ Found ${data.suggestions.length} predictions for "${query}"`);
+                    return data.suggestions.map((s: any) => {
+                        const pred = s.placePrediction;
+                        return {
+                            placeId: pred.placeId,
+                            label: pred.structuredFormat?.mainText?.text || pred.text?.text || query,
+                            subtitle: pred.structuredFormat?.secondaryText?.text || '',
+                        };
+                    });
+                } else {
+                    console.log(`[Google Maps] ⚠️ No suggestions found or API Error.`, data);
+                }
+            } else {
+                const text = await response.text();
+                console.error(`[Google Maps] ❌ HTTP Error ${response.status}:`, text);
             }
             return [];
+        } catch (error: any) {
+            if (error.name !== 'AbortError') {
+                console.error('Autocomplete search error:', error);
+            }
+            return [];
+        }
+    },
+
+    getPlaceDetails: async (placeId: string, signal?: AbortSignal): Promise<{ latitude: number; longitude: number } | null> => {
+        const apiKey = getApiKey();
+        if (!apiKey || !placeId) return null;
+
+        console.log(`[Google Maps] 📍 Fetching Details for Place ID: "${placeId}"`);
+
+        try {
+            const response = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=location`, {
+                method: 'GET',
+                headers: {
+                    'X-Goog-Api-Key': apiKey,
+                },
+                signal
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.location) {
+                    return {
+                        latitude: data.location.latitude,
+                        longitude: data.location.longitude
+                    };
+                }
+            } else {
+                const text = await response.text();
+                console.error(`[Google Maps] ❌ Details HTTP Error ${response.status}:`, text);
+            }
+            return null;
+        } catch (error: any) {
+            if (error.name !== 'AbortError') {
+                console.error('Place details error:', error);
+            }
+            return null;
         }
     }
 };

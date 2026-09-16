@@ -53,9 +53,10 @@ const TIME_PRESETS = ['07:00', '07:30', '08:00', '08:30', '09:00', '17:00', '17:
 type Step = 'pickup' | 'destination_search' | 'destination_map' | 'schedule';
 
 interface LocationResult {
+    placeId?: string;
     label: string;
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
     isSavedPlace?: boolean;
     icon?: string;
 }
@@ -290,9 +291,26 @@ export default function TripCreationWizard({
         }
     }, [places]);
 
-    const selectSearchResult = useCallback((item: LocationResult) => {
+    const selectSearchResult = useCallback(async (item: LocationResult) => {
+        let lat = item.latitude;
+        let lng = item.longitude;
+
+        if (item.placeId && (!lat || !lng)) {
+            setIsResolvingAddress(true);
+            const details = await RouteService.getPlaceDetails(item.placeId);
+            setIsResolvingAddress(false);
+            if (details) {
+                lat = details.latitude;
+                lng = details.longitude;
+            } else {
+                return; // Failed to get details
+            }
+        }
+
+        if (lat === undefined || lng === undefined) return;
+
         if (focusedInput === 'pickup') {
-            setPickup({ latitude: item.latitude, longitude: item.longitude });
+            setPickup({ latitude: lat, longitude: lng });
             setPickupAddress(item.label);
             setFocusedInput('destination');
             setSearchQuery('');
@@ -302,7 +320,7 @@ export default function TripCreationWizard({
                 setPickup(currentLocation);
                 setPickupAddress(currentAddress || 'Current Location');
             }
-            setDestination({ latitude: item.latitude, longitude: item.longitude });
+            setDestination({ latitude: lat, longitude: lng });
             setDestAddress(item.label);
             setStep('schedule');
         }

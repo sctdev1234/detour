@@ -5,9 +5,12 @@ import {
     Text,
     TouchableOpacity,
     useColorScheme,
-    View
+    View,
+    Dimensions
 } from 'react-native';
 import { Plus, Navigation, Clock, MapPin } from 'lucide-react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { Colors } from '../../constants/theme';
 import { Route } from '../../types';
 
@@ -66,22 +69,9 @@ export const DriverRouteSelector: React.FC<DriverRouteSelectorProps> = ({
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                snapToInterval={SCREEN_WIDTH * 0.7 + 10} // card width + gap
+                decelerationRate="fast"
             >
-                {/* Always-accessible Add Route button */}
-                <TouchableOpacity
-                    style={[
-                        styles.addRouteChip,
-                        {
-                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                            borderColor: theme.primary
-                        }
-                    ]}
-                    onPress={onCreateRoute}
-                    activeOpacity={0.8}
-                >
-                    <Plus size={16} color={theme.primary} />
-                    <Text style={[styles.addRouteText, { color: theme.primary }]}>Add Route</Text>
-                </TouchableOpacity>
 
                 {/* Route Chips */}
                 {routes.map((route) => {
@@ -160,27 +150,13 @@ const styles = StyleSheet.create({
         gap: 10,
         alignItems: 'center',
     },
-    addRouteChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 20,
-        borderWidth: 1.5,
-        borderStyle: 'dashed',
-    },
-    addRouteText: {
-        fontSize: 13,
-        fontWeight: '700',
-    },
     routeChip: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         borderRadius: 18,
         borderWidth: 1,
-        gap: 3,
-        maxWidth: 220,
+        gap: 6,
+        width: SCREEN_WIDTH * 0.7,
     },
     selectedChipShadow: {
         shadowColor: '#3b82f6',

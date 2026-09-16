@@ -71,7 +71,7 @@ export default function QuickActions({
             icon: Plus,
             label: 'Route',
             onPress: onCreateRoute,
-            gradient: [theme.primary, theme.secondary || theme.primary] as [string, string],
+            gradient: ['#4F46E5', '#3B82F6'] as [string, string], // Vibrant Indigo to Blue
         },
         {
             id: 'toggle-status',
@@ -79,8 +79,8 @@ export default function QuickActions({
             label: isUpdating ? 'Wait' : isOnline ? 'Online' : 'Offline',
             onPress: onToggle,
             gradient: isOnline
-                ? ['#34D399', '#10B981'] as [string, string]
-                : ['#9CA3AF', '#6B7280'] as [string, string],
+                ? ['#059669', '#10B981'] as [string, string] // Vivid Green
+                : ['#6B7280', '#9CA3AF'] as [string, string],
         },
         {
             id: 'center-map',

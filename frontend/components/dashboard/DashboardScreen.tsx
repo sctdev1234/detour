@@ -463,7 +463,11 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             {/* ===== FLOATING UI LAYERS ===== */}
 
             {/* Top Bar */}
-            <FloatingTopBar onMenuPress={onMenuPress} />
+            <FloatingTopBar 
+                onMenuPress={onMenuPress} 
+                driverRoutesCount={driverRoutes.length}
+                matchedClientsCount={matchedClients.length}
+            />
 
             {/* Driver Notification Toast (Top) */}
             <DriverNotificationToast

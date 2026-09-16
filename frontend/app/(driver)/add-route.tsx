@@ -43,7 +43,7 @@ export default function AddRouteScreen() {
     
     // Search states
     const [searchQuery, setSearchQuery] = useState('');
-    const [suggestions, setSuggestions] = useState<{ label: string; latitude: number; longitude: number }[]>([]);
+    const [suggestions, setSuggestions] = useState<{ placeId?: string; label: string; latitude?: number; longitude?: number }[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchFocusPoint, setSearchFocusPoint] = useState<LatLng | null>(null);
 
@@ -83,10 +83,27 @@ export default function AddRouteScreen() {
         }
     };
 
-    const handleSelectSuggestion = (suggestion: { label: string; latitude: number; longitude: number }) => {
+    const handleSelectSuggestion = async (suggestion: { placeId?: string; label: string; latitude?: number; longitude?: number }) => {
+        let lat = suggestion.latitude;
+        let lng = suggestion.longitude;
+
+        if (suggestion.placeId && (!lat || !lng)) {
+            setIsResolvingAddress(true);
+            const details = await RouteService.getPlaceDetails(suggestion.placeId);
+            setIsResolvingAddress(false);
+            if (details) {
+                lat = details.latitude;
+                lng = details.longitude;
+            } else {
+                return;
+            }
+        }
+
+        if (lat === undefined || lng === undefined) return;
+
         const newPoint: LatLng = {
-            latitude: suggestion.latitude,
-            longitude: suggestion.longitude
+            latitude: lat,
+            longitude: lng
         };
         // Don't auto-add, just center map
         setSearchFocusPoint(newPoint);
