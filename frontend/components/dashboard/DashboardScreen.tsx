@@ -28,7 +28,6 @@ import FloatingTopBar from './FloatingTopBar';
 import QuickActions from './QuickActions';
 import { DriverRouteSelector } from './DriverRouteSelector';
 import { DriverRouteDetailsCard } from './DriverRouteDetailsCard';
-import { DriverFindingClientsPanel } from './DriverFindingClientsPanel';
 import { DriverNotificationToast, DriverNotificationData } from './DriverNotificationToast';
 import DriverTripExperience from '../dispatch/driver/DriverTripExperience';
 import { dispatchSocket } from '../../services/dispatchSocket';
@@ -120,16 +119,6 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             if (r?.status === 'active' || r?.status === 'MATCHING') {
                 setFindingClientsForRoute(nextId, true);
             }
-            const lat = r?.startPoint?.latitude ?? (r?.startPoint as any)?.coordinates?.[1];
-            const lon = r?.startPoint?.longitude ?? (r?.startPoint as any)?.coordinates?.[0];
-            if (lat && lon && mapRef.current) {
-                mapRef.current.animateToRegion({
-                    latitude: lat,
-                    longitude: lon,
-                    latitudeDelta: 0.06,
-                    longitudeDelta: 0.06,
-                }, 600);
-            }
         }
     }, [selectedRouteId, driverRoutes, setSelectedRouteId, setFindingClientsForRoute]);
 
@@ -176,18 +165,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
         setSelectedRouteId(routeId);
         setFindingClientsForRoute(routeId, true);
         setNotification(null);
-        const r = driverRoutes.find((dr: any) => (dr.id || dr._id) === routeId);
-        const lat = r?.startPoint?.latitude ?? (r?.startPoint as any)?.coordinates?.[1];
-        const lon = r?.startPoint?.longitude ?? (r?.startPoint as any)?.coordinates?.[0];
-        if (lat && lon && mapRef.current) {
-            mapRef.current.animateToRegion({
-                latitude: lat,
-                longitude: lon,
-                latitudeDelta: 0.06,
-                longitudeDelta: 0.06,
-            }, 600);
-        }
-    }, [driverRoutes, setSelectedRouteId, setFindingClientsForRoute]);
+    }, [setSelectedRouteId, setFindingClientsForRoute]);
 
     // V1 Active trip
     const v1ActiveTrip = trips.find((t: any) =>
@@ -322,7 +300,7 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
     const dynamicEdgePadding = React.useMemo(() => ({
         top: 140, // Top bar offset
         right: 40,
-        bottom: 340, // Bottom card offset
+        bottom: Math.floor(Math.min(340, SCREEN_HEIGHT * 0.4)), // Safe bottom card offset
         left: 40,
     }), []);
 
@@ -500,86 +478,56 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
             ) : (
                 <View style={{ position: 'absolute', bottom: 16, left: 0, right: 0, zIndex: 50, gap: 8 }}>
                     {selectedRoute && (
-                        isFindingOpen ? (
-                            <DriverFindingClientsPanel
-                                route={selectedRoute}
-                                matchedClients={matchedClients}
-                                onClose={() => {
-                                    if (selectedRouteId) {
-                                        setFindingClientsForRoute(selectedRouteId, false);
-                                    }
-                                }}
-                                onInviteClient={async (clientRouteId, fare) => {
-                                    if (selectedRouteId) {
-                                        try {
-                                            await invitePassenger({
-                                                clientRouteId,
-                                                driverRouteId: selectedRouteId,
-                                                proposedPrice: fare
-                                            });
-                                            showToast('Invitation sent to passenger', 'success');
-                                        } catch (err: any) {
-                                            showToast(err?.message || 'Failed to send invitation', 'error');
-                                        }
-                                    }
-                                }}
-                                isInviting={isInviting}
-                                onBoardPassenger={async (tripInstanceId, otp) => {
+                        <DriverRouteDetailsCard
+                            route={selectedRoute}
+                            onClose={() => {
+                                setSelectedRouteId(null);
+                                if (selectedRouteId) {
+                                    setFindingClientsForRoute(selectedRouteId, false);
+                                }
+                            }}
+                            onDelete={async (id) => {
+                                try {
+                                    await removeRoute(id);
+                                    setSelectedRouteId(null);
+                                    showToast('Route removed successfully', 'success');
+                                } catch (err: any) {
+                                    showToast(err?.message || 'Failed to remove route', 'error');
+                                }
+                            }}
+                            isDeleting={isDeletingRoute}
+                            isOnline={presence === 'ONLINE'}
+                            onToggleStatus={async () => {
+                                if (presence === 'ONLINE') {
+                                    await driverDispatchActions.goOffline();
+                                } else {
+                                    await driverDispatchActions.goOnline();
+                                }
+                            }}
+                            isFindingOpen={isFindingOpen}
+                            onToggleFinding={() => {
+                                if (selectedRouteId) {
+                                    setFindingClientsForRoute(selectedRouteId, !isFindingOpen);
+                                    refetchMatches();
+                                }
+                            }}
+                            matchedClients={matchedClients}
+                            onInviteClient={async (clientRouteId, fare) => {
+                                if (selectedRouteId) {
                                     try {
-                                        await driverDispatchActions.boardPassenger(tripInstanceId, otp);
-                                        showToast('Passenger boarded successfully', 'success');
+                                        await invitePassenger({
+                                            clientRouteId,
+                                            driverRouteId: selectedRouteId,
+                                            proposedPrice: fare
+                                        });
+                                        showToast('Invitation sent to passenger', 'success');
                                     } catch (err: any) {
-                                        showToast(err?.message || 'Boarding verification failed', 'error');
+                                        showToast(err?.message || 'Failed to send invitation', 'error');
                                     }
-                                }}
-                            />
-                        ) : (
-                            <DriverRouteDetailsCard
-                                route={selectedRoute}
-                                onClose={() => setSelectedRouteId(null)}
-                                onDelete={async (id) => {
-                                    try {
-                                        await removeRoute(id);
-                                        setSelectedRouteId(null);
-                                        showToast('Route removed successfully', 'success');
-                                    } catch (err: any) {
-                                        showToast(err?.message || 'Failed to remove route', 'error');
-                                    }
-                                }}
-                                isDeleting={isDeletingRoute}
-                                isOnline={presence === 'ONLINE'}
-                                onToggleStatus={async () => {
-                                    if (presence === 'ONLINE') {
-                                        await driverDispatchActions.goOffline();
-                                    } else {
-                                        await driverDispatchActions.goOnline();
-                                    }
-                                }}
-                                isFindingOpen={isFindingOpen}
-                                onToggleFinding={() => {
-                                    if (selectedRouteId) {
-                                        setFindingClientsForRoute(selectedRouteId, !isFindingOpen);
-                                        refetchMatches();
-                                    }
-                                }}
-                                matchedClients={matchedClients}
-                                onInviteClient={async (clientRouteId, fare) => {
-                                    if (selectedRouteId) {
-                                        try {
-                                            await invitePassenger({
-                                                clientRouteId,
-                                                driverRouteId: selectedRouteId,
-                                                proposedPrice: fare
-                                            });
-                                            showToast('Invitation sent to passenger', 'success');
-                                        } catch (err: any) {
-                                            showToast(err?.message || 'Failed to send invitation', 'error');
-                                        }
-                                    }
-                                }}
-                                isInviting={isInviting}
-                            />
-                        )
+                                }
+                            }}
+                            isInviting={isInviting}
+                        />
                     )}
 
                     {!isFindingOpen && (

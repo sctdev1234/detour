@@ -126,6 +126,7 @@ export const useMatches = (routeId: string | null) => {
     return useQuery({
         queryKey: tripKeys.matches(routeId || ''),
         queryFn: async () => {
+            if (!routeId || String(routeId) === 'null') return [];
             const res = await api.get(`/trip/matches/${routeId}`);
             return res.data.map((m: any) => ({
                 route: {

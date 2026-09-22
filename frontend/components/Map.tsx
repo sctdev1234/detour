@@ -703,10 +703,21 @@ const Map = React.memo(React.forwardRef<MapView, MapProps>(({
                         longitudeDelta: 0.01,
                     }, 500);
                 } else {
-                    mapRef.current?.fitToCoordinates(markersToFit, {
-                        edgePadding: edgePadding || { top: 120, right: 40, bottom: 160, left: 40 },
-                        animated: true,
-                    });
+                    const firstPt = markersToFit[0];
+                    const allSame = markersToFit.every(p => Math.abs(p.latitude - firstPt.latitude) < 0.00001 && Math.abs(p.longitude - firstPt.longitude) < 0.00001);
+                    if (allSame) {
+                        mapRef.current?.animateToRegion({
+                            latitude: firstPt.latitude,
+                            longitude: firstPt.longitude,
+                            latitudeDelta: 0.01,
+                            longitudeDelta: 0.01,
+                        }, 500);
+                    } else {
+                        mapRef.current?.fitToCoordinates(markersToFit, {
+                            edgePadding: edgePadding || { top: 120, right: 40, bottom: 160, left: 40 },
+                            animated: true,
+                        });
+                    }
                 }
                 
                 // Keep flat view for route browsing — no dramatic pitch
