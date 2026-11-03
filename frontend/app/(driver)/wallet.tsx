@@ -3,14 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { useFinanceStore } from '../../store/useFinanceStore';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/theme';
-import Header from '../../components/Header';
-import { Wallet, TrendingUp, History, Download } from 'lucide-react-native';
+import { Wallet, TrendingUp, History, Download, ChevronLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function WalletScreen() {
     const { wallet, isLoading, error, fetchWallet, withdraw } = useFinanceStore();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
+    const router = useRouter();
 
     useEffect(() => {
         fetchWallet();
@@ -25,7 +26,18 @@ export default function WalletScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
-            <Header />
+            <View style={[styles.header, { backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10 }]}>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity
+                        style={[styles.backBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                        onPress={() => router.back()}
+                        activeOpacity={0.7}
+                    >
+                        <ChevronLeft size={22} color={theme.text} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    <Text style={[styles.title, { color: theme.text }]}>Driver Wallet</Text>
+                </View>
+            </View>
             
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {isLoading && !wallet ? (
@@ -109,6 +121,31 @@ export default function WalletScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        elevation: 4,
+        boxShadow: '0px 4px 12px rgba(0,0,0,0.08)',
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
     scrollContent: { padding: 16 },
     balanceCard: {
         borderRadius: 20,

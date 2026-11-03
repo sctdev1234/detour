@@ -109,6 +109,22 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
 
     const [notification, setNotification] = useState<DriverNotificationData | null>(null);
 
+    // Auto-select active route on load
+    const hasAutoSelected = useRef(false);
+    useEffect(() => {
+        if (!hasAutoSelected.current && !selectedRouteId && driverRoutes.length > 0) {
+            const activeRoute = driverRoutes.find((r: any) => r.status === 'active' || r.status === 'MATCHING');
+            if (activeRoute) {
+                setSelectedRouteId(activeRoute.id || activeRoute._id);
+                hasAutoSelected.current = true;
+            } else if (driverRoutes.length > 0) {
+                // If no active route, just select the first one to keep the map clean
+                setSelectedRouteId(driverRoutes[0].id || driverRoutes[0]._id);
+                hasAutoSelected.current = true;
+            }
+        }
+    }, [driverRoutes, selectedRouteId, setSelectedRouteId]);
+
     // Route selection handler
     const handleSelectRoute = useCallback((routeId: string) => {
         const nextId = selectedRouteId === routeId ? null : routeId;
@@ -454,21 +470,23 @@ export default function DashboardScreen({ onMenuPress }: DashboardScreenProps) {
                 onDismiss={() => setNotification(null)}
             />
 
-            {/* Quick Actions (Right Side) */}
-            <QuickActions
-                onCenterMap={centerToMyLocation}
-                onCreateRoute={() => router.push('/(driver)/add-route')}
-                isOnline={presence === 'ONLINE'}
-                onToggleStatus={async () => {
-                    if (presence === 'ONLINE') {
-                        await driverDispatchActions.goOffline();
-                    } else {
-                        await driverDispatchActions.goOnline();
-                    }
-                }}
-                isRouteSelected={!!selectedRoute || !!activeTrip || !!currentOffer}
-                isFindingOpen={isFindingOpen}
-            />
+            {/* Quick Actions (Right Side) - Hidden when a route/trip is open to avoid overlap */}
+            {!selectedRouteId && !activeTrip && !currentOffer && (
+                <QuickActions
+                    onCenterMap={centerToMyLocation}
+                    onCreateRoute={() => router.push('/(driver)/add-route')}
+                    isOnline={presence === 'ONLINE'}
+                    onToggleStatus={async () => {
+                        if (presence === 'ONLINE') {
+                            await driverDispatchActions.goOffline();
+                        } else {
+                            await driverDispatchActions.goOnline();
+                        }
+                    }}
+                    isRouteSelected={false}
+                    isFindingOpen={false}
+                />
+            )}
 
             {/* Driver Dispatch & Multi-Route Overlay */}
             {activeTrip || currentOffer ? (

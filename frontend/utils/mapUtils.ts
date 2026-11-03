@@ -213,7 +213,19 @@ export const formatRoutesToPolylines = (
         const routeId = r.id || r._id || '';
         const isSelected = selectedRouteId === routeId;
         const isActive = r.status === 'active';
-        const defaultSecondary = ROUTE_COLORS[index % ROUTE_COLORS.length];
+
+        let color, width, zIndex;
+
+        if (isSelected) {
+            color = defaultPrimary;
+            width = 6;
+            zIndex = 10;
+        } else {
+            // Unselected routes (or when nothing is selected) are grey lines
+            color = isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(120, 120, 120, 0.4)';
+            width = 3;
+            zIndex = 1;
+        }
 
         const startP = (r.startPoint?.latitude !== undefined && r.startPoint.latitude !== 0 && r.startPoint.longitude !== 0)
             ? r.startPoint
@@ -246,17 +258,23 @@ export const formatRoutesToPolylines = (
 
         const validCoords = coords.filter(p => p && typeof p.latitude === 'number' && typeof p.longitude === 'number' && p.latitude !== 0 && p.longitude !== 0);
 
+        const originalColor = ROUTE_COLORS[index % ROUTE_COLORS.length];
+
+        const finalStartP = startP || (validCoords.length > 0 ? validCoords[0] : null);
+        const finalEndP = endP || (validCoords.length > 0 ? validCoords[validCoords.length - 1] : null);
+
         return {
             id: routeId,
             coords: validCoords,
             isActive,
             isSelected,
             isDriverRoute: r.role === 'driver',
-            color: isSelected ? defaultPrimary : defaultSecondary,
-            width: isSelected ? 6 : 4,
-            zIndex: isSelected ? 10 : 2,
-            startPoint: startP,
-            endPoint: endP,
+            color,
+            width,
+            zIndex,
+            originalColor,
+            startPoint: finalStartP,
+            endPoint: finalEndP,
         };
     });
 };

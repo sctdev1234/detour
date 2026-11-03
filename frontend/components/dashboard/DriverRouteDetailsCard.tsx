@@ -113,9 +113,9 @@ export const DriverRouteDetailsCard: React.FC<DriverRouteDetailsCardProps> = ({
         <Container {...containerProps} style={[
             styles.container,
             {
-                backgroundColor: isDark ? (Platform.OS === 'ios' ? 'rgba(28, 28, 30, 0.75)' : 'rgba(28, 28, 30, 0.95)') : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.98)'),
+                backgroundColor: isDark ? (Platform.OS === 'ios' ? 'rgba(28, 28, 30, 0.75)' : '#1c1c1e') : (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.75)' : '#ffffff'),
                 borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.8)',
-                borderWidth: 1.5,
+                borderWidth: Platform.OS === 'ios' ? 1.5 : 1, // Thinner border on Android to avoid double-edge look
             }
         ]}>
             {/* Header */}

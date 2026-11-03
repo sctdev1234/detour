@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import {
     AlertCircle,
+    ChevronLeft,
     ChevronRight,
     HelpCircle,
     Mail,
@@ -63,6 +64,10 @@ export default function SupportScreen() {
                 style={styles.headerGradient}
             >
                 <View style={styles.headerContent}>
+                    <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+                        <ChevronLeft size={24} color={theme.text} />
+                        <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginLeft: 4 }}>Back</Text>
+                    </TouchableOpacity>
                     <Animated.Text entering={FadeInDown.delay(100).springify()} style={[styles.headerTitle, { color: theme.text }]}>
                         Help & Support
                     </Animated.Text>

@@ -20,7 +20,7 @@ export const useRouteGuard = () => {
             const isSignupScreen = segmentsArray.length > 1 && segmentsArray[1] === 'signup';
 
             // List of routes that are accessible to authenticated users regardless of role
-            const sharedRoutes = ['change-password', 'edit-profile', 'profile', 'chat', 'modal', 'finance', 'reclamations', 'active-trip', 'notifications'];
+            const sharedRoutes = ['change-password', 'edit-profile', 'profile', 'chat', 'modal', 'finance', 'reclamations', 'active-trip', 'notifications', 'trips'];
 
             const safeReplace = (path: string) => {
                 try {
@@ -58,7 +58,8 @@ export const useRouteGuard = () => {
                 'reclamations',
                 'edit-profile',
                 'profile',
-                'notifications'
+                'notifications',
+                'trips'
             ];
 
             const clientWhitelist = [
@@ -97,7 +98,10 @@ export const useRouteGuard = () => {
                     if (!hasRoute && (currentRoute === '(driver)' || currentRoute === '(driver)/index')) {
                         safeReplace('/(driver)/add-route');
                     } else if (currentGroup !== '(driver)' && !sharedRoutes.includes(currentGroup)) {
-                        safeReplace('/(driver)');
+                        // Allow driver to access Settings and Support even if they are in (client) group
+                        if (!['(client)/settings', '(client)/support'].includes(currentRoute)) {
+                            safeReplace('/(driver)');
+                        }
                     }
                 } else if (role === 'client') {
                     if (currentGroup !== '(client)' && !sharedRoutes.includes(currentGroup)) {

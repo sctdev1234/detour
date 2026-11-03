@@ -345,6 +345,7 @@ const SmartPolyline = React.memo(({ route, strokeColor, strokeWidth, lineDashPat
         <>
             {/* Outline / Casing for High Contrast against Traffic */}
             <Polyline
+                key={`casing-${route.id || 'smart'}-${strokeColor}-${zIndex}`}
                 coordinates={filteredCoords}
                 strokeColor="rgba(0, 0, 0, 0.5)"
                 strokeWidth={(strokeWidth || 4) + 4}
@@ -353,6 +354,7 @@ const SmartPolyline = React.memo(({ route, strokeColor, strokeWidth, lineDashPat
             />
             {/* Inner Route Line */}
             <Polyline
+                key={`inner-${route.id || 'smart'}-${strokeColor}-${zIndex}`}
                 coordinates={filteredCoords}
                 strokeColor={strokeColor}
                 strokeWidth={strokeWidth}
@@ -379,13 +381,27 @@ const RoutePolylines = React.memo(({
     interactive?: boolean; 
 }) => {
     if (!routePolylines?.length) return null;
+    
+    const hasSelection = selectedRouteId !== null && selectedRouteId !== undefined && selectedRouteId !== '';
+
     return (
         <>
-            {routePolylines.map((route) => {
+            {[...routePolylines].sort((a, b) => {
+                const aSelected = selectedRouteId === a.id || a.isSelected;
+                const bSelected = selectedRouteId === b.id || b.isSelected;
+                if (aSelected && !bSelected) return 1;
+                if (!aSelected && bSelected) return -1;
+                return 0;
+            }).map((route) => {
                 const isSelected = selectedRouteId === route.id || route.isSelected;
-                const routeColor = isSelected ? '#3B82F6' : (route.color || '#6366f1'); // Vibrant Blue
-                const strokeWidth = isSelected ? 6 : (route.width || 4);
-                const zIndex = isSelected ? 10 : 2;
+                const routeColor = isSelected ? '#3B82F6' : (route.color || 'rgba(120, 120, 120, 0.4)'); // Vibrant Blue or Grey
+                const strokeWidth = isSelected ? 6 : (route.width || 3);
+                const zIndex = isSelected ? 10 : (route.zIndex || 1);
+                
+                // Colored markers always (user request)
+                const unselectedStartColor = route.originalColor || '#6366f1';
+                const unselectedEndColor = route.isActive ? '#ef4444' : 'rgba(239, 68, 68, 0.8)';
+                const unselectedBorderColor = '#fff';
 
                 return (
                     <React.Fragment key={`route-${route.id}`}>
@@ -403,6 +419,7 @@ const RoutePolylines = React.memo(({
                         {/* Start Marker */}
                         {route.startPoint && route.startPoint.latitude !== 0 && route.startPoint.longitude !== 0 && (
                             <Marker 
+                                key={`start-${route.id}-${isSelected}-${selectedRouteId}`}
                                 coordinate={route.startPoint} 
                                 anchor={{ x: 0.5, y: 0.5 }} 
                                 tracksViewChanges={false}
@@ -410,10 +427,10 @@ const RoutePolylines = React.memo(({
                                 zIndex={zIndex + 1}
                             >
                                 <View style={[styles.routeEndpoint, {
-                                    backgroundColor: isSelected ? '#3B82F6' : 'rgba(79, 70, 229, 0.6)',
-                                    borderColor: '#fff',
-                                    borderWidth: isSelected ? 3 : 2.5,
-                                    transform: [{ scale: isSelected ? 1.2 : 1.0 }]
+                                    backgroundColor: isSelected ? '#3B82F6' : unselectedStartColor,
+                                    borderColor: isSelected ? '#fff' : unselectedBorderColor,
+                                    borderWidth: isSelected ? 3 : 2,
+                                    transform: [{ scale: isSelected ? 1.2 : 0.85 }]
                                 }]}>
                                     <View style={styles.routeEndpointInner} />
                                 </View>
@@ -422,6 +439,7 @@ const RoutePolylines = React.memo(({
                         {/* End Marker */}
                         {route.endPoint && route.endPoint.latitude !== 0 && route.endPoint.longitude !== 0 && (
                             <Marker 
+                                key={`end-${route.id}-${isSelected}-${selectedRouteId}`}
                                 coordinate={route.endPoint} 
                                 anchor={{ x: 0.5, y: 0.5 }} 
                                 tracksViewChanges={false}
@@ -429,10 +447,10 @@ const RoutePolylines = React.memo(({
                                 zIndex={zIndex + 1}
                             >
                                 <View style={[styles.routeEndpoint, {
-                                    backgroundColor: isSelected ? '#ef4444' : (route.isActive ? '#ef4444' : 'rgba(239, 68, 68, 0.5)'),
-                                    borderColor: '#fff',
-                                    borderWidth: isSelected ? 3 : 2.5,
-                                    transform: [{ scale: isSelected ? 1.2 : 1.0 }]
+                                    backgroundColor: isSelected ? '#ef4444' : unselectedEndColor,
+                                    borderColor: isSelected ? '#fff' : unselectedBorderColor,
+                                    borderWidth: isSelected ? 3 : 2,
+                                    transform: [{ scale: isSelected ? 1.2 : 0.85 }]
                                 }]}>
                                     <View style={styles.routeEndpointInner} />
                                 </View>

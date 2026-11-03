@@ -12,7 +12,11 @@ import { useUIStore } from '../store/useUIStore';
 
 type Role = 'driver' | 'client' | null;
 
-export default function Header() {
+interface HeaderProps {
+    forceBackButton?: boolean;
+}
+
+export default function Header({ forceBackButton }: HeaderProps = {}) {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const pathname = usePathname();
@@ -70,28 +74,35 @@ export default function Header() {
         if (pathname.includes('/(driver)/cars') && !pathname.includes('/add-car') && !pathname.includes('/assign-car')) return true; // Main cars list is tab
         if (pathname.includes('/(driver)/requests')) return true;
         if (pathname.includes('/(driver)/routes') && !pathname.includes('/add-route')) return true;
-        if (pathname.includes('/(driver)/trips')) return true;
         if (pathname.includes('/(driver)/profile')) return true;
 
-        // Client Tabs (Assuming similar structure based on previous context)
+        // Client Tabs
         if (pathname === '/(client)' || pathname === '/(client)/' || pathname === '/(client)/index') return true;
         if (pathname.includes('/(client)/requests')) return true;
         if (pathname.includes('/(client)/profile')) return true;
         if (pathname.includes('/(client)/routes') && !pathname.includes('/add-route')) return true;
-        if (pathname.includes('/(client)/trips')) return true;
         if (pathname.includes('/(client)/places')) return true;
 
         // Auth
         if (pathname.includes('/(auth)/login')) return true;
         if (pathname.includes('/(auth)/role-selection')) return true;
-        if (pathname.includes('/tasks')) return true; // Removed to show header
+        if (pathname.includes('/tasks')) return true;
 
-        if (pathname.includes('/(auth)/signup')) return false; // Signup usually has back to login
+        if (pathname.includes('/(auth)/signup')) return false;
+
+        // Custom screens with their own headers, we want to hide the global header entirely
+        if (pathname === '/trips' || pathname === '/finance/wallet' || pathname === '/(client)/settings' || pathname === '/(client)/support' || pathname === '/(driver)/stats' || pathname === '/(driver)/wallet') {
+            return true;
+        }
 
         return false;
     };
 
-    const showBackButton = !isMainTab() && router.canGoBack();
+    // Pages where we ALWAYS want to show the back button in the global header
+    const forceBackRoutes = ['/(driver)/stats', '/(driver)/wallet'];
+    const shouldForceBack = forceBackButton || forceBackRoutes.includes(pathname);
+
+    const showBackButton = shouldForceBack || (!isMainTab() && router.canGoBack());
 
     // Profile navigation
     const handleProfilePress = () => {
@@ -106,7 +117,6 @@ export default function Header() {
         pathname === '/(driver)' || pathname === '/(driver)/' || pathname === '/(driver)/index' ||
         pathname === '/(client)' || pathname === '/(client)/' || pathname === '/(client)/index' ||
         pathname.includes('/tasks');
-
 
     const { hideGlobalHeader } = useUIStore();
 

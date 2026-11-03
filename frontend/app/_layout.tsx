@@ -218,6 +218,7 @@ function AppContent() {
           <Stack.Screen name="(driver)" options={{ headerShown: false }} />
           <Stack.Screen name="(client)" options={{ headerShown: false }} />
           <Stack.Screen name="profile" options={{ headerShown: false }} />
+          <Stack.Screen name="trips" options={{ headerShown: false }} />
           <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
           <Stack.Screen name="change-password" options={{ headerShown: false }} />
           <Stack.Screen name="chat" options={{ headerShown: false }} />

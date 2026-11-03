@@ -4,11 +4,12 @@ import { Calendar, ChevronLeft, Navigation, Timer, User } from 'lucide-react-nat
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Colors } from '../constants/theme';
-import { useTrips } from '../hooks/api/useTripQueries';
+import { useRoutes, useTrips } from '../hooks/api/useTripQueries';
 import { useCountdownDate } from '../hooks/useCountdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { Trip } from '../types';
 import { getNextTripOccurrence, IN_PROGRESS_STATUSES } from '../utils/timeUtils';
+import { useDashboardStore } from '../store/useDashboardStore';
 
 const TripItemCard = ({ item, index, theme, router, user }: { item: Trip, index: number, theme: any, router: any, user: any }) => {
     let targetDate: Date | null = null;
@@ -27,15 +28,22 @@ const TripItemCard = ({ item, index, theme, router, user }: { item: Trip, index:
         >
             <TouchableOpacity
                 style={[styles.tripCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                onPress={() => router.push({ pathname: '/modal', params: { type: 'trip_details', id: item.id } })}
+                onPress={() => {
+                    if (item.status === 'ROUTE_ONLY') {
+                        useDashboardStore.getState().setSelectedRouteId(item.routeId?.id || (item.routeId as any)?._id);
+                        router.push(user?.role === 'driver' ? '/(driver)' : '/(client)');
+                    } else {
+                        router.push({ pathname: '/modal', params: { type: 'trip_details', id: item.id } })
+                    }
+                }}
             >
                 <View style={styles.tripHeader}>
                     <View style={styles.statusBadge}>
-                        <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#10b981' : item.status === 'COMPLETED' ? '#3b82f6' : '#f59e0b' }]} />
-                        <Text style={[styles.statusText, { color: theme.text }]}>{item.status.toUpperCase()}</Text>
+                        <View style={[styles.statusDot, { backgroundColor: item.status === 'active' ? '#10b981' : item.status === 'COMPLETED' ? '#3b82f6' : item.status === 'ROUTE_ONLY' ? '#8b5cf6' : '#f59e0b' }]} />
+                        <Text style={[styles.statusText, { color: theme.text }]}>{item.status === 'ROUTE_ONLY' ? 'SCHEDULED ROUTE' : item.status.toUpperCase()}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={[styles.dateText, { color: theme.icon }]}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                        <Text style={[styles.dateText, { color: theme.icon }]}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Scheduled'}</Text>
                         {isInProgress ? (
                             <View style={[styles.countdownBadge, { backgroundColor: '#ef4444' + '15' }]}>
                                 <View style={[styles.statusDot, { backgroundColor: '#ef4444', marginRight: 4 }]} />
@@ -124,8 +132,35 @@ export default function TripsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
-    const { data: trips, isLoading } = useTrips();
+    const { data: trips, isLoading: tripsLoading } = useTrips();
+    const { data: routes, isLoading: routesLoading } = useRoutes();
     const user = useAuthStore((state: any) => state.user);
+
+    const isLoading = tripsLoading || routesLoading;
+
+    // Combine trips and routes
+    const combinedData = React.useMemo(() => {
+        const activeTrips = trips || [];
+        const activeRoutes = routes || [];
+
+        // If user is driver, add their routes that don't have an active trip yet
+        if (user?.role === 'driver') {
+            const routesWithoutTrips = activeRoutes.filter((r: any) => !activeTrips.some(t => t.routeId?.id === r.id));
+            
+            const mappedRoutes = routesWithoutTrips.map((r: any) => ({
+                id: `route_${r.id}`,
+                driverId: user,
+                status: 'ROUTE_ONLY',
+                createdAt: null, // We'll show 'Scheduled'
+                routeId: r,
+                clients: []
+            }));
+
+            return [...activeTrips, ...mappedRoutes];
+        }
+
+        return activeTrips;
+    }, [trips, routes, user]);
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -149,15 +184,15 @@ export default function TripsScreen() {
                 <View style={{ width: 44 }} />
             </View>
 
-            {isLoading && (!trips || (trips as Trip[]).length === 0) ? (
+            {isLoading && combinedData.length === 0 ? (
                 <View style={styles.loading}>
                     <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : (
                 <FlatList
-                    data={trips || []}
+                    data={combinedData}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item, index }) => <TripItemCard item={item} index={index} theme={theme} router={router} user={user} />}
+                    renderItem={({ item, index }) => <TripItemCard item={item as any} index={index} theme={theme} router={router} user={user} />}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
                         <View style={styles.empty}>
